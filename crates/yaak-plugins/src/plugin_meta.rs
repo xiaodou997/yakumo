@@ -39,8 +39,8 @@ pub fn get_plugin_meta(plugin_dir: &Path) -> Result<PluginMetadata> {
         homepage_url: package_json.homepage,
         repository_url: match package_json.repository {
             None => None,
-            Some(RepositoryField::Object { url }) => Some(url),
             Some(RepositoryField::String(url)) => Some(url),
+            Some(RepositoryField::Object { url, .. }) => url,
         },
     })
 }
@@ -60,5 +60,13 @@ struct PackageJson {
 #[serde(untagged)]
 enum RepositoryField {
     String(String),
-    Object { url: String },
+    Object {
+        #[serde(default)]
+        url: Option<String>,
+        #[serde(default)]
+        #[serde(rename = "type")]
+        repo_type: Option<String>,
+        #[serde(default)]
+        directory: Option<String>,
+    },
 }
