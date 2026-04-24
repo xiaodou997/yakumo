@@ -58,6 +58,7 @@ struct PackageJson {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
+#[allow(dead_code)]
 enum RepositoryField {
     String(String),
     Object {
