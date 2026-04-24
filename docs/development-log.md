@@ -124,3 +124,60 @@ feat: 第一阶段工具链迁移完成 - Bun/Vite/Tauri稳定
 - Git 重建（待用户确认远端地址）
 - 运行完整构建验证
 - 冒烟测试
+
+---
+
+## 2026-04-24 Git 重建完成
+
+### 执行步骤
+
+1. 删除旧 `.git` 目录
+2. `git init` 初始化新仓库
+3. `git add .` 添加所有文件
+4. `git commit` 创建初始提交
+
+### 验证结果
+
+```
+$ git log --oneline
+db1f926 (HEAD -> main) Initial Yakumo API codebase
+
+$ git status
+On branch main
+nothing to commit, working tree clean
+```
+
+### 提交内容
+
+- 1241 files changed, 117929 insertions
+- 包含所有第一阶段、第二阶段改动
+- 无旧历史记录，作为 Yakumo API 项目起点
+
+### 远端状态
+
+暂不配置远端，用户稍后手动添加。
+
+---
+
+## 当前状态总结
+
+### 已完成 ✅
+
+| 阶段 | 任务 | 状态 |
+|-----|-----|-----|
+| 第一阶段 | 工具链迁移（Bun/Vite/Tauri） | ✅ |
+| 第一阶段 | 环境变量名统一 | ✅ |
+| 第二阶段 | 品牌清单梳理 | ✅ |
+| 第二阶段 | 用户可见品牌更新 | ✅ |
+| 第二阶段 | Tauri identifier/deep link | ✅ |
+| Git 重建 | 删除旧历史，初始提交 | ✅ |
+
+### 延后处理 ⏳
+
+- npm package 重命名 (`@yaakapp/*` → `@yakumo/*`)
+- Rust crate 重命名 (`yaak-*` → `yakumo-*`)
+- 内部代码 import 引用更新
+- CLI 命令名 (`yaak` → `yakumo`)
+- 图标替换（使用现有 placeholder）
+- 第三阶段：插件 runtime Bun 化
+- 第四阶段：发布流程完善
