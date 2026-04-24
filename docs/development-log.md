@@ -180,4 +180,53 @@ nothing to commit, working tree clean
 - CLI 命令名 (`yaak` → `yakumo`)
 - 图标替换（使用现有 placeholder）
 - 第三阶段：插件 runtime Bun 化
-- 第四阶段：发布流程完善
+- 第五阶段：冒烟测试（需人工执行）
+
+---
+
+## 2026-04-24 第四阶段剩余任务完成
+
+### 已完成
+
+| 任务 | 状态 |
+|-----|-----|
+| 4.1 清理 GitHub Actions | ✅ release-api-npm.yml npm ci → bun install |
+| 4.2 发布规则文档 | ✅ docs/release-policy.md |
+| 4.3 许可证说明 | ✅ NOTICE.md |
+
+### 验证结果
+
+- `bun run typecheck` ✓
+- `bun run lint` ✓
+- `bun run build` ✓
+- `cargo check -p yaak-app` ✓
+
+---
+
+## 任务清单完成状态
+
+根据 docs/yakumo-api-independentization-tasks.md 对比：
+
+| 阶段 | 任务 | 状态 |
+|-----|-----|-----|
+| **第一阶段** | 1.1 检查工具链残留 | ✅ 完成 |
+| | 1.2 检查 Dev 启动链路 | ✅ 完成（未人工验收） |
+| | 1.3 检查 Build 链路 | ✅ 完成 |
+| | 1.4 Biome/TypeScript 分工 | ✅ 完成 |
+| **第二阶段** | 2.1 梳理品牌关键词 | ✅ 完成 |
+| | 2.2 修改用户可见品牌 | ✅ 完成（未人工验收） |
+| | 2.3 修改 Tauri 标识 | ✅ 完成（未人工验收） |
+| | 2.4 替换图标 | ⏳ placeholder |
+| **第三阶段** | 插件 runtime Bun 化 | ⏳ 延后 |
+| **第四阶段** | 4.1 清理 GitHub Actions | ✅ 完成 |
+| | 4.2 发布规则文档 | ✅ 完成 |
+| | 4.3 许可证说明 | ✅ 完成 |
+| | 4.4 Git 重建 | ✅ 完成 |
+| **第五阶段** | 冒烟测试 | ⏳ 未执行（需人工） |
+
+### 延后任务
+
+- 图标替换（用户确认 placeholder）
+- 第三阶段：插件 runtime Bun 化
+- npm package/crate 重命名
+- 第五阶段冒烟测试
