@@ -1,0 +1,37 @@
+{
+  "name": "@yaakapp/api",
+  "version": "0.8.0",
+  "keywords": [
+    "api-client",
+    "bruno-alternative",
+    "insomnia-alternative",
+    "postman-alternative"
+  ],
+  "homepage": "https://yaak.app",
+  "bugs": {
+    "url": "https://feedback.yaak.app"
+  },
+  "repository": {
+    "type": "git"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "main": "lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "bootstrap": "bun run build",
+    "build": "bun run build:copy-types && bun run build:tsc",
+    "build:tsc": "tsc",
+    "build:copy-types": "bun run build:copy-types:root && bun run build:copy-types:next",
+    "build:copy-types:root": "cpy --flat ../../crates/yaak-plugins/bindings/*.ts ./src/bindings",
+    "build:copy-types:next": "cpy --flat ../../crates/yaak-plugins/bindings/serde_json/*.ts ./src/bindings/serde_json",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@types/node": "^24.0.13"
+  },
+  "devDependencies": {
+    "cpy-cli": "^5.0.0"
+  }
+}

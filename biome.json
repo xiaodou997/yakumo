@@ -1,0 +1,37 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!node_modules",
+      "!target",
+      "!dist",
+      "!flatpak",
+      "!npm",
+      "!crates-tauri/yaak-app/vendored",
+      "!crates/yaak-templates/pkg",
+      "!crates/yaak-templates/build-wasm.cjs",
+      "!scripts/install-wasm-pack.cjs",
+      "!scripts/vendor-node.cjs",
+      "!scripts/vendor-protoc.cjs",
+      "!**/build",
+      "!**/bindings/gen_*.ts"
+    ]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false
+    }
+  }
+}

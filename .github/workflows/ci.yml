@@ -1,0 +1,32 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+name: Lint and Test
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint/Test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          cache-on-failure: true
+
+      - run: bun install --frozen-lockfile
+      - run: bun run bootstrap
+      - run: bun run lint
+      - name: Run JS Tests
+        run: bun run test
+      - name: Run Rust Tests
+        run: cargo test --all

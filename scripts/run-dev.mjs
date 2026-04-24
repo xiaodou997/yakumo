@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+
+/**
+ * Script to run Tauri dev server with dynamic port configuration.
+ * Loads port from .env.local if present, otherwise uses default port 1420.
+ */
+
+import { spawnSync } from "child_process";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.join(__dirname, "..");
+
+// Load .env.local if it exists
+const envLocalPath = path.join(rootDir, ".env.local");
+if (fs.existsSync(envLocalPath)) {
+  const envContent = fs.readFileSync(envLocalPath, "utf8");
+  const envVars = envContent
+    .split("\n")
+    .filter((line) => line && !line.startsWith("#"))
+    .reduce((acc, line) => {
+      const [key, value] = line.split("=");
+      if (key && value) {
+        acc[key.trim()] = value.trim();
+      }
+      return acc;
+    }, {});
+
+  Object.assign(process.env, envVars);
+}
+
+const port = process.env.YAKUMO_DEV_PORT || "1420";
+const config = JSON.stringify({ build: { devUrl: `http://localhost:${port}` } });
+
+// Get additional arguments passed after bun run app-dev --
+const additionalArgs = process.argv.slice(2);
+
+const args = [
+  "dev",
+  "--no-watch",
+  "--config",
+  "crates-tauri/yaak-app/tauri.development.conf.json",
+  "--config",
+  config,
+  ...additionalArgs,
+];
+
+// Invoke the tauri CLI JS entry point directly via node to avoid shell escaping issues on Windows
+const preflight = spawnSync(process.execPath, [path.join(rootDir, "scripts", "ensure-vendored.mjs")], {
+  stdio: "inherit",
+  env: process.env,
+});
+
+if (preflight.status !== 0) {
+  process.exit(preflight.status || 1);
+}
+
+const result = spawnSync("bun", ["run", "tauri", ...args], {
+  cwd: rootDir,
+  stdio: "inherit",
+  env: process.env,
+  shell: process.platform === "win32",
+});
+
+process.exit(result.status || 0);

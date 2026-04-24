@@ -1,0 +1,16 @@
+{
+  "name": "@yaak/auth-basic",
+  "displayName": "Basic Authentication",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authenticate requests using Basic Auth",
+  "repository": {
+    "type": "git",
+    "directory": "plugins/auth-basic"
+  },
+  "scripts": {
+    "build": "yaakcli build",
+    "dev": "yaakcli dev",
+    "test": "vitest --run tests"
+  }
+}

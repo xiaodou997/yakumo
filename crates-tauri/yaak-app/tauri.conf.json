@@ -1,0 +1,46 @@
+{
+  "productName": "Yakumo API",
+  "version": "0.0.0",
+  "identifier": "app.yakumo.api",
+  "build": {
+    "beforeBuildCommand": "bun run tauri-before-build",
+    "beforeDevCommand": "bun run tauri-before-dev",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["$APPDATA/responses/*", "$RESOURCE/static/*"]
+        }
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["yakumo"]
+      }
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/release/32x32.png",
+      "icons/release/128x128.png",
+      "icons/release/128x128@2x.png",
+      "icons/release/icon.icns",
+      "icons/release/icon.ico"
+    ],
+    "resources": [
+      "static",
+      "vendored/protoc/include",
+      "vendored/plugins",
+      "vendored/plugin-runtime",
+      "vendored/node/yaaknode*",
+      "vendored/protoc/yaakprotoc*"
+    ]
+  }
+}
