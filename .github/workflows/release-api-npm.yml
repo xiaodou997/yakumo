@@ -31,8 +31,13 @@ jobs:
           node-version: lts/*
           registry-url: https://registry.npmjs.org
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Set @yaakapp/api version
         shell: bash
@@ -48,7 +53,7 @@ jobs:
           VERSION="${VERSION#v}"
           echo "Preparing @yaakapp/api version: $VERSION"
           cd packages/plugin-runtime-types
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          bun version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Build @yaakapp/api
         working-directory: packages/plugin-runtime-types
