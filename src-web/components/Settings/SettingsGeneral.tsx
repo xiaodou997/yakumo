@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { useCheckForUpdates } from "../../hooks/useCheckForUpdates";
 import { appInfo } from "../../lib/appInfo";
+import { useTranslate } from "../../lib/i18n";
 import { revealInFinderText } from "../../lib/reveal";
 import { CargoFeature } from "../CargoFeature";
 import { Checkbox } from "../core/Checkbox";
@@ -19,6 +20,7 @@ export function SettingsGeneral() {
   const workspace = useAtomValue(activeWorkspaceAtom);
   const settings = useAtomValue(settingsAtom);
   const checkForUpdates = useCheckForUpdates();
+  const t = useTranslate();
 
   if (settings == null || workspace == null) {
     return null;
@@ -27,28 +29,28 @@ export function SettingsGeneral() {
   return (
     <VStack space={1.5} className="mb-4">
       <div className="mb-4">
-        <Heading>General</Heading>
-        <p className="text-text-subtle">Configure general settings for update behavior and more.</p>
+        <Heading>{t("settings.general")}</Heading>
+        <p className="text-text-subtle">{t("settings.general.description")}</p>
       </div>
       <CargoFeature feature="updater">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1">
           <Select
             name="updateChannel"
-            label="Update Channel"
+            label={t("settings.general.updateChannel")}
             labelPosition="left"
             labelClassName="w-[14rem]"
             size="sm"
             value={settings.updateChannel}
             onChange={(updateChannel) => patchModel(settings, { updateChannel })}
             options={[
-              { label: "Stable", value: "stable" },
-              { label: "Beta (more frequent)", value: "beta" },
+              { label: t("settings.general.updateChannel.stable"), value: "stable" },
+              { label: t("settings.general.updateChannel.beta"), value: "beta" },
             ]}
           />
           <IconButton
             variant="border"
             size="sm"
-            title="Check for updates"
+            title={t("settings.general.checkForUpdates")}
             icon="refresh"
             spin={checkForUpdates.isPending}
             onClick={() => checkForUpdates.mutateAsync()}
@@ -58,38 +60,38 @@ export function SettingsGeneral() {
         <Select
           name="autoupdate"
           value={settings.autoupdate ? "auto" : "manual"}
-          label="Update Behavior"
+          label={t("settings.general.updateBehavior")}
           labelPosition="left"
           size="sm"
           labelClassName="w-[14rem]"
           onChange={(v) => patchModel(settings, { autoupdate: v === "auto" })}
           options={[
-            { label: "Automatic", value: "auto" },
-            { label: "Manual", value: "manual" },
+            { label: t("settings.general.updateBehavior.automatic"), value: "auto" },
+            { label: t("settings.general.updateBehavior.manual"), value: "manual" },
           ]}
         />
         <Checkbox
           className="pl-2 mt-1 ml-[14rem]"
           checked={settings.autoDownloadUpdates}
           disabled={!settings.autoupdate}
-          help="Automatically download Yaak updates (!50MB) in the background, so they will be immediately ready to install."
-          title="Automatically download updates"
+          help={t("settings.general.autoDownloadUpdatesHelp")}
+          title={t("settings.general.autoDownloadUpdates")}
           onChange={(autoDownloadUpdates) => patchModel(settings, { autoDownloadUpdates })}
         />
 
         <Checkbox
           className="pl-2 mt-1 ml-[14rem]"
           checked={settings.checkNotifications}
-          title="Check for notifications"
-          help="Periodically ping Yaak servers to check for relevant notifications."
+          title={t("settings.general.checkNotifications")}
+          help={t("settings.general.checkNotificationsHelp")}
           onChange={(checkNotifications) => patchModel(settings, { checkNotifications })}
         />
         <Checkbox
           disabled
           className="pl-2 mt-1 ml-[14rem]"
           checked={false}
-          title="Send anonymous usage statistics"
-          help="Yakumo API is local-first and does not collect analytics or usage data 🔐"
+          title={t("settings.general.sendAnonymousStats")}
+          help={t("settings.general.sendAnonymousStatsHelp")}
           onChange={(checkNotifications) => patchModel(settings, { checkNotifications })}
         />
       </CargoFeature>
@@ -97,7 +99,7 @@ export function SettingsGeneral() {
       <Separator className="my-4" />
 
       <Heading level={2}>
-        Workspace{" "}
+        {t("settings.general.workspaceTitle")}{" "}
         <div className="inline-block ml-1 bg-surface-highlight px-2 py-0.5 rounded text text-shrink">
           {workspace.name}
         </div>
@@ -107,7 +109,7 @@ export function SettingsGeneral() {
           required
           size="sm"
           name="requestTimeout"
-          label="Request Timeout (ms)"
+          label={t("settings.general.requestTimeout")}
           labelClassName="w-[14rem]"
           placeholder="0"
           labelPosition="left"
@@ -121,8 +123,8 @@ export function SettingsGeneral() {
 
         <Checkbox
           checked={workspace.settingValidateCertificates}
-          help="When disabled, skip validation of server certificates, useful when interacting with self-signed certs."
-          title="Validate TLS certificates"
+          help={t("settings.general.validateCertificatesHelp")}
+          title={t("settings.general.validateCertificates")}
           onChange={(settingValidateCertificates) =>
             patchModel(workspace, { settingValidateCertificates })
           }
@@ -130,7 +132,7 @@ export function SettingsGeneral() {
 
         <Checkbox
           checked={workspace.settingFollowRedirects}
-          title="Follow redirects"
+          title={t("settings.general.followRedirects")}
           onChange={(settingFollowRedirects) =>
             patchModel(workspace, {
               settingFollowRedirects,
@@ -141,11 +143,11 @@ export function SettingsGeneral() {
 
       <Separator className="my-4" />
 
-      <Heading level={2}>App Info</Heading>
+      <Heading level={2}>{t("settings.general.appInfo")}</Heading>
       <KeyValueRows>
-        <KeyValueRow label="Version">{appInfo.version}</KeyValueRow>
+        <KeyValueRow label={t("settings.general.version")}>{appInfo.version}</KeyValueRow>
         <KeyValueRow
-          label="Data Directory"
+          label={t("settings.general.dataDirectory")}
           rightSlot={
             <IconButton
               title={revealInFinderText}
@@ -158,7 +160,7 @@ export function SettingsGeneral() {
           {appInfo.appDataDir}
         </KeyValueRow>
         <KeyValueRow
-          label="Logs Directory"
+          label={t("settings.general.logsDirectory")}
           rightSlot={
             <IconButton
               title={revealInFinderText}

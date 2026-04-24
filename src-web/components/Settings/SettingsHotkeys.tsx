@@ -14,6 +14,7 @@ import {
 } from "../../hooks/useHotKey";
 import { capitalize } from "../../lib/capitalize";
 import { showDialog } from "../../lib/dialog";
+import { useTranslate } from "../../lib/i18n";
 import { Button } from "../core/Button";
 import { Dropdown, type DropdownItem } from "../core/Dropdown";
 import { Heading } from "../core/Heading";
@@ -68,6 +69,7 @@ export function SettingsHotkeys() {
   const settings = useAtomValue(settingsAtom);
   const hotkeys = useAtomValue(hotkeysAtom);
   const [filter, setFilter] = useState("");
+  const t = useTranslate();
 
   const filteredActions = useMemo(() => {
     if (!filter.trim()) {
@@ -88,14 +90,14 @@ export function SettingsHotkeys() {
   return (
     <VStack space={3} className="mb-4">
       <div className="mb-3">
-        <Heading>Keyboard Shortcuts</Heading>
+        <Heading>{t("settings.shortcuts.title")}</Heading>
         <p className="text-text-subtle">
-          Click the menu button to add, remove, or reset keyboard shortcuts.
+          {t("settings.shortcuts.description")}
         </p>
       </div>
       <PlainInput
-        label="Filter"
-        placeholder="Filter shortcuts..."
+        label={t("settings.shortcuts.filter")}
+        placeholder={t("settings.shortcuts.filterPlaceholder")}
         defaultValue={filter}
         onChange={setFilter}
         hideLabel
@@ -104,9 +106,9 @@ export function SettingsHotkeys() {
       <Table>
         <TableHead>
           <TableRow>
-            <TableHeaderCell>Scope</TableHeaderCell>
-            <TableHeaderCell>Action</TableHeaderCell>
-            <TableHeaderCell>Shortcut</TableHeaderCell>
+            <TableHeaderCell>{t("settings.shortcuts.scope")}</TableHeaderCell>
+            <TableHeaderCell>{t("settings.shortcuts.action")}</TableHeaderCell>
+            <TableHeaderCell>{t("settings.shortcuts.shortcut")}</TableHeaderCell>
             <TableHeaderCell></TableHeaderCell>
           </TableRow>
         </TableHead>
@@ -155,6 +157,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
   const scope = capitalize(getHotkeyScope(action).replace(/_/g, " "));
   const isCustomized = !arraysEqual(currentKeys, defaultKeys);
   const isDisabled = currentKeys.length === 0;
+  const t = useTranslate();
 
   const handleStartRecording = useCallback(() => {
     showDialog({
@@ -189,7 +192,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
   // Build dropdown items dynamically
   const dropdownItems: DropdownItem[] = [
     {
-      label: "Add Keyboard Shortcut",
+      label: t("settings.shortcuts.addShortcut"),
       leftSlot: <Icon icon="plus" />,
       onSelect: handleStartRecording,
     },
@@ -201,7 +204,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
       dropdownItems.push({
         label: (
           <HStack space={1.5}>
-            <span>Remove</span>
+            <span>{t("settings.shortcuts.remove")}</span>
             <HotkeyRaw labelParts={formatHotkeyString(key)} variant="with-bg" className="text-xs" />
           </HStack>
         ),
@@ -216,7 +219,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
           type: "separator",
         },
         {
-          label: "Remove All Shortcuts",
+          label: t("settings.shortcuts.removeAll"),
           leftSlot: <Icon icon="trash" />,
           onSelect: handleClearAll,
         },
@@ -229,7 +232,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
       type: "separator",
     });
     dropdownItems.push({
-      label: "Reset to Default",
+      label: t("settings.shortcuts.resetToDefault"),
       leftSlot: <Icon icon="refresh" />,
       onSelect: onReset,
     });
@@ -246,7 +249,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
       <TableCell>
         <HStack space={1.5} className="py-1">
           {isDisabled ? (
-            <span className="text-text-subtlest">Disabled</span>
+            <span className="text-text-subtlest">{t("settings.shortcuts.disabled")}</span>
           ) : (
             currentKeys.map((k) => (
               <HotkeyRaw key={k} labelParts={formatHotkeyString(k)} variant="with-bg" />
@@ -259,7 +262,7 @@ function HotkeyRow({ action, currentKeys, defaultKeys, onSave, onReset }: Hotkey
           <IconButton
             icon="ellipsis_vertical"
             size="sm"
-            title="Hotkey actions"
+            title={t("settings.shortcuts.hotkeyActions")}
             className="ml-auto text-text-subtlest"
           />
         </Dropdown>
@@ -284,6 +287,7 @@ interface RecordHotkeyDialogProps {
 function RecordHotkeyDialog({ label, onSave, onCancel }: RecordHotkeyDialogProps) {
   const [recordedKey, setRecordedKey] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const t = useTranslate();
 
   useEffect(() => {
     if (!isFocused) return;
@@ -319,7 +323,7 @@ function RecordHotkeyDialog({ label, onSave, onCancel }: RecordHotkeyDialogProps
     <VStack space={4}>
       <div>
         <p className="text-text-subtle mb-2">
-          Record a key combination for <span className="font-semibold">{label}</span>
+          {t("settings.shortcuts.recordTitle", { label })}
         </p>
         <button
           type="button"
@@ -340,16 +344,16 @@ function RecordHotkeyDialog({ label, onSave, onCancel }: RecordHotkeyDialogProps
           {recordedKey ? (
             <HotkeyRaw labelParts={formatHotkeyString(recordedKey)} />
           ) : (
-            <span className="text-text-subtlest">Press keys...</span>
+            <span className="text-text-subtlest">{t("settings.shortcuts.pressKeys")}</span>
           )}
         </button>
       </div>
       <HStack space={2} justifyContent="end">
         <Button color="secondary" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button color="primary" onClick={handleSave} disabled={!recordedKey}>
-          Save
+          {t("common.confirm")}
         </Button>
       </HStack>
     </VStack>
