@@ -86,7 +86,6 @@ async fn run_model_change_poller<R: Runtime>(
 
 /// Extension trait for accessing the QueryManager from Tauri Manager types.
 pub trait QueryManagerExt<'a, R> {
-    fn db_manager(&'a self) -> State<'a, QueryManager>;
     fn db(&'a self) -> DbContext<'a>;
     fn with_tx<F, T>(&'a self, func: F) -> Result<T>
     where
@@ -94,10 +93,6 @@ pub trait QueryManagerExt<'a, R> {
 }
 
 impl<'a, R: Runtime, M: Manager<R>> QueryManagerExt<'a, R> for M {
-    fn db_manager(&'a self) -> State<'a, QueryManager> {
-        self.state::<QueryManager>()
-    }
-
     fn db(&'a self) -> DbContext<'a> {
         let qm = self.state::<QueryManager>();
         qm.inner().connect()

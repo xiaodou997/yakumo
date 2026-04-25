@@ -1,6 +1,6 @@
 import type { WebsocketRequest } from "@yaakapp-internal/models";
 import { patchModel } from "@yaakapp-internal/models";
-import type { GenericCompletionOption } from "@yaakapp-internal/plugins";
+import type { GenericCompletionOption } from "@yakumo/features";
 import { closeWebsocket, connectWebsocket, sendWebsocket } from "@yaakapp-internal/ws";
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";

@@ -9,11 +9,17 @@ use crate::utils::schema::append_agent_hints;
 use crate::utils::workspace::resolve_workspace_id;
 use schemars::schema_for;
 use serde_json::{Map, Value};
+use std::fs;
 use std::io::Write;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use tokio::sync::mpsc;
 use yaak_http::sender::{HttpResponseEvent as SenderHttpResponseEvent, HttpSender, ReqwestSender};
 use yaak_http::types::{SendableHttpRequest, SendableHttpRequestOptions};
-use yaak_models::models::{GrpcRequest, HttpRequest, WebsocketRequest};
+use yaak_models::models::{
+    GrpcRequest, HttpRequest, HttpResponse, HttpResponseEvent, HttpResponseHeader,
+    HttpResponseState, UpsertModelInfo, WebsocketRequest,
+};
 use yaak_models::queries::any_request::AnyRequest;
 use yaak_models::util::UpdateSource;
 
@@ -82,6 +88,7 @@ fn list(ctx: &CliContext, workspace_id: Option<&str>) -> CommandResult {
 }
 
 async fn schema(ctx: &CliContext, request_type: RequestSchemaType, pretty: bool) -> CommandResult {
+    let _ = ctx;
     let mut schema = match request_type {
         RequestSchemaType::Http => serde_json::to_value(schema_for!(HttpRequest))
             .map_err(|e| format!("Failed to serialize HTTP request schema: {e}"))?,
@@ -271,6 +278,7 @@ async fn send_http_request_by_id(
 ) -> Result<(), String> {
     let _cookie_jar_id = resolve_cookie_jar_id(ctx, &http_request.workspace_id, cookie_jar_id)?;
     let _environment_id = environment;
+    let started = Instant::now();
 
     // Build sendable request
     let options = SendableHttpRequestOptions { timeout: None, follow_redirects: true };
@@ -284,12 +292,17 @@ async fn send_http_request_by_id(
     // Create event channel
     let (event_tx, mut event_rx) = mpsc::channel::<SenderHttpResponseEvent>(100);
     let (body_chunk_tx, mut body_chunk_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+    let events = Arc::new(Mutex::new(Vec::<SenderHttpResponseEvent>::new()));
+    let captured_events = Arc::clone(&events);
 
     // Spawn event logger task
     let event_handle = tokio::spawn(async move {
         while let Some(event) = event_rx.recv().await {
             if verbose && !matches!(event, SenderHttpResponseEvent::ChunkReceived { .. }) {
                 println!("{}", event);
+            }
+            if let Ok(mut events) = captured_events.lock() {
+                events.push(event);
             }
         }
     });
@@ -307,27 +320,112 @@ async fn send_http_request_by_id(
 
     // Send the request
     let mut response = sender.send(sendable_request, event_tx).await.map_err(|e| e.to_string())?;
+    let response_id = <HttpResponse as UpsertModelInfo>::generate_id();
 
     // Read the body and send chunks
     let body_stream = response.into_body_stream().map_err(|e| e.to_string())?;
     let mut reader = body_stream;
     let mut buf = [0u8; 8192];
+    let mut body = Vec::new();
+    let mut read_error = None;
     loop {
         match tokio::io::AsyncReadExt::read(&mut reader, &mut buf).await {
             Ok(0) => break,
             Ok(n) => {
+                body.extend_from_slice(&buf[..n]);
                 let _ = body_chunk_tx.send(buf[..n].to_vec());
             }
             Err(e) => {
-                return Err(format!("Failed to read response body: {}", e));
+                read_error = Some(format!("Failed to read response body: {}", e));
+                break;
             }
         }
     }
 
+    drop(body_chunk_tx);
+    drop(reader);
+
+    if let Err(e) = body_handle.await {
+        return Err(format!("Failed to write response body: {e}"));
+    }
     let _ = event_handle.await;
-    let _ = body_handle.await;
+
+    if let Some(error) = read_error {
+        return Err(error);
+    }
+
+    let body_path = write_response_body(ctx, &response_id, &body)?;
+    let elapsed = saturating_i32(started.elapsed().as_millis());
+    let persisted_response = HttpResponse {
+        model: "http_response".to_string(),
+        id: response_id,
+        workspace_id: http_request.workspace_id.clone(),
+        request_id: http_request.id.clone(),
+        body_path,
+        content_length: response.content_length.map(saturating_i32),
+        content_length_compressed: Some(saturating_i32(body.len())),
+        elapsed,
+        elapsed_headers: elapsed,
+        headers: response_headers(response.headers),
+        remote_addr: response.remote_addr,
+        request_headers: response_headers(response.request_headers),
+        status: i32::from(response.status),
+        status_reason: response.status_reason,
+        state: HttpResponseState::Closed,
+        url: response.url,
+        version: response.version,
+        ..Default::default()
+    };
+
+    let persisted_response = ctx
+        .db()
+        .upsert_http_response(&persisted_response, &UpdateSource::Sync, ctx.blob_manager())
+        .map_err(|e| format!("Failed to persist response: {e}"))?;
+
+    let captured_events = events
+        .lock()
+        .map_err(|_| "Failed to persist response events: event collector poisoned".to_string())?
+        .clone();
+    for event in captured_events {
+        let event = HttpResponseEvent::new(
+            &persisted_response.id,
+            &persisted_response.workspace_id,
+            event.into(),
+        );
+        ctx.db()
+            .upsert_http_response_event(&event, &UpdateSource::Sync)
+            .map_err(|e| format!("Failed to persist response event: {e}"))?;
+    }
 
     Ok(())
+}
+
+fn response_headers(headers: Vec<(String, String)>) -> Vec<HttpResponseHeader> {
+    headers.into_iter().map(|(name, value)| HttpResponseHeader { name, value }).collect()
+}
+
+fn write_response_body(
+    ctx: &CliContext,
+    response_id: &str,
+    body: &[u8],
+) -> Result<Option<String>, String> {
+    if body.is_empty() {
+        return Ok(None);
+    }
+
+    let responses_dir = ctx.data_dir().join("responses");
+    fs::create_dir_all(&responses_dir)
+        .map_err(|e| format!("Failed to create response body directory: {e}"))?;
+    let body_path = responses_dir.join(format!("{response_id}.body"));
+    fs::write(&body_path, body).map_err(|e| format!("Failed to write response body: {e}"))?;
+    Ok(Some(body_path.to_string_lossy().to_string()))
+}
+
+fn saturating_i32<T>(value: T) -> i32
+where
+    T: TryInto<i32>,
+{
+    value.try_into().unwrap_or(i32::MAX)
 }
 
 pub(crate) fn resolve_cookie_jar_id(

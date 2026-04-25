@@ -5,19 +5,11 @@ use yaak_models::blob_manager::BlobManager;
 use yaak_models::db_context::DbContext;
 use yaak_models::query_manager::QueryManager;
 
-#[derive(Clone, Debug, Default)]
-pub struct CliExecutionContext {
-    pub request_id: Option<String>,
-    pub workspace_id: Option<String>,
-    pub environment_id: Option<String>,
-    pub cookie_jar_id: Option<String>,
-}
-
 pub struct CliContext {
     data_dir: PathBuf,
     query_manager: QueryManager,
     blob_manager: BlobManager,
-    pub encryption_manager: Arc<EncryptionManager>,
+    _encryption_manager: Arc<EncryptionManager>,
 }
 
 impl CliContext {
@@ -34,7 +26,7 @@ impl CliContext {
             };
         let encryption_manager = Arc::new(EncryptionManager::new(query_manager.clone(), app_id));
 
-        Self { data_dir, query_manager, blob_manager, encryption_manager }
+        Self { data_dir, query_manager, blob_manager, _encryption_manager: encryption_manager }
     }
 
     pub fn data_dir(&self) -> &Path {
@@ -43,10 +35,6 @@ impl CliContext {
 
     pub fn db(&self) -> DbContext<'_> {
         self.query_manager.connect()
-    }
-
-    pub fn query_manager(&self) -> &QueryManager {
-        &self.query_manager
     }
 
     pub fn blob_manager(&self) -> &BlobManager {

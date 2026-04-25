@@ -1,4 +1,4 @@
-import type { Theme, ThemeComponentColors } from "@yaakapp-internal/plugins";
+import type { Theme, ThemeComponentColors } from "@yakumo/features";
 import { defaultDarkTheme, defaultLightTheme } from "./themes";
 import { YaakColor } from "./yaakColor";
 

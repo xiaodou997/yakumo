@@ -1,13 +1,12 @@
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use crate::window_menu::app_menu;
-use log::{info, warn};
+use log::info;
 use rand::random;
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalSize, Runtime, WebviewUrl, WebviewWindow,
     WindowEvent,
 };
-use tauri_plugin_opener::OpenerExt;
 use tokio::sync::mpsc;
 
 const DEFAULT_WINDOW_WIDTH: f64 = 1100.0;

@@ -7,7 +7,7 @@ import type {
   Workspace,
 } from "@yaakapp-internal/models";
 import { httpResponsesAtom } from "@yaakapp-internal/models";
-import type { GetHttpAuthenticationConfigResponse, JsonPrimitive } from "@yaakapp-internal/plugins";
+import type { GetHttpAuthenticationConfigResponse, JsonPrimitive } from "@yakumo/features";
 import { useAtomValue } from "jotai";
 import { md5 } from "js-md5";
 import { useState } from "react";

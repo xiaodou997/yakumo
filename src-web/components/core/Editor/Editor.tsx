@@ -10,7 +10,7 @@ import { vim } from "@replit/codemirror-vim";
 import { vscodeKeymap } from "@replit/codemirror-vscode-keymap";
 import type { EditorKeymap } from "@yaakapp-internal/models";
 import { settingsAtom } from "@yaakapp-internal/models";
-import type { EditorLanguage, TemplateFunction } from "@yaakapp-internal/plugins";
+import type { EditorLanguage, TemplateFunction } from "@yakumo/features";
 import classNames from "classnames";
 import type { GraphQLSchema } from "graphql";
 import { useAtomValue } from "jotai";

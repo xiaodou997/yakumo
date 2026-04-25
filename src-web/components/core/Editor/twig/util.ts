@@ -1,4 +1,4 @@
-import type { FormInput, TemplateFunction } from "@yaakapp-internal/plugins";
+import type { FormInput, TemplateFunction } from "@yakumo/features";
 import type { Tokens } from "@yaakapp-internal/templates";
 
 /**

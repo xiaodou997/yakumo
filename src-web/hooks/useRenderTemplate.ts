@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { RenderPurpose } from "@yaakapp-internal/plugins";
+import type { RenderPurpose } from "@yakumo/features";
 import { useAtomValue } from "jotai";
 import { minPromiseMillis } from "../lib/minPromiseMillis";
 import { invokeCmd } from "../lib/tauri";

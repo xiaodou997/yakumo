@@ -1,4 +1,4 @@
-import type { Color } from "@yaakapp-internal/plugins";
+import type { Color } from "@yakumo/features";
 import classNames from "classnames";
 import { useKeyValue } from "../../hooks/useKeyValue";
 import type { BannerProps } from "./Banner";

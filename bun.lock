@@ -43,7 +43,7 @@
       "version": "1.0.0",
     },
     "crates/yaak-features": {
-      "name": "@yaakapp-internal/plugins",
+      "name": "@yakumo/features",
       "version": "1.0.0",
     },
     "crates/yaak-git": {
@@ -1105,7 +1105,7 @@
 
     "@yaakapp-internal/plugin-runtime": ["@yaakapp-internal/plugin-runtime@workspace:packages/plugin-runtime"],
 
-    "@yaakapp-internal/plugins": ["@yaakapp-internal/plugins@workspace:crates/yaak-features"],
+    "@yakumo/features": ["@yakumo/features@workspace:crates/yaak-features"],
 
     "@yaakapp-internal/sse": ["@yaakapp-internal/sse@workspace:crates/yaak-sse"],
 

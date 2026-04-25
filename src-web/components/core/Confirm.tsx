@@ -1,4 +1,4 @@
-import type { Color } from "@yaakapp-internal/plugins";
+import type { Color } from "@yakumo/features";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { CopyIconButton } from "../CopyIconButton";

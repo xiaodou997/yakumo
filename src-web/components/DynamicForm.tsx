@@ -10,7 +10,7 @@ import type {
   FormInputSelect,
   FormInputText,
   JsonPrimitive,
-} from "@yaakapp-internal/plugins";
+} from "@yakumo/features";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";

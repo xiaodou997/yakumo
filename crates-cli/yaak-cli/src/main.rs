@@ -1,14 +1,13 @@
 mod cli;
 mod commands;
 mod context;
-mod ui;
 mod utils;
 mod version;
 mod version_check;
 
 use clap::Parser;
 use cli::{Cli, Commands, RequestCommands};
-use context::{CliContext, CliExecutionContext};
+use context::CliContext;
 use std::path::PathBuf;
 use yaak_models::queries::any_request::AnyRequest;
 
@@ -38,13 +37,13 @@ async fn main() {
     let exit_code = match command {
         Commands::Send(args) => {
             let context = CliContext::new(data_dir.clone(), app_id);
-            match resolve_send_execution_context(
+            match validate_send_execution_context(
                 &context,
                 &args.id,
                 environment.as_deref(),
                 cookie_jar.as_deref(),
             ) {
-                Ok(_execution_context) => {
+                Ok(()) => {
                     let exit_code = commands::send::run(
                         &context,
                         args,
@@ -77,16 +76,16 @@ async fn main() {
         Commands::Request(args) => {
             let context = CliContext::new(data_dir.clone(), app_id);
             let execution_context_result = match &args.command {
-                RequestCommands::Send { request_id } => resolve_request_execution_context(
+                RequestCommands::Send { request_id } => validate_request_execution_context(
                     &context,
                     request_id,
                     environment.as_deref(),
                     cookie_jar.as_deref(),
                 ),
-                _ => Ok(CliExecutionContext::default()),
+                _ => Ok(()),
             };
             match execution_context_result {
-                Ok(_execution_context) => {
+                Ok(()) => {
                     let exit_code = commands::request::run(
                         &context,
                         args,
@@ -123,57 +122,43 @@ async fn main() {
     }
 }
 
-fn resolve_send_execution_context(
+fn validate_send_execution_context(
     context: &CliContext,
     id: &str,
     environment: Option<&str>,
     explicit_cookie_jar_id: Option<&str>,
-) -> Result<CliExecutionContext, String> {
+) -> Result<(), String> {
+    let _ = environment;
     if let Ok(request) = context.db().get_any_request(id) {
-        let (request_id, workspace_id) = match request {
-            AnyRequest::HttpRequest(r) => (Some(r.id), r.workspace_id),
-            AnyRequest::GrpcRequest(r) => (Some(r.id), r.workspace_id),
-            AnyRequest::WebsocketRequest(r) => (Some(r.id), r.workspace_id),
+        let workspace_id = match request {
+            AnyRequest::HttpRequest(r) => r.workspace_id,
+            AnyRequest::GrpcRequest(r) => r.workspace_id,
+            AnyRequest::WebsocketRequest(r) => r.workspace_id,
         };
-        let cookie_jar_id = resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
-        return Ok(CliExecutionContext {
-            request_id,
-            workspace_id: Some(workspace_id),
-            environment_id: environment.map(str::to_string),
-            cookie_jar_id,
-        });
+        resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
+        return Ok(());
     }
 
     if let Ok(folder) = context.db().get_folder(id) {
-        let cookie_jar_id =
-            resolve_cookie_jar_id(context, &folder.workspace_id, explicit_cookie_jar_id)?;
-        return Ok(CliExecutionContext {
-            request_id: None,
-            workspace_id: Some(folder.workspace_id),
-            environment_id: environment.map(str::to_string),
-            cookie_jar_id,
-        });
+        resolve_cookie_jar_id(context, &folder.workspace_id, explicit_cookie_jar_id)?;
+        return Ok(());
     }
 
     if let Ok(workspace) = context.db().get_workspace(id) {
-        let cookie_jar_id = resolve_cookie_jar_id(context, &workspace.id, explicit_cookie_jar_id)?;
-        return Ok(CliExecutionContext {
-            request_id: None,
-            workspace_id: Some(workspace.id),
-            environment_id: environment.map(str::to_string),
-            cookie_jar_id,
-        });
+        resolve_cookie_jar_id(context, &workspace.id, explicit_cookie_jar_id)?;
+        return Ok(());
     }
 
     Err(format!("Could not resolve ID '{}' as request, folder, or workspace", id))
 }
 
-fn resolve_request_execution_context(
+fn validate_request_execution_context(
     context: &CliContext,
     request_id: &str,
     environment: Option<&str>,
     explicit_cookie_jar_id: Option<&str>,
-) -> Result<CliExecutionContext, String> {
+) -> Result<(), String> {
+    let _ = environment;
     let request = context
         .db()
         .get_any_request(request_id)
@@ -184,14 +169,9 @@ fn resolve_request_execution_context(
         AnyRequest::GrpcRequest(r) => r.workspace_id,
         AnyRequest::WebsocketRequest(r) => r.workspace_id,
     };
-    let cookie_jar_id = resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
+    resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
 
-    Ok(CliExecutionContext {
-        request_id: Some(request_id.to_string()),
-        workspace_id: Some(workspace_id),
-        environment_id: environment.map(str::to_string),
-        cookie_jar_id,
-    })
+    Ok(())
 }
 
 fn resolve_cookie_jar_id(

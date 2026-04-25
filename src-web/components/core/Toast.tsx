@@ -1,4 +1,4 @@
-import type { ShowToastRequest } from "@yaakapp-internal/plugins";
+import type { ShowToastRequest } from "@yakumo/features";
 import classNames from "classnames";
 import * as m from "motion/react-m";
 import type { ReactNode } from "react";

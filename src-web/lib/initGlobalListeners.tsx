@@ -6,7 +6,7 @@ import type {
   InternalEvent,
   JsonPrimitive,
   ShowToastRequest,
-} from "@yaakapp-internal/plugins";
+} from "@yakumo/features";
 import type {
   UpdateInfo,
   UpdateResponse,

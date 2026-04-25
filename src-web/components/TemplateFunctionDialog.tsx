@@ -6,7 +6,7 @@ import type {
   WebsocketRequest,
   Workspace,
 } from "@yaakapp-internal/models";
-import type { TemplateFunction } from "@yaakapp-internal/plugins";
+import type { TemplateFunction } from "@yakumo/features";
 import type { FnArg, Tokens } from "@yaakapp-internal/templates";
 import { parseTemplate } from "@yaakapp-internal/templates";
 import classNames from "classnames";

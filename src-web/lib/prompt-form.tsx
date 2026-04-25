@@ -1,4 +1,4 @@
-import type { FormInput, JsonPrimitive } from "@yaakapp-internal/plugins";
+import type { FormInput, JsonPrimitive } from "@yakumo/features";
 import type { DialogProps } from "../components/core/Dialog";
 import type { PromptProps } from "../components/core/Prompt";
 import { Prompt } from "../components/core/Prompt";

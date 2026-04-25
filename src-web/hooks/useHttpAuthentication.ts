@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { GetHttpAuthenticationSummaryResponse } from "@yaakapp-internal/plugins";
+import type { GetHttpAuthenticationSummaryResponse } from "@yakumo/features";
 import { atom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { jotaiStore } from "../lib/jotai";

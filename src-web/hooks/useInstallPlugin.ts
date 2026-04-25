@@ -1,4 +1,4 @@
-import { installPluginFromDirectory } from "@yaakapp-internal/plugins";
+import { installPluginFromDirectory } from "@yakumo/features";
 import { useFastMutation } from "./useFastMutation";
 
 export function useInstallPlugin() {

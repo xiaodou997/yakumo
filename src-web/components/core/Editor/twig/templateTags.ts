@@ -4,7 +4,7 @@ import type { DecorationSet, ViewUpdate } from "@codemirror/view";
 import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { applyFormInputDefaults, validateTemplateFunctionArgs } from "@yaakapp-internal/lib";
-import type { FormInput, JsonPrimitive, TemplateFunction } from "@yaakapp-internal/plugins";
+import type { FormInput, JsonPrimitive, TemplateFunction } from "@yakumo/features";
 import { parseTemplate } from "@yaakapp-internal/templates";
 import type { TwigCompletionOption } from "./completion";
 import { collectArgumentValues } from "./util";

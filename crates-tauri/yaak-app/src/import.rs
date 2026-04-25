@@ -3,9 +3,8 @@ use crate::models_ext::QueryManagerExt;
 use log::info;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
-use tauri::{Manager, Runtime, WebviewWindow};
+use tauri::{Runtime, WebviewWindow};
 use yaak_core::WorkspaceContext;
-use yaak_features::events::ImportResources;
 use yaak_features::importer::{curl, yakumo};
 use yaak_models::models::{
     Environment, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,

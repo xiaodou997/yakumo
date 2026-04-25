@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use KeyAndValueRef::{Ascii, Binary};
-use tauri::{Manager, Runtime, WebviewWindow};
+use tauri::{Runtime, WebviewWindow};
 use yaak_features::auth;
 use yaak_grpc::{KeyAndValueRef, MetadataMap};
 use yaak_models::models::GrpcRequest;

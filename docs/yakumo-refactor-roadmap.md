@@ -28,7 +28,7 @@ This document is the working entry point for the Yakumo API refactor.
 ## Deferred Work
 
 - Rename internal Rust crates from `yaak-*` to `yakumo-*`.
-- Replace stale generated `@yaakapp-internal/plugins` type package naming with a Yakumo feature package.
+- Keep generated feature bindings under `@yakumo/features` and continue removing legacy plugin terminology from call sites.
 - Implement Postman, Insomnia, OpenAPI 3, Swagger 2 importers.
 - Implement JSONPath/XPath response filters.
 - Rebuild release workflows for Yakumo app tags only.

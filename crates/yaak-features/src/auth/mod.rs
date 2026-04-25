@@ -14,9 +14,7 @@ pub mod oauth2;
 // pub mod aws;
 // pub mod ntlm;
 
-use crate::events::{
-    AuthAction, FormInput, HttpAuthenticationConfig, HttpAuthenticationSummary, HttpHeader,
-};
+use crate::events::{HttpAuthenticationConfig, HttpAuthenticationSummary, HttpHeader};
 
 /// Result of applying authentication to a request.
 pub struct AuthResult {

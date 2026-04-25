@@ -1,13 +1,11 @@
 extern crate core;
-use crate::encoding::read_response_body;
 use crate::error::Error::GenericError;
-use crate::error::Result;
 use crate::grpc::{build_metadata, metadata_to_map, resolve_grpc_request};
-use crate::http_request::{resolve_http_request, send_http_request};
+use crate::http_request::send_http_request;
 use crate::import::import_data;
 use crate::models_ext::{BlobManagerExt, QueryManagerExt};
 use crate::notifications::YaakNotifier;
-use crate::render::{render_grpc_request, render_json_value, render_template};
+use crate::render::{render_grpc_request, render_template};
 use crate::updates::{UpdateMode, UpdateTrigger, YaakUpdater};
 use crate::uri_scheme::handle_deep_link;
 use base64::Engine;
@@ -19,7 +17,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, panic};
 use tauri::path::BaseDirectory;
@@ -40,13 +37,11 @@ use yaak_grpc::manager::{GrpcConfig, GrpcHandle};
 use yaak_grpc::{Code, ServiceDefinition, serialize_message};
 use yaak_mac_window::AppHandleMacWindowExt;
 use yaak_models::models::{
-    AnyModel, CookieJar, Environment, GrpcConnection, GrpcConnectionState, GrpcEvent,
-    GrpcEventType, HttpRequest, HttpResponse, HttpResponseEvent, HttpResponseState, Workspace,
-    WorkspaceMeta,
+    GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, HttpRequest, HttpResponse,
+    HttpResponseEvent, HttpResponseState, WorkspaceMeta,
 };
 use yaak_models::util::{BatchUpsertResult, UpdateSource, get_workspace_export_resources};
 use yaak_sse::sse::ServerSentEvent;
-use yaak_tauri_utils::window::WorkspaceWindowTrait;
 use yaak_templates::format_json::format_json;
 use yaak_templates::strip_json_comments::strip_json_comments;
 use yaak_templates::{

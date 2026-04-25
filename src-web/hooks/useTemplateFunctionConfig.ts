@@ -9,7 +9,7 @@ import {
   type WebsocketRequest,
   type Workspace,
 } from "@yaakapp-internal/models";
-import type { GetTemplateFunctionConfigResponse, JsonPrimitive } from "@yaakapp-internal/plugins";
+import type { GetTemplateFunctionConfigResponse, JsonPrimitive } from "@yakumo/features";
 import { useAtomValue } from "jotai";
 import { md5 } from "js-md5";
 import { invokeCmd } from "../lib/tauri";

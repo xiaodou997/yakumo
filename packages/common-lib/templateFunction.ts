@@ -2,7 +2,7 @@ import type {
   CallTemplateFunctionArgs,
   JsonPrimitive,
   TemplateFunctionArg,
-} from "@yaakapp-internal/plugins";
+} from "@yakumo/features";
 
 export function validateTemplateFunctionArgs(
   fnName: string,

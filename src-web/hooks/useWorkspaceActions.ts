@@ -4,7 +4,7 @@ import type {
   CallWorkspaceActionRequest,
   GetWorkspaceActionsResponse,
   WorkspaceAction,
-} from "@yaakapp-internal/plugins";
+} from "@yakumo/features";
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 import { usePluginsKey } from "./usePlugins";

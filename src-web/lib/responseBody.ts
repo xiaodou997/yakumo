@@ -1,6 +1,6 @@
 import { readFile } from "@tauri-apps/plugin-fs";
 import type { HttpResponse } from "@yaakapp-internal/models";
-import type { FilterResponse } from "@yaakapp-internal/plugins";
+import type { FilterResponse } from "@yakumo/features";
 import type { ServerSentEvent } from "@yaakapp-internal/sse";
 import { invokeCmd } from "./tauri";
 

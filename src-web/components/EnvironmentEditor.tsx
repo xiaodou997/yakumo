@@ -1,6 +1,6 @@
 import type { Environment } from "@yaakapp-internal/models";
 import { patchModel } from "@yaakapp-internal/models";
-import type { GenericCompletionOption } from "@yaakapp-internal/plugins";
+import type { GenericCompletionOption } from "@yakumo/features";
 import classNames from "classnames";
 import { useCallback, useMemo } from "react";
 import { useEnvironmentsBreakdown } from "../hooks/useEnvironmentsBreakdown";

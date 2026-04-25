@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Listener, Manager, Runtime, WebviewWindow};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::{Update, UpdaterExt};
-use tokio::task::block_in_place;
 use tokio::time::sleep;
 use ts_rs::TS;
 use yaak_models::util::generate_id;

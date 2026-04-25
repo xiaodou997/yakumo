@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type {
   GetTemplateFunctionSummaryResponse,
   TemplateFunction,
-} from "@yaakapp-internal/plugins";
+} from "@yakumo/features";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import type { TwigCompletionOption } from "../components/core/Editor/twig/completion";
