@@ -6,13 +6,10 @@
       "!node_modules",
       "!target",
       "!dist",
-      "!flatpak",
-      "!npm",
       "!src-tauri/vendored",
       "!crates/yaak-templates/pkg",
       "!crates/yaak-templates/build-wasm.cjs",
       "!scripts/install-wasm-pack.cjs",
-      "!scripts/vendor-node.cjs",
       "!scripts/vendor-protoc.cjs",
       "!**/build",
       "!**/bindings/gen_*.ts"

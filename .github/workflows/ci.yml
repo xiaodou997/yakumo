@@ -24,7 +24,8 @@ jobs:
           cache-on-failure: true
 
       - run: bun install --frozen-lockfile
-      - run: bun run bootstrap
+      - run: bun run build
+      - run: bun run vendor:protoc
       - run: bun run lint
       - name: Run JS Tests
         run: bun run test

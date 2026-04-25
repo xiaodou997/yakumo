@@ -460,9 +460,7 @@ async onApply(_ctx, { values }) {
 ```json
 // package.json 删除的 scripts：
 {
-  "bootstrap:vendor-plugins": "...",  // 插件构建
-  "vendor:vendor-node": "...",        // Node.js sidecar 下载
-  "vendor:vendor-protoc": "..."       // 保留，gRPC 需要
+  "vendor:protoc": "..."              // 保留，gRPC 需要
 }
 ```
 
@@ -736,15 +734,15 @@ sha1 = "0.10"             # SHA1（OAuth 1.0 需要）
 
 | 任务 | 状态 | 说明 |
 |-----|------|-----|
-| 删除 vendored/node/ | 待开始 | 体积减少 |
-| 删除 vendored/plugin-runtime/ | 待开始 | 体积减少 |
-| 删除 vendored/plugins/ | 待开始 | 体积减少 |
-| 删除 plugins/ 目录 | 待开始 | 清理源码 |
-| 删除 packages/plugin-runtime/ | 待开始 | 清理包 |
-| 删除 packages/plugin-runtime-types/ | 待开始 | 清理包 |
-| 更新 package.json scripts | 待开始 | 移除插件构建 |
-| 更新 tauri.conf.json | 待开始 | 移除 plugin resources |
-| 更新 ensure-vendored.mjs | 待开始 | 移除 Node 检查 |
+| 删除 vendored/node/ | 已完成 | 仅保留 protoc |
+| 删除 vendored/plugin-runtime/ | 已完成 | 移除插件运行时产物 |
+| 删除 vendored/plugins/ | 已完成 | 移除插件构建产物 |
+| 删除 plugins/ 目录 | 已完成 | 当前仓库无插件源码目录 |
+| 删除 packages/plugin-runtime/ | 已完成 | 移除插件运行时包 |
+| 删除 packages/plugin-runtime-types/ | 已完成 | 移除 plugin API 包 |
+| 更新 package.json scripts | 已完成 | 移除插件构建和 npm 发布链路 |
+| 更新 tauri.conf.json | 已完成 | 移除 plugin resources |
+| 更新 ensure-vendored.mjs | 已完成 | 只检查 protoc |
 | 打包测试 | 待开始 | 验证体积 |
 | 端到端测试 | 待开始 | 全功能测试 |
 
@@ -814,7 +812,7 @@ cargo test           # 运行测试
 cargo build --release # 发布构建
 
 # 打包命令
-bun run app-build    # Tauri 打包
+bun run tauri build  # Tauri 打包
 ```
 
 ### 10.3 参考链接

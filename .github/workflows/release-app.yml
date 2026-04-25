@@ -47,7 +47,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
     steps:
-      - name: Checkout yaakapp/app
+      - name: Checkout Yakumo API
         uses: actions/checkout@v4
 
       - name: Setup Bun
@@ -71,7 +71,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
-      - name: Install Protoc for plugin-runtime
+      - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -90,7 +90,8 @@ jobs:
           & $exe --version
 
       - run: bun install --frozen-lockfile
-      - run: bun run bootstrap
+      - run: bun run build
+      - run: bun run vendor:protoc
         env:
           YAKUMO_TARGET_ARCH: ${{ matrix.yaak_arch }}
       - run: bun run lint
@@ -100,9 +101,9 @@ jobs:
         run: cargo test --all --exclude yaak-cli
 
       - name: Set version
-        run: bun run replace-version
+        run: node scripts/replace-version.cjs
         env:
-          YAAK_VERSION: ${{ github.ref_name }}
+          YAKUMO_VERSION: ${{ github.ref_name }}
 
       - name: Sign vendored binaries (macOS only)
         if: matrix.os == 'macos'
@@ -124,8 +125,7 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
 
           # Sign vendored binaries with hardened runtime and their specific entitlements
-          codesign --force --options runtime --entitlements crates-tauri/yaak-app/macos/entitlements.yaakprotoc.plist --sign "$APPLE_SIGNING_IDENTITY" crates-tauri/yaak-app/vendored/protoc/yaakprotoc || true
-          codesign --force --options runtime --entitlements crates-tauri/yaak-app/macos/entitlements.yaaknode.plist --sign "$APPLE_SIGNING_IDENTITY" crates-tauri/yaak-app/vendored/node/yaaknode || true
+          codesign --force --options runtime --entitlements src-tauri/macos/entitlements.yaakprotoc.plist --sign "$APPLE_SIGNING_IDENTITY" src-tauri/vendored/protoc/yaakprotoc || true
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -151,10 +151,10 @@ jobs:
         with:
           tagName: "v__VERSION__"
           releaseName: "Release __VERSION__"
-          releaseBody: "[Changelog __VERSION__](https://yaak.app/blog/__VERSION__)"
+          releaseBody: "[Changelog __VERSION__](https://github.com/xiaodou997/yakumo/releases/tag/v__VERSION__)"
           releaseDraft: true
           prerelease: true
-          args: "${{ matrix.args }} --config ./crates-tauri/yaak-app/tauri.release.conf.json"
+          args: "${{ matrix.args }} --config ./src-tauri/tauri.release.conf.json"
 
       # Build a per-machine NSIS installer for enterprise deployment (PDQ, SCCM, Intune)
       - name: Build and upload machine-wide installer (Windows only)
@@ -170,7 +170,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: |
           Get-ChildItem -Recurse -Path target -File -Filter "*.exe.sig" | Remove-Item -Force
-          npx tauri bundle ${{ matrix.args }} --bundles nsis --config ./crates-tauri/yaak-app/tauri.release.conf.json --config '{"bundle":{"createUpdaterArtifacts":true,"windows":{"nsis":{"installMode":"perMachine"}}}}'
+          npx tauri bundle ${{ matrix.args }} --bundles nsis --config ./src-tauri/tauri.release.conf.json --config '{"bundle":{"createUpdaterArtifacts":true,"windows":{"nsis":{"installMode":"perMachine"}}}}'
           $setup = Get-ChildItem -Recurse -Path target -Filter "*setup*.exe" | Select-Object -First 1
           $setupSig = "$($setup.FullName).sig"
           $dest = $setup.FullName -replace '-setup\.exe$', '-setup-machine.exe'

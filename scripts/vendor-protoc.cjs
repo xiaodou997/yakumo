@@ -57,6 +57,11 @@ const key = `${process.platform}_${process.env.YAKUMO_TARGET_ARCH ?? process.arc
 console.log(`Vendoring protoc ${VERSION} for ${key}`);
 
 const url = URL_MAP[key];
+if (!url) {
+  console.error(`Unsupported platform/architecture for protoc vendoring: ${key}`);
+  process.exit(1);
+}
+
 const tmpDir = path.join(__dirname, "tmp-protoc");
 const binSrc = path.join(tmpDir, SRC_BIN_MAP[key]);
 const binDst = path.join(dstDir, DST_BIN_MAP[key]);
@@ -103,7 +108,10 @@ mkdirSync(dstDir, { recursive: true });
   chmodSync(binDst, newMode);
 
   console.log("Downloaded protoc to", binDst);
-})().catch((err) => console.log("Script failed:", err));
+})().catch((err) => {
+  console.error("Script failed:", err);
+  process.exit(1);
+});
 
 function tryExecSync(cmd) {
   try {

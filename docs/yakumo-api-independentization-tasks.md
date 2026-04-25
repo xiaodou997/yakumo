@@ -1,5 +1,7 @@
 # Yakumo API 独立化后续开发任务清单
 
+> 备注：本文保留早期独立化分析记录。第一阶段已删除 npm CLI 发布、external plugins、Flatpak、plugin runtime package，以及本地 vendored Node/plugin-runtime/plugins 产物；当前可执行计划以 `docs/yakumo-refactor-roadmap.md` 和 `docs/release-policy.md` 为准。
+
 这份文档给后续开发者使用，目标是把当前 Yaak fork 逐步整理成独立项目 `Yakumo API`。请按阶段推进，不要一次性大改。每完成一个小任务，都先运行对应验证命令，再继续下一步。
 
 ## 0. 开发前必读
@@ -8,7 +10,7 @@
 
 - 第一阶段工具链迁移已经基本完成：主入口是 `bun run dev`，包管理器是 Bun，前端构建使用官方 Vite。
 - 当前仍保留 Yaak 的应用名、Tauri identifier、deep link scheme、crate/package 名称，避免第一阶段破坏启动和插件系统。
-- 插件运行时仍使用 vendored Node：`src-tauri/vendored/node/yaaknode`。
+- 插件运行时和 vendored Node 已移除，当前只保留桌面 App 与源码构建的 `yaku` CLI。
 - 后续品牌统一目标是 `Yakumo API`，已记录在 `TODO.md`。
 
 ### 工作原则
@@ -36,7 +38,7 @@ cargo check -p yaak-app
 如果 `wasm-pack` 缺失，运行：
 
 ```sh
-bun run bootstrap:install-wasm-pack
+bun run build
 ```
 
 如果 vendored 资源缺失，运行：
@@ -80,7 +82,6 @@ rg "vite-plus|@voidzero|\bvp\b|npm run|npm install|run-s|run-p|package-lock"
 
 - `package.json`
 - `scripts/run-dev.mjs`
-- `scripts/run-workspaces-dev.mjs`
 - `scripts/ensure-vendored.mjs`
 - `src-tauri/tauri.conf.json`
 - `src-tauri/tauri.development.conf.json`
@@ -88,7 +89,7 @@ rg "vite-plus|@voidzero|\bvp\b|npm run|npm install|run-s|run-p|package-lock"
 **要确认的行为**：
 
 - `bun run dev` 会先检查 vendored 资源。
-- 缺少 `vendored/protoc/include` 时会运行 `vendor:vendor-protoc`。
+- 缺少 `vendored/protoc/include` 时会运行 `vendor:protoc`。
 - 缺少 `vendored/plugin-runtime/index.cjs` 时会构建插件 runtime。
 - 缺少 `vendored/plugins` 时会构建并复制 bundled plugins。
 - 缺少 `vendored/node/yaaknode` 或 `yaaknode.exe` 时会下载 Node sidecar。
@@ -282,7 +283,7 @@ cargo check -p yaak-app
 2. 运行：
 
 ```sh
-bun run icons
+bun run tauri icon src-tauri/icons/icon.png --output src-tauri/icons/release
 ```
 
 3. 检查生成的 macOS `.icns`、Windows `.ico`、PNG 是否存在。

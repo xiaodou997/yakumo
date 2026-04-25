@@ -20,12 +20,6 @@
   },
   "exclude": [
     "dist",
-    "flatpak",
-    "npm",
-    "plugins",
-    "plugins-external",
-    "packages/plugin-runtime",
-    "packages/plugin-runtime-types",
     "crates/yaak-templates/pkg"
   ]
 }

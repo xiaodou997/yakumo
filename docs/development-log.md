@@ -32,15 +32,9 @@
 
 #### 2. 环境变量名统一化 (YAAK_* → YAKUMO_*)
 - `scripts/run-dev.mjs`: `YAAK_DEV_PORT` → `YAKUMO_DEV_PORT`
-- `scripts/vendor-node.cjs`: `YAAK_TARGET_ARCH` → `YAKUMO_TARGET_ARCH`
 - `scripts/vendor-protoc.cjs`: `YAAK_TARGET_ARCH` → `YAKUMO_TARGET_ARCH`
 - `scripts/replace-version.cjs`: `YAAK_VERSION` → `YAKUMO_VERSION`
-- `scripts/git-hooks/post-checkout.mjs`: 全部环境变量更新
-- `npm/cli/index.js`, `npm/cli/bin/cli.js`: `YAAK_CLI_INSTALL_SOURCE` → `YAKUMO_CLI_INSTALL_SOURCE`
-- `npm/prepare-publish.js`: `YAAK_CLI_VERSION` → `YAKUMO_CLI_VERSION`
-- `plugins-external/mcp-server/src/index.ts`: `YAAK_PLUGIN_MCP_SERVER_PORT` → `YAKUMO_PLUGIN_MCP_SERVER_PORT`
 - `.github/workflows/release-app.yml`: `YAAK_TARGET_ARCH` → `YAKUMO_TARGET_ARCH`
-- `.github/workflows/release-cli-npm.yml`: `YAAK_CLI_VERSION` → `YAKUMO_CLI_VERSION`
 
 #### 3. 文档优化
 - `docs/yakumo-api-independentization-tasks.md`: 开发者称呼通用化（大黄 → 开发者）
@@ -98,7 +92,6 @@ feat: 第一阶段工具链迁移完成 - Bun/Vite/Tauri稳定
 - `tauri.release.conf.json`:
   - `publisher`: "Yaak" → "Yakumo"
   - `copyright`: 更新来源说明
-- `scripts/git-hooks/post-checkout.mjs`: worktree identifier 更新
 
 #### 4. 图标 placeholder
 - 保持现有 Yaak 图标作为临时 placeholder
@@ -190,7 +183,7 @@ nothing to commit, working tree clean
 
 | 任务 | 状态 |
 |-----|-----|
-| 4.1 清理 GitHub Actions | ✅ release-api-npm.yml npm ci → bun install |
+| 4.1 清理 GitHub Actions | ✅ 保留 App release，移除 npm/API/Flatpak/sponsors 发布链路 |
 | 4.2 发布规则文档 | ✅ docs/release-policy.md |
 | 4.3 许可证说明 | ✅ NOTICE.md |
 

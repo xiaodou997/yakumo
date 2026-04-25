@@ -7,7 +7,7 @@ This document is the working entry point for the Yakumo API refactor.
 - Keep the desktop app.
 - Keep the local source-built AI CLI named `yaku`.
 - Remove the JavaScript plugin compatibility layer from the product surface.
-- Freeze npm CLI publishing, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows.
+- Keep npm CLI publishing, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows out of the repository unless a later phase explicitly reopens that scope.
 - Do not commit, push, or tag without explicit approval.
 
 ## Current Quality Gates

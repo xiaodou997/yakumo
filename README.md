@@ -8,7 +8,7 @@ This project is derived from the open-source Yaak project and keeps the original
 
 - Desktop app builds remain the primary supported distribution path.
 - `yaku` is kept as a local AI-friendly CLI built from source.
-- npm CLI packages, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows are frozen until the Yakumo release pipeline is rebuilt.
+- npm CLI packages, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows have been removed from this codebase.
 - The JavaScript plugin system is removed from the product surface. Core capabilities are implemented as built-in Yakumo features.
 
 ## Capabilities

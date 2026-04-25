@@ -1,30 +1,30 @@
-# Yaak CLI
+# Yakumo CLI
 
-The `yaak` CLI for publishing plugins and creating/updating/sending requests.
+The `yaku` CLI is the source-built local CLI for creating, updating, inspecting, and sending requests.
 
 ## Installation
 
 ```sh
-npm install @yaakapp/cli
+cargo build --locked -p yaku-cli --bin yaku
 ```
 
 ## Agentic Workflows
 
-The `yaak` CLI is primarily meant to be used by AI agents, and has the following features:
+The `yaku` CLI is primarily meant to be used by AI agents, and has the following features:
 
-- `schema` subcommands to get the JSON Schema for any model (eg. `yaak request schema http`)
+- `schema` subcommands to get the JSON Schema for any model (eg. `yaku request schema http`)
 - `--json '{...}'` input format to create and update data
 - `--verbose` mode for extracting debug info while sending requests
-- The ability to send entire workspaces and folders (Supports `--parallel` and `--fail-fast`)
+- HTTP send automation for local workflows
 
 ### Example Prompts
 
-Use the `yaak` CLI with agents like Claude or Codex to do useful things for you.
+Use the `yaku` CLI with agents like Claude or Codex to do useful things for you.
 
 Here are some example prompts:
 
 ```text
-Scan my API routes and create a workspace (using yaak cli) with
+Scan my API routes and create a workspace (using yaku cli) with
 all the requests needed for me to do manual testing?
 ```
 
@@ -34,16 +34,15 @@ Send all the GraphQL requests in my workspace
 
 ## Description
 
-Here's the current print of `yaak --help`
+Here's the current print of `yaku --help`
 
 ```text
-Yaak CLI - API client from the command line
+Yakumo CLI - API client from the command line
 
-Usage: yaak [OPTIONS] <COMMAND>
+Usage: yaku [OPTIONS] <COMMAND>
 
 Commands:
   auth         Authentication commands
-  plugin       Plugin development and publishing commands
   send         Send a request, folder, or workspace by ID
   workspace    Workspace commands
   request      Request commands
@@ -61,6 +60,6 @@ Options:
 Agent Hints:
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
-  - View JSONSchema for models before creating or updating (eg. `yaak request schema http`)
+  - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
   - Deletion requires confirmation (--yes for non-interactive environments)
 ```

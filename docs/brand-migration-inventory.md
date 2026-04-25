@@ -62,12 +62,10 @@
 | 当前名称 | 目标名称 | 文件位置 |
 |---------|---------|---------|
 | `yaak-app` | `yakumo-app` | `package.json` |
-| `@yaakapp/cli` | `@yakumo/cli` | `npm/cli/package.json` |
-| `@yaakapp/cli-*` | `@yakumo/cli-*` | `npm/cli-*/*.json` |
 | `@yaakapp/app` | `@yakumo/app` | `src/package.json` |
-| `@yaakapp/api` | `@yakumo/api` | `packages/plugin-runtime-types/package.json` |
 | `@yaakapp-internal/*` | `@yakumo-internal/*` | 各 packages 目录 |
-| `@yaak/*` (plugins) | `@yakumo/*` | 各 plugins 目录 |
+
+已移除：npm CLI packages、plugin API package、external plugin packages。
 
 ### 3.2 Rust crates
 
@@ -94,8 +92,6 @@
 
 需要全局替换：
 - `@yaakapp-internal/*` → `@yakumo-internal/*`
-- `@yaakapp/api` → `@yakumo/api`
-- 其他 `@yaak` 引用
 
 ---
 
@@ -126,8 +122,8 @@
 | 文件 | 需要修改 |
 |-----|---------|
 | `.github/workflows/release-app.yml` | 检查是否包含 Yaak 名称 |
-| `.github/workflows/release-cli-npm.yml` | CLI 发布配置 |
-| `.github/workflows/release-api-npm.yml` | API package 发布 |
+
+已移除：CLI npm、plugin API npm、Flatpak、sponsors workflow。
 
 ---
 

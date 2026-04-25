@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "identifier": "app.yakumo.api",
   "build": {
-    "beforeBuildCommand": "bun run tauri-before-build",
-    "beforeDevCommand": "bun run tauri-before-dev",
+    "beforeBuildCommand": "bun run build && bun run vendor:protoc",
+    "beforeDevCommand": "node scripts/ensure-vendored.mjs && bun run --cwd src dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
