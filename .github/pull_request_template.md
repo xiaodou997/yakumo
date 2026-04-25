@@ -1,14 +1,24 @@
 ## Summary
 
-<!-- Describe the bug and the fix in 1-3 sentences. -->
+Describe the change in 1-3 sentences.
 
-## Submission
+## Scope
 
-- [ ] This PR is a bug fix or small-scope improvement.
-- [ ] I have read and followed [`CONTRIBUTING.md`](CONTRIBUTING.md).
-- [ ] I tested this change locally.
-- [ ] I added or updated tests when reasonable.
+- [ ] Desktop app
+- [ ] `yaku` CLI
+- [ ] Rust core crates
+- [ ] Web UI
+- [ ] Docs or project hygiene
 
-## Related
+## Verification
 
-<!-- Link related issues, discussions, or feedback items. -->
+- [ ] `bun run typecheck`
+- [ ] `bun run lint`
+- [ ] `bun run test`
+- [ ] `bun run build`
+- [ ] `cargo check --locked --workspace --all-targets`
+- [ ] `cargo test --locked --workspace`
+
+## Notes
+
+Link related issues or mention follow-up work.

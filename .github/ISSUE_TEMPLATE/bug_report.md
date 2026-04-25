@@ -1,40 +1,40 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: Bug Report
+about: Report a Yakumo API desktop app or yaku CLI bug
 title: ""
-labels: ""
+labels: bug
 assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Summary
 
-**To Reproduce**
-Steps to reproduce the behavior:
+Describe the bug in 1-3 sentences.
 
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## Environment
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+- Yakumo API version:
+- OS and version:
+- Install/build type: source build / desktop artifact / other
+- Area: desktop app / yaku CLI / HTTP / gRPC / WebSocket / SSE / import/export / sync
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Steps To Reproduce
 
-**Desktop (please complete the following information):**
+1.
+2.
+3.
 
-- OS: [e.g. iOS]
-- Browser [e.g. chrome, safari]
-- Version [e.g. 22]
+## Expected Behavior
 
-**Smartphone (please complete the following information):**
+Describe what should have happened.
 
-- Device: [e.g. iPhone6]
-- OS: [e.g. iOS8.1]
-- Browser [e.g. stock browser, safari]
-- Version [e.g. 22]
+## Actual Behavior
 
-**Additional context**
-Add any other context about the problem here.
+Describe what happened instead. Include error messages when available.
+
+## Logs Or Screenshots
+
+Paste relevant logs, terminal output, screenshots, or screen recordings.
+
+## Additional Context
+
+Add any related workspace/request details that are safe to share.

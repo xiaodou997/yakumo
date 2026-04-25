@@ -1,181 +1,159 @@
-name: Release App Artifacts
+name: Desktop Release
+
 on:
+  workflow_dispatch:
   push:
-    tags: [v*]
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-artifacts:
-    permissions:
-      contents: write
-
-    name: Build
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest" # for Arm-based Macs (M1 and above).
-            args: "--target aarch64-apple-darwin"
-            yaak_arch: "arm64"
-            os: "macos"
-            targets: "aarch64-apple-darwin"
-          - platform: "macos-latest" # for Intel-based Macs.
-            args: "--target x86_64-apple-darwin"
-            yaak_arch: "x64"
-            os: "macos"
-            targets: "x86_64-apple-darwin"
-          - platform: "ubuntu-22.04"
-            args: ""
-            yaak_arch: "x64"
-            os: "ubuntu"
-            targets: ""
-          - platform: "ubuntu-22.04-arm"
-            args: ""
-            yaak_arch: "arm64"
-            os: "ubuntu"
-            targets: ""
-          - platform: "windows-latest"
-            args: ""
-            yaak_arch: "x64"
-            os: "windows"
-            targets: ""
-          # Windows ARM64
-          - platform: "windows-latest"
-            args: "--target aarch64-pc-windows-msvc"
-            yaak_arch: "arm64"
-            os: "windows"
-            targets: "aarch64-pc-windows-msvc"
-    runs-on: ${{ matrix.platform }}
-    timeout-minutes: 40
+          - name: macOS Apple Silicon
+            runner: macos-latest
+            arch: arm64
+            rust_targets: wasm32-unknown-unknown,aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles app,dmg
+          - name: macOS Intel
+            runner: macos-latest
+            arch: x64
+            rust_targets: wasm32-unknown-unknown,x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles app,dmg
+          - name: Ubuntu
+            runner: ubuntu-22.04
+            arch: x64
+            rust_targets: wasm32-unknown-unknown
+            args: --bundles appimage,deb,rpm
+          - name: Windows
+            runner: windows-latest
+            arch: x64
+            rust_targets: wasm32-unknown-unknown
+            args: --bundles nsis
+
     steps:
-      - name: Checkout Yakumo API
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:%s --since="1 month ago")
+          else
+            COMMITS=$(git log --pretty=format:%s "$PREV_TAG"..HEAD)
+          fi
+
+          FEATURES=""
+          FIXES=""
+          REFACTORS=""
+          DOCS=""
+          CHORES=""
+          OTHERS=""
+
+          while IFS= read -r COMMIT; do
+            [ -z "$COMMIT" ] && continue
+            case "$COMMIT" in
+              feat:*|feat\(*\):*) FEATURES="$FEATURES\n- $COMMIT" ;;
+              fix:*|fix\(*\):*) FIXES="$FIXES\n- $COMMIT" ;;
+              refactor:*|refactor\(*\):*) REFACTORS="$REFACTORS\n- $COMMIT" ;;
+              docs:*|docs\(*\):*) DOCS="$DOCS\n- $COMMIT" ;;
+              chore:*|chore\(*\):*|build:*|build\(*\):*|ci:*|ci\(*\):*) CHORES="$CHORES\n- $COMMIT" ;;
+              *) OTHERS="$OTHERS\n- $COMMIT" ;;
+            esac
+          done <<< "$COMMITS"
+
+          BODY="## Yakumo API ${{ github.ref_name }}"
+          [ -n "$FEATURES" ] && BODY="$BODY\n\n### Features\n$FEATURES"
+          [ -n "$FIXES" ] && BODY="$BODY\n\n### Fixes\n$FIXES"
+          [ -n "$REFACTORS" ] && BODY="$BODY\n\n### Refactors\n$REFACTORS"
+          [ -n "$DOCS" ] && BODY="$BODY\n\n### Docs\n$DOCS"
+          [ -n "$CHORES" ] && BODY="$BODY\n\n### Build and Maintenance\n$CHORES"
+          [ -n "$OTHERS" ] && BODY="$BODY\n\n### Other Changes\n$OTHERS"
+          BODY="$BODY\n\n### Artifacts\n- macOS Apple Silicon: DMG/App bundle\n- macOS Intel: DMG/App bundle\n- Windows: NSIS installer\n- Linux: AppImage, DEB, RPM when supported by Tauri"
+
+          EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
+          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$BODY" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.13
 
-      - name: install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.targets }}
+          targets: ${{ matrix.rust_targets }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ci
+          shared-key: yakumo-desktop-${{ matrix.name }}
           cache-on-failure: true
 
-      - name: install dependencies (Linux only)
-        if: matrix.os == 'ubuntu'
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rpm
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Install trusted-signing-cli (Windows only)
-        if: matrix.os == 'windows'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "$env:USERPROFILE\trusted-signing"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          $url = "https://github.com/Levminer/trusted-signing-cli/releases/download/0.8.0/trusted-signing-cli.exe"
-          $exe = Join-Path $dir "trusted-signing-cli.exe"
-          Invoke-WebRequest -Uri $url -OutFile $exe
-          echo $dir >> $env:GITHUB_PATH
-          & $exe --version
-
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: bun run vendor:protoc
-        env:
-          YAKUMO_TARGET_ARCH: ${{ matrix.yaak_arch }}
-      - run: bun run lint
-      - name: Run JS Tests
-        run: bun run test
-      - name: Run Rust Tests
-        run: cargo test --all --exclude yaak-cli
-
-      - name: Set version
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/')
         run: node scripts/replace-version.cjs
         env:
           YAKUMO_VERSION: ${{ github.ref_name }}
 
-      - name: Sign vendored binaries (macOS only)
-        if: matrix.os == 'macos'
+      - name: Build and publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: tauri-apps/tauri-action@v0
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          # Create keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # Import certificate
-          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
-          security import certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-
-          # Sign vendored binaries with hardened runtime and their specific entitlements
-          codesign --force --options runtime --entitlements src-tauri/macos/entitlements.yaakprotoc.plist --sign "$APPLE_SIGNING_IDENTITY" src-tauri/vendored/protoc/yaakprotoc || true
-
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          YAKUMO_TARGET_ARCH: ${{ matrix.yaak_arch }}
-
-          ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-
-          # Apple signing stuff
-          APPLE_CERTIFICATE: ${{ matrix.os == 'macos' && secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ matrix.os == 'macos' && secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ matrix.os == 'macos' && secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ matrix.os == 'macos' && secrets.APPLE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ matrix.os == 'macos' && secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_TEAM_ID: ${{ matrix.os == 'macos' && secrets.APPLE_TEAM_ID }}
-
-          # Windows signing stuff
-          AZURE_CLIENT_ID: ${{ matrix.os == 'windows' && secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ matrix.os == 'windows' && secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ matrix.os == 'windows' && secrets.AZURE_TENANT_ID }}
+          YAKUMO_TARGET_ARCH: ${{ matrix.arch }}
         with:
-          tagName: "v__VERSION__"
-          releaseName: "Release __VERSION__"
-          releaseBody: "[Changelog __VERSION__](https://github.com/xiaodou997/yakumo/releases/tag/v__VERSION__)"
-          releaseDraft: true
-          prerelease: true
-          args: "${{ matrix.args }} --config ./src-tauri/tauri.release.conf.json"
+          tagName: ${{ github.ref_name }}
+          releaseName: Yakumo API ${{ github.ref_name }}
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseDraft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          args: ${{ matrix.args }}
 
-      # Build a per-machine NSIS installer for enterprise deployment (PDQ, SCCM, Intune)
-      - name: Build and upload machine-wide installer (Windows only)
-        if: matrix.os == 'windows'
-        shell: pwsh
+      - name: Build desktop app
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: bun run tauri build ${{ matrix.args }}
         env:
-          YAKUMO_TARGET_ARCH: ${{ matrix.yaak_arch }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        run: |
-          Get-ChildItem -Recurse -Path target -File -Filter "*.exe.sig" | Remove-Item -Force
-          npx tauri bundle ${{ matrix.args }} --bundles nsis --config ./src-tauri/tauri.release.conf.json --config '{"bundle":{"createUpdaterArtifacts":true,"windows":{"nsis":{"installMode":"perMachine"}}}}'
-          $setup = Get-ChildItem -Recurse -Path target -Filter "*setup*.exe" | Select-Object -First 1
-          $setupSig = "$($setup.FullName).sig"
-          $dest = $setup.FullName -replace '-setup\.exe$', '-setup-machine.exe'
-          $destSig = "$dest.sig"
-          Copy-Item $setup.FullName $dest
-          Copy-Item $setupSig $destSig
-          gh release upload "${{ github.ref_name }}" "$dest" --clobber
-          gh release upload "${{ github.ref_name }}" "$destSig" --clobber
+          YAKUMO_TARGET_ARCH: ${{ matrix.arch }}
+
+      - name: Upload manual build artifacts
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: yakumo-desktop-${{ matrix.name }}
+          path: |
+            target/**/release/bundle/**/*
+          if-no-files-found: error
