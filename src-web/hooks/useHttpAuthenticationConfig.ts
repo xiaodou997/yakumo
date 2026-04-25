@@ -48,36 +48,21 @@ export function useHttpAuthenticationConfig(
     placeholderData: (prev) => prev, // Keep previous data on refetch
     queryFn: async () => {
       if (authName == null || authName === "inherit") return null;
+
       const config = await invokeCmd<GetHttpAuthenticationConfigResponse>(
         "cmd_get_http_authentication_config",
         {
           authName,
-          values,
-          model,
-          environmentId,
         },
       );
 
+      if (!config) return null;
+
       return {
         ...config,
-        actions: config.actions?.map((a, i) => ({
-          ...a,
-          call: async (
-            model: HttpRequest | GrpcRequest | WebsocketRequest | Folder | Workspace,
-          ) => {
-            await invokeCmd("cmd_call_http_authentication_action", {
-              pluginRefId: config.pluginRefId,
-              actionIndex: i,
-              authName,
-              values,
-              model,
-              environmentId,
-            });
-
-            // Ensure the config is refreshed after the action is done
-            setForceRefreshCounter((c) => c + 1);
-          },
-        })),
+        args: config.args ?? [],
+        // Actions are not supported in built-in auth for now
+        actions: [],
       };
     },
   });

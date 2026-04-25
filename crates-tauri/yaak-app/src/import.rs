@@ -1,4 +1,3 @@
-use crate::PluginContextExt;
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use log::info;
@@ -6,22 +5,34 @@ use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use tauri::{Manager, Runtime, WebviewWindow};
 use yaak_core::WorkspaceContext;
+use yaak_features::events::ImportResources;
+use yaak_features::importer::{curl, yakumo};
 use yaak_models::models::{
     Environment, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,
 };
 use yaak_models::util::{BatchUpsertResult, UpdateSource, maybe_gen_id, maybe_gen_id_opt};
-use yaak_plugins::manager::PluginManager;
 use yaak_tauri_utils::window::WorkspaceWindowTrait;
 
 pub(crate) async fn import_data<R: Runtime>(
     window: &WebviewWindow<R>,
     file_path: &str,
 ) -> Result<BatchUpsertResult> {
-    let plugin_manager = window.state::<PluginManager>();
     let file =
         read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file {}", file_path));
     let file_contents = file.as_str();
-    let import_result = plugin_manager.import_data(&window.plugin_context(), file_contents).await?;
+
+    // Use built-in importer
+    let import_response = import_with_builtin_importer(file_contents)?;
+
+    // Extract resources from ImportResponse
+    let resources = match import_response.resources {
+        Some(r) => r,
+        None => {
+            return Err(crate::error::Error::GenericError(
+                "No resources found in import data".to_string(),
+            ));
+        }
+    };
 
     let mut id_map: BTreeMap<String, String> = BTreeMap::new();
 
@@ -33,39 +44,36 @@ pub(crate) async fn import_data<R: Runtime>(
         request_id: None,
     };
 
-    let resources = import_result.resources;
+    let workspaces: Vec<Workspace> = match resources.workspace {
+        Some(mut w) => {
+            w.id = maybe_gen_id::<Workspace>(&ctx, w.id.as_str(), &mut id_map);
+            vec![w]
+        }
+        None => vec![],
+    };
 
-    let workspaces: Vec<Workspace> = resources
-        .workspaces
-        .into_iter()
-        .map(|mut v| {
-            v.id = maybe_gen_id::<Workspace>(&ctx, v.id.as_str(), &mut id_map);
-            v
-        })
-        .collect();
-
-    let environments: Vec<Environment> = resources
-        .environments
-        .into_iter()
-        .map(|mut v| {
+    let environments: Vec<Environment> = match resources.environment {
+        Some(mut v) => {
             v.id = maybe_gen_id::<Environment>(&ctx, v.id.as_str(), &mut id_map);
             v.workspace_id = maybe_gen_id::<Workspace>(&ctx, v.workspace_id.as_str(), &mut id_map);
-            match (v.parent_model.as_str(), v.parent_id.clone().as_deref()) {
+            match (v.parent_model.as_str(), v.parent_id.clone()) {
                 ("folder", Some(parent_id)) => {
                     v.parent_id = Some(maybe_gen_id::<Folder>(&ctx, &parent_id, &mut id_map));
                 }
-                ("", _) => {
+                ("", _) | (_, None) => {
                     // Fix any empty ones
                     v.parent_model = "workspace".to_string();
+                    v.parent_id = None;
                 }
                 _ => {
                     // Parent ID only required for the folder case
                     v.parent_id = None;
                 }
             };
-            v
-        })
-        .collect();
+            vec![v]
+        }
+        None => vec![],
+    };
 
     let folders: Vec<Folder> = resources
         .folders
@@ -126,4 +134,26 @@ pub(crate) async fn import_data<R: Runtime>(
     })?;
 
     Ok(upserted)
+}
+
+/// Import data using built-in importer
+fn import_with_builtin_importer(content: &str) -> Result<yaak_features::events::ImportResponse> {
+    // Try curl importer first
+    if content.trim().starts_with("curl ") {
+        let result =
+            curl::import_curl(content).map_err(|e| crate::error::Error::GenericError(e))?;
+        return Ok(result.unwrap_or_else(|| yaak_features::events::ImportResponse {
+            resources: None,
+            error: Some("No curl command found".to_string()),
+        }));
+    }
+
+    // Try yakumo/JSON importer
+    let result =
+        yakumo::import_yakumo(content).map_err(|e| crate::error::Error::GenericError(e))?;
+
+    Ok(result.unwrap_or_else(|| yaak_features::events::ImportResponse {
+        resources: None,
+        error: Some("No valid import data found".to_string()),
+    }))
 }

@@ -10,7 +10,7 @@ members = [
   "crates/yaak-grpc",
   "crates/yaak-http",
   "crates/yaak-models",
-  "crates/yaak-plugins",
+  "crates/yaak-features",
   "crates/yaak-sse",
   "crates/yaak-sync",
   "crates/yaak-templates",
@@ -56,7 +56,7 @@ yaak-git = { path = "crates/yaak-git" }
 yaak-grpc = { path = "crates/yaak-grpc" }
 yaak-http = { path = "crates/yaak-http" }
 yaak-models = { path = "crates/yaak-models" }
-yaak-plugins = { path = "crates/yaak-plugins" }
+yaak-features = { path = "crates/yaak-features" }
 yaak-sse = { path = "crates/yaak-sse" }
 yaak-sync = { path = "crates/yaak-sync" }
 yaak-templates = { path = "crates/yaak-templates" }

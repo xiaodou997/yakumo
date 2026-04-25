@@ -2,14 +2,14 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "yaak")]
-#[command(about = "Yaak CLI - API client from the command line")]
+#[command(name = "yaku")]
+#[command(about = "Yaku CLI - Yakumo API 命令行工具")]
 #[command(version = crate::version::cli_version())]
 #[command(disable_help_subcommand = true)]
 #[command(after_help = r#"Agent Hints:
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
-  - View JSONSchema for models before creating or updating (eg. `yaak request schema http`)
+  - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
   - Deletion requires confirmation (--yes for non-interactive environments)
   "#)]
 pub struct Cli {
@@ -39,26 +39,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Authentication commands
-    Auth(AuthArgs),
-
-    /// Plugin development and publishing commands
-    Plugin(PluginArgs),
-
-    #[command(hide = true)]
-    Build(PluginPathArg),
-
-    #[command(hide = true)]
-    Dev(PluginPathArg),
-
-    /// Backward-compatible alias for `plugin generate`
-    #[command(hide = true)]
-    Generate(GenerateArgs),
-
-    /// Backward-compatible alias for `plugin publish`
-    #[command(hide = true)]
-    Publish(PluginPathArg),
-
     /// Send a request, folder, or workspace by ID
     Send(SendArgs),
 
@@ -366,10 +346,10 @@ pub enum EnvironmentCommands {
 
     /// Create an environment
     #[command(after_help = r#"Modes (choose one):
-  1) yaak environment create <workspace_id> --name <name>
-  2) yaak environment create --json '{"workspaceId":"wk_abc","name":"Production"}'
-  3) yaak environment create '{"workspaceId":"wk_abc","name":"Production"}'
-  4) yaak environment create <workspace_id> --json '{"name":"Production"}'
+  1) yaku environment create <workspace_id> --name <name>
+  2) yaku environment create --json '{"workspaceId":"wk_abc","name":"Production"}'
+  3) yaku environment create '{"workspaceId":"wk_abc","name":"Production"}'
+  4) yaku environment create <workspace_id> --json '{"name":"Production"}'
 "#)]
     Create {
         /// Workspace ID for flag-based mode, or positional JSON payload shorthand
@@ -405,71 +385,4 @@ pub enum EnvironmentCommands {
         #[arg(short, long)]
         yes: bool,
     },
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct AuthArgs {
-    #[command(subcommand)]
-    pub command: AuthCommands,
-}
-
-#[derive(Subcommand)]
-pub enum AuthCommands {
-    /// Login to Yaak via web browser
-    Login,
-
-    /// Sign out of the Yaak CLI
-    Logout,
-
-    /// Print the current logged-in user's info
-    Whoami,
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct PluginArgs {
-    #[command(subcommand)]
-    pub command: PluginCommands,
-}
-
-#[derive(Subcommand)]
-pub enum PluginCommands {
-    /// Transpile code into a runnable plugin bundle
-    Build(PluginPathArg),
-
-    /// Build plugin bundle continuously when the filesystem changes
-    Dev(PluginPathArg),
-
-    /// Generate a "Hello World" Yaak plugin
-    Generate(GenerateArgs),
-
-    /// Install a plugin from a local directory or from the registry
-    Install(InstallPluginArgs),
-
-    /// Publish a Yaak plugin version to the plugin registry
-    Publish(PluginPathArg),
-}
-
-#[derive(Args, Clone)]
-pub struct PluginPathArg {
-    /// Path to plugin directory (defaults to current working directory)
-    pub path: Option<PathBuf>,
-}
-
-#[derive(Args, Clone)]
-pub struct GenerateArgs {
-    /// Plugin name (defaults to a generated name in interactive mode)
-    #[arg(long)]
-    pub name: Option<String>,
-
-    /// Output directory for the generated plugin (defaults to ./<name> in interactive mode)
-    #[arg(long)]
-    pub dir: Option<PathBuf>,
-}
-
-#[derive(Args, Clone)]
-pub struct InstallPluginArgs {
-    /// Local plugin directory path, or registry plugin spec (@org/plugin[@version])
-    pub source: String,
 }

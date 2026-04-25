@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 
 type TauriCmd =
   | "cmd_call_grpc_request_action"
-  | "cmd_call_http_authentication_action"
   | "cmd_call_http_request_action"
   | "cmd_call_websocket_request_action"
   | "cmd_call_workspace_action"
@@ -41,9 +40,6 @@ type TauriCmd =
   | "cmd_restart"
   | "cmd_new_child_window"
   | "cmd_new_main_window"
-  | "cmd_plugin_info"
-  | "cmd_plugin_init_errors"
-  | "cmd_reload_plugins"
   | "cmd_render_template"
   | "cmd_save_response"
   | "cmd_secure_template"

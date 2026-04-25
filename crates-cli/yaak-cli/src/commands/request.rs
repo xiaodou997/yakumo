@@ -8,16 +8,14 @@ use crate::utils::json::{
 use crate::utils::schema::append_agent_hints;
 use crate::utils::workspace::resolve_workspace_id;
 use schemars::schema_for;
-use serde_json::{Map, Value, json};
-use std::collections::HashMap;
+use serde_json::{Map, Value};
 use std::io::Write;
 use tokio::sync::mpsc;
-use yaak::send::{SendHttpRequestByIdWithPluginsParams, send_http_request_by_id_with_plugins};
-use yaak_http::sender::HttpResponseEvent as SenderHttpResponseEvent;
+use yaak_http::sender::{HttpResponseEvent as SenderHttpResponseEvent, HttpSender, ReqwestSender};
+use yaak_http::types::{SendableHttpRequest, SendableHttpRequestOptions};
 use yaak_models::models::{GrpcRequest, HttpRequest, WebsocketRequest};
 use yaak_models::queries::any_request::AnyRequest;
 use yaak_models::util::UpdateSource;
-use yaak_plugins::events::{FormInput, FormInputBase, JsonPrimitive, PluginContext};
 
 type CommandResult<T = ()> = std::result::Result<T, String>;
 
@@ -96,10 +94,6 @@ async fn schema(ctx: &CliContext, request_type: RequestSchemaType, pretty: bool)
     enrich_schema_guidance(&mut schema, request_type);
     append_agent_hints(&mut schema);
 
-    if let Err(error) = merge_auth_schema_from_plugins(ctx, &mut schema).await {
-        eprintln!("Warning: Failed to enrich authentication schema from plugins: {error}");
-    }
-
     let output =
         if pretty { serde_json::to_string_pretty(&schema) } else { serde_json::to_string(&schema) }
             .map_err(|e| format!("Failed to format schema JSON: {e}"))?;
@@ -135,201 +129,6 @@ fn append_description(schema: &mut Map<String, Value>, extra: &str) {
         _ => {
             schema.insert("description".to_string(), Value::String(extra.to_string()));
         }
-    }
-}
-
-async fn merge_auth_schema_from_plugins(
-    ctx: &CliContext,
-    schema: &mut Value,
-) -> Result<(), String> {
-    let plugin_context = PluginContext::new_empty();
-    let plugin_manager = ctx.plugin_manager();
-    let summaries = plugin_manager
-        .get_http_authentication_summaries(&plugin_context)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut auth_variants = Vec::new();
-    for (_, summary) in summaries {
-        let config = match plugin_manager
-            .get_http_authentication_config(
-                &plugin_context,
-                &summary.name,
-                HashMap::<String, JsonPrimitive>::new(),
-                "yaakcli_request_schema",
-            )
-            .await
-        {
-            Ok(config) => config,
-            Err(error) => {
-                eprintln!(
-                    "Warning: Failed to load auth config for strategy '{}': {}",
-                    summary.name, error
-                );
-                continue;
-            }
-        };
-
-        auth_variants.push(auth_variant_schema(&summary.name, &summary.label, &config.args));
-    }
-
-    let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) else {
-        return Ok(());
-    };
-
-    let Some(auth_schema) = properties.get_mut("authentication") else {
-        return Ok(());
-    };
-
-    if !auth_variants.is_empty() {
-        let mut one_of = vec![auth_schema.clone()];
-        one_of.extend(auth_variants);
-        *auth_schema = json!({ "oneOf": one_of });
-    }
-
-    Ok(())
-}
-
-fn auth_variant_schema(auth_name: &str, auth_label: &str, args: &[FormInput]) -> Value {
-    let mut properties = Map::new();
-    let mut required = Vec::new();
-    for input in args {
-        add_input_schema(input, &mut properties, &mut required);
-    }
-
-    let mut schema = json!({
-        "title": auth_label,
-        "description": format!("Authentication values for strategy '{}'", auth_name),
-        "type": "object",
-        "properties": properties,
-        "additionalProperties": true
-    });
-
-    if !required.is_empty() {
-        schema["required"] = json!(required);
-    }
-
-    schema
-}
-
-fn add_input_schema(
-    input: &FormInput,
-    properties: &mut Map<String, Value>,
-    required: &mut Vec<String>,
-) {
-    match input {
-        FormInput::Text(v) => add_base_schema(
-            &v.base,
-            json!({
-                "type": "string",
-                "writeOnly": v.password.unwrap_or(false),
-            }),
-            properties,
-            required,
-        ),
-        FormInput::Editor(v) => add_base_schema(
-            &v.base,
-            json!({
-                "type": "string",
-                "x-editorLanguage": v.language.clone(),
-            }),
-            properties,
-            required,
-        ),
-        FormInput::Select(v) => {
-            let options: Vec<Value> =
-                v.options.iter().map(|o| Value::String(o.value.clone())).collect();
-            add_base_schema(
-                &v.base,
-                json!({
-                    "type": "string",
-                    "enum": options,
-                }),
-                properties,
-                required,
-            );
-        }
-        FormInput::Checkbox(v) => {
-            add_base_schema(&v.base, json!({ "type": "boolean" }), properties, required);
-        }
-        FormInput::File(v) => {
-            if v.multiple.unwrap_or(false) {
-                add_base_schema(
-                    &v.base,
-                    json!({
-                        "type": "array",
-                        "items": { "type": "string" },
-                    }),
-                    properties,
-                    required,
-                );
-            } else {
-                add_base_schema(&v.base, json!({ "type": "string" }), properties, required);
-            }
-        }
-        FormInput::HttpRequest(v) => {
-            add_base_schema(&v.base, json!({ "type": "string" }), properties, required);
-        }
-        FormInput::KeyValue(v) => {
-            add_base_schema(
-                &v.base,
-                json!({
-                    "type": "object",
-                    "additionalProperties": true,
-                }),
-                properties,
-                required,
-            );
-        }
-        FormInput::Accordion(v) => {
-            if let Some(children) = &v.inputs {
-                for child in children {
-                    add_input_schema(child, properties, required);
-                }
-            }
-        }
-        FormInput::HStack(v) => {
-            if let Some(children) = &v.inputs {
-                for child in children {
-                    add_input_schema(child, properties, required);
-                }
-            }
-        }
-        FormInput::Banner(v) => {
-            if let Some(children) = &v.inputs {
-                for child in children {
-                    add_input_schema(child, properties, required);
-                }
-            }
-        }
-        FormInput::Markdown(_) => {}
-    }
-}
-
-fn add_base_schema(
-    base: &FormInputBase,
-    mut schema: Value,
-    properties: &mut Map<String, Value>,
-    required: &mut Vec<String>,
-) {
-    if base.hidden.unwrap_or(false) || base.name.trim().is_empty() {
-        return;
-    }
-
-    if let Some(description) = &base.description {
-        schema["description"] = Value::String(description.clone());
-    }
-    if let Some(label) = &base.label {
-        schema["title"] = Value::String(label.clone());
-    }
-    if let Some(default_value) = &base.default_value {
-        schema["default"] = Value::String(default_value.clone());
-    }
-
-    let name = base.name.clone();
-    properties.insert(name.clone(), schema);
-    if !base.optional.unwrap_or(false) {
-        required.push(name);
     }
 }
 
@@ -452,15 +251,7 @@ pub async fn send_request_by_id(
         ctx.db().get_any_request(request_id).map_err(|e| format!("Failed to get request: {e}"))?;
     match request {
         AnyRequest::HttpRequest(http_request) => {
-            send_http_request_by_id(
-                ctx,
-                &http_request.id,
-                &http_request.workspace_id,
-                environment,
-                cookie_jar_id,
-                verbose,
-            )
-            .await
+            send_http_request_by_id(ctx, &http_request, environment, cookie_jar_id, verbose).await
         }
         AnyRequest::GrpcRequest(_) => {
             Err("gRPC request send is not implemented yet in yaak-cli".to_string())
@@ -473,19 +264,28 @@ pub async fn send_request_by_id(
 
 async fn send_http_request_by_id(
     ctx: &CliContext,
-    request_id: &str,
-    workspace_id: &str,
+    http_request: &HttpRequest,
     environment: Option<&str>,
     cookie_jar_id: Option<&str>,
     verbose: bool,
 ) -> Result<(), String> {
-    let cookie_jar_id = resolve_cookie_jar_id(ctx, workspace_id, cookie_jar_id)?;
+    let _cookie_jar_id = resolve_cookie_jar_id(ctx, &http_request.workspace_id, cookie_jar_id)?;
+    let _environment_id = environment;
 
-    let plugin_context =
-        PluginContext::new(Some("cli".to_string()), Some(workspace_id.to_string()));
+    // Build sendable request
+    let options = SendableHttpRequestOptions { timeout: None, follow_redirects: true };
+    let sendable_request = SendableHttpRequest::from_http_request(http_request, options)
+        .await
+        .map_err(|e| e.to_string())?;
 
+    // Create sender
+    let sender = ReqwestSender::new().map_err(|e| e.to_string())?;
+
+    // Create event channel
     let (event_tx, mut event_rx) = mpsc::channel::<SenderHttpResponseEvent>(100);
     let (body_chunk_tx, mut body_chunk_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+
+    // Spawn event logger task
     let event_handle = tokio::spawn(async move {
         while let Some(event) = event_rx.recv().await {
             if verbose && !matches!(event, SenderHttpResponseEvent::ChunkReceived { .. }) {
@@ -493,6 +293,8 @@ async fn send_http_request_by_id(
             }
         }
     });
+
+    // Spawn body writer task
     let body_handle = tokio::task::spawn_blocking(move || {
         let mut stdout = std::io::stdout();
         while let Some(chunk) = body_chunk_rx.blocking_recv() {
@@ -502,29 +304,29 @@ async fn send_http_request_by_id(
             let _ = stdout.flush();
         }
     });
-    let response_dir = ctx.data_dir().join("responses");
 
-    let result = send_http_request_by_id_with_plugins(SendHttpRequestByIdWithPluginsParams {
-        query_manager: ctx.query_manager(),
-        blob_manager: ctx.blob_manager(),
-        request_id,
-        environment_id: environment,
-        update_source: UpdateSource::Sync,
-        cookie_jar_id,
-        response_dir: &response_dir,
-        emit_events_to: Some(event_tx),
-        emit_response_body_chunks_to: Some(body_chunk_tx),
-        plugin_manager: ctx.plugin_manager(),
-        encryption_manager: ctx.encryption_manager.clone(),
-        plugin_context: &plugin_context,
-        cancelled_rx: None,
-        connection_manager: None,
-    })
-    .await;
+    // Send the request
+    let mut response = sender.send(sendable_request, event_tx).await.map_err(|e| e.to_string())?;
+
+    // Read the body and send chunks
+    let body_stream = response.into_body_stream().map_err(|e| e.to_string())?;
+    let mut reader = body_stream;
+    let mut buf = [0u8; 8192];
+    loop {
+        match tokio::io::AsyncReadExt::read(&mut reader, &mut buf).await {
+            Ok(0) => break,
+            Ok(n) => {
+                let _ = body_chunk_tx.send(buf[..n].to_vec());
+            }
+            Err(e) => {
+                return Err(format!("Failed to read response body: {}", e));
+            }
+        }
+    }
 
     let _ = event_handle.await;
     let _ = body_handle.await;
-    result.map_err(|e| e.to_string())?;
+
     Ok(())
 }
 

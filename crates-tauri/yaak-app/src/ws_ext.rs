@@ -1,19 +1,19 @@
 //! WebSocket Tauri command wrappers
 //! These wrap the core yaak-ws functionality for Tauri IPC.
 
-use crate::PluginContextExt;
+use crate::BuiltinTemplateCallback;
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use http::HeaderMap;
 use log::{debug, info, warn};
 use std::str::FromStr;
-use std::sync::Arc;
 use tauri::http::HeaderValue;
 use tauri::{AppHandle, Manager, Runtime, State, WebviewWindow, command};
 use tokio::sync::{Mutex, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;
 use yaak_crypto::manager::EncryptionManager;
+use yaak_features::auth;
 use yaak_http::cookies::CookieStore;
 use yaak_http::path_placeholders::apply_path_placeholders;
 use yaak_models::models::{
@@ -21,9 +21,6 @@ use yaak_models::models::{
     WebsocketEventType, WebsocketRequest,
 };
 use yaak_models::util::UpdateSource;
-use yaak_plugins::events::{CallHttpAuthenticationRequest, HttpHeader, RenderPurpose};
-use yaak_plugins::manager::PluginManager;
-use yaak_plugins::template_callback::PluginTemplateCallback;
 use yaak_templates::strip_json_comments::maybe_strip_json_comments;
 use yaak_templates::{RenderErrorBehavior, RenderOptions};
 use yaak_tls::find_client_certificate;
@@ -58,17 +55,15 @@ pub async fn cmd_ws_send<R: Runtime>(
     )?;
     let (resolved_request, _auth_context_id) =
         resolve_websocket_request(&window, &unrendered_request)?;
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
+
+    let cb = BuiltinTemplateCallback::for_workspace(
+        app_handle.state::<EncryptionManager>().inner().clone(),
+        unrendered_request.workspace_id.clone(),
+    );
     let request = render_websocket_request(
         &resolved_request,
         environment_chain,
-        &PluginTemplateCallback::new(
-            plugin_manager,
-            encryption_manager,
-            &window.plugin_context(),
-            RenderPurpose::Send,
-        ),
+        &cb,
         &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
     )
     .await?;
@@ -125,7 +120,6 @@ pub async fn cmd_ws_connect<R: Runtime>(
     cookie_jar_id: Option<&str>,
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
-    _plugin_manager: State<'_, PluginManager>,
     ws_manager: State<'_, Mutex<WebsocketManager>>,
 ) -> Result<WebsocketConnection> {
     let unrendered_request = app_handle.db().get_websocket_request(request_id)?;
@@ -136,19 +130,17 @@ pub async fn cmd_ws_connect<R: Runtime>(
     )?;
     let workspace = app_handle.db().get_workspace(&unrendered_request.workspace_id)?;
     let settings = app_handle.db().get_settings();
-    let (resolved_request, auth_context_id) =
+    let (resolved_request, _auth_context_id) =
         resolve_websocket_request(&window, &unrendered_request)?;
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
+
+    let cb = BuiltinTemplateCallback::for_workspace(
+        app_handle.state::<EncryptionManager>().inner().clone(),
+        unrendered_request.workspace_id.clone(),
+    );
     let request = render_websocket_request(
         &resolved_request,
-        environment_chain,
-        &PluginTemplateCallback::new(
-            plugin_manager.clone(),
-            encryption_manager.clone(),
-            &window.plugin_context(),
-            RenderPurpose::Send,
-        ),
+        environment_chain.clone(),
+        &cb,
         &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
     )
     .await?;
@@ -199,7 +191,8 @@ pub async fn cmd_ws_connect<R: Runtime>(
         );
     }
 
-    match request.authentication_type {
+    // Handle built-in authentication
+    match request.authentication_type.clone() {
         None => {
             // No authentication found. Not even inherited
         }
@@ -207,42 +200,24 @@ pub async fn cmd_ws_connect<R: Runtime>(
             // Explicitly no authentication
         }
         Some(authentication_type) => {
-            let auth = request.authentication.clone();
-            let plugin_req = CallHttpAuthenticationRequest {
-                context_id: format!("{:x}", md5::compute(auth_context_id)),
-                values: serde_json::from_value(serde_json::to_value(&auth).unwrap()).unwrap(),
-                method: "POST".to_string(),
-                url: request.url.clone(),
-                headers: request
-                    .headers
-                    .clone()
-                    .into_iter()
-                    .map(|h| HttpHeader { name: h.name, value: h.value })
-                    .collect(),
-            };
-            let plugin_result = plugin_manager
-                .call_http_authentication(
-                    &window.plugin_context(),
-                    &authentication_type,
-                    plugin_req,
-                )
-                .await?;
-            for header in plugin_result.set_headers.unwrap_or_default() {
+            // Convert BTreeMap to HashMap for auth module
+            let auth_values: std::collections::HashMap<String, serde_json::Value> =
+                request.authentication.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+
+            // Use built-in authentication handlers
+            let auth_result = auth::apply_auth(&authentication_type, &auth_values);
+
+            // Add headers from auth result
+            for header in auth_result.headers {
                 match (
                     http::HeaderName::from_str(&header.name),
                     HeaderValue::from_str(&header.value),
                 ) {
-                    (Ok(name), Ok(value)) => {
-                        headers.insert(name, value);
+                    (Ok(n), Ok(v)) => {
+                        headers.insert(n, v);
                     }
                     _ => continue,
                 };
-            }
-            if let Some(params) = plugin_result.set_query_parameters {
-                let mut query_pairs = url.query_pairs_mut();
-                for p in params {
-                    query_pairs.append_pair(&p.name, &p.value);
-                }
             }
         }
     }

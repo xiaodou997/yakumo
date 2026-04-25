@@ -23,6 +23,7 @@ tauri-build = { version = "2.5.3", features = [] }
 openssl-sys = { version = "0.9.105", features = ["vendored"] } # For Ubuntu installation to work
 
 [dependencies]
+base64 = "0.22"
 charset = "0.1.5"
 chrono = { workspace = true, features = ["serde"] }
 cookie = "0.18.1"
@@ -80,7 +81,7 @@ yaak-http = { workspace = true }
 yaak-license = { workspace = true, optional = true }
 yaak-mac-window = { workspace = true }
 yaak-models = { workspace = true }
-yaak-plugins = { workspace = true }
+yaak-features = { workspace = true }
 yaak-sse = { workspace = true }
 yaak-sync = { workspace = true }
 yaak-templates = { workspace = true }

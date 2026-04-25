@@ -10,6 +10,8 @@ use crate::notifications::YaakNotifier;
 use crate::render::{render_grpc_request, render_json_value, render_template};
 use crate::updates::{UpdateMode, UpdateTrigger, YaakUpdater};
 use crate::uri_scheme::handle_deep_link;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use error::Result as YaakResult;
 use eventsource_client::{EventParser, SSE};
 use log::{debug, error, info, warn};
@@ -33,8 +35,8 @@ use tokio::task::block_in_place;
 use tokio::time;
 use yaak_common::command::new_checked_command;
 use yaak_crypto::manager::EncryptionManager;
+use yaak_features::events::{Color, RenderPurpose, ShowToastRequest};
 use yaak_grpc::manager::{GrpcConfig, GrpcHandle};
-use yaak_templates::strip_json_comments::strip_json_comments;
 use yaak_grpc::{Code, ServiceDefinition, serialize_message};
 use yaak_mac_window::AppHandleMacWindowExt;
 use yaak_models::models::{
@@ -43,24 +45,13 @@ use yaak_models::models::{
     WorkspaceMeta,
 };
 use yaak_models::util::{BatchUpsertResult, UpdateSource, get_workspace_export_resources};
-use yaak_plugins::events::{
-    CallFolderActionArgs, CallFolderActionRequest, CallGrpcRequestActionArgs,
-    CallGrpcRequestActionRequest, CallHttpRequestActionArgs, CallHttpRequestActionRequest,
-    CallWebsocketRequestActionArgs, CallWebsocketRequestActionRequest, CallWorkspaceActionArgs,
-    CallWorkspaceActionRequest, Color, FilterResponse, GetFolderActionsResponse,
-    GetGrpcRequestActionsResponse, GetHttpAuthenticationConfigResponse,
-    GetHttpAuthenticationSummaryResponse, GetHttpRequestActionsResponse,
-    GetTemplateFunctionConfigResponse, GetTemplateFunctionSummaryResponse,
-    GetWebsocketRequestActionsResponse, GetWorkspaceActionsResponse, InternalEvent,
-    InternalEventPayload, JsonPrimitive, PluginContext, RenderPurpose, ShowToastRequest,
-};
-use yaak_plugins::manager::PluginManager;
-use yaak_plugins::plugin_meta::PluginMetadata;
-use yaak_plugins::template_callback::PluginTemplateCallback;
 use yaak_sse::sse::ServerSentEvent;
 use yaak_tauri_utils::window::WorkspaceWindowTrait;
 use yaak_templates::format_json::format_json;
-use yaak_templates::{RenderErrorBehavior, RenderOptions, Tokens, transform_args};
+use yaak_templates::strip_json_comments::strip_json_comments;
+use yaak_templates::{
+    RenderErrorBehavior, RenderOptions, TemplateCallback, Tokens, transform_args,
+};
 use yaak_tls::find_client_certificate;
 
 mod commands;
@@ -73,8 +64,6 @@ mod http_request;
 mod import;
 mod models_ext;
 mod notifications;
-mod plugin_events;
-mod plugins_ext;
 mod render;
 mod sync_ext;
 mod updates;
@@ -83,14 +72,127 @@ mod window;
 mod window_menu;
 mod ws_ext;
 
-/// Extension trait for easily creating a PluginContext from a WebviewWindow
-pub trait PluginContextExt<R: Runtime> {
-    fn plugin_context(&self) -> PluginContext;
+/// Built-in template callback that implements TemplateCallback trait
+/// using native Rust implementations instead of plugin system.
+#[derive(Clone, Default)]
+pub struct BuiltinTemplateCallback {
+    encryption_manager: Option<EncryptionManager>,
+    workspace_id: Option<String>,
 }
 
-impl<R: Runtime> PluginContextExt<R> for WebviewWindow<R> {
-    fn plugin_context(&self) -> PluginContext {
-        PluginContext::new(Some(self.label().to_string()), self.workspace_id())
+impl BuiltinTemplateCallback {
+    pub fn for_workspace(
+        encryption_manager: EncryptionManager,
+        workspace_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            encryption_manager: Some(encryption_manager),
+            workspace_id: Some(workspace_id.into()),
+        }
+    }
+}
+
+impl TemplateCallback for BuiltinTemplateCallback {
+    async fn run(
+        &self,
+        fn_name: &str,
+        args: HashMap<String, serde_json::Value>,
+    ) -> yaak_templates::error::Result<String> {
+        use yaak_features::template::*;
+
+        // Dispatch to appropriate template function
+        match fn_name {
+            // UUID functions
+            "uuid.v4" => {
+                uuid::UuidV4.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+            }
+            "uuid.v7" => {
+                uuid::UuidV7.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+            }
+            "uuid.v3" => {
+                uuid::UuidV3.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+            }
+            "uuid.v5" => {
+                uuid::UuidV5.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+            }
+            // Timestamp functions
+            "timestamp.unix" => timestamp::TimestampUnix
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "timestamp.unixMillis" => timestamp::TimestampUnixMillis
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "timestamp.iso8601" => timestamp::TimestampIso8601
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "timestamp.format" => timestamp::TimestampFormat
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "timestamp.offset" => timestamp::TimestampOffset
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            // Hash functions
+            "hash.sha256" => hash::HashSha256
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            // Encode functions
+            "base64.encode" => encode::Base64Encode
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            // Random functions (only RandomString available)
+            "random.string" => random::RandomString
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            // JSONPath functions
+            "jsonpath.query" => jsonpath::JsonPathQuery
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            // Regex functions
+            "regex.match" => regex::RegexMatch
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "regex.replace" => regex::RegexReplace
+                .render(&args)
+                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+            "secure" => {
+                let value = args.get("value").and_then(|v| v.as_str()).ok_or_else(|| {
+                    yaak_templates::error::Error::RenderError(
+                        "secure() requires a value argument".to_string(),
+                    )
+                })?;
+                let Some(encryption_manager) = &self.encryption_manager else {
+                    return Ok(value.to_string());
+                };
+                let Some(workspace_id) = &self.workspace_id else {
+                    return Ok(value.to_string());
+                };
+                let encrypted = BASE64_STANDARD.decode(value).map_err(|e| {
+                    yaak_templates::error::Error::RenderError(format!(
+                        "Failed to decode secure template: {e}"
+                    ))
+                })?;
+                let decrypted = encryption_manager
+                    .decrypt(workspace_id, &encrypted)
+                    .map_err(|e| yaak_templates::error::Error::RenderError(e.to_string()))?;
+                String::from_utf8(decrypted).map_err(|e| {
+                    yaak_templates::error::Error::RenderError(format!(
+                        "Secure template is not valid UTF-8: {e}"
+                    ))
+                })
+            }
+            _ => Err(yaak_templates::error::Error::RenderError(format!(
+                "Unknown template function: {fn_name}"
+            ))),
+        }
+    }
+
+    fn transform_arg(
+        &self,
+        _fn_name: &str,
+        _arg_name: &str,
+        arg_value: &str,
+    ) -> yaak_templates::error::Result<String> {
+        Ok(arg_value.to_string())
     }
 }
 
@@ -103,7 +205,6 @@ struct AppMetaData {
     name: String,
     app_data_dir: String,
     app_log_dir: String,
-    vendored_plugin_dir: String,
     default_project_dir: String,
     feature_updater: bool,
     feature_license: bool,
@@ -113,9 +214,7 @@ struct AppMetaData {
 async fn cmd_metadata(app_handle: AppHandle) -> YaakResult<AppMetaData> {
     let app_data_dir = app_handle.path().app_data_dir()?;
     let app_log_dir = app_handle.path().app_log_dir()?;
-    let vendored_plugin_dir =
-        app_handle.path().resolve("vendored/plugins", BaseDirectory::Resource)?;
-    let default_project_dir = app_handle.path().home_dir()?.join("YaakProjects");
+    let default_project_dir = app_handle.path().home_dir()?.join("YakumoProjects");
     let cli_version = detect_cli_version().await;
     Ok(AppMetaData {
         is_dev: is_dev(),
@@ -124,7 +223,6 @@ async fn cmd_metadata(app_handle: AppHandle) -> YaakResult<AppMetaData> {
         name: app_handle.package_info().name.to_string(),
         app_data_dir: app_data_dir.to_string_lossy().to_string(),
         app_log_dir: app_log_dir.to_string_lossy().to_string(),
-        vendored_plugin_dir: vendored_plugin_dir.to_string_lossy().to_string(),
         default_project_dir: default_project_dir.to_string_lossy().to_string(),
         feature_license: cfg!(feature = "license"),
         feature_updater: cfg!(feature = "updater"),
@@ -132,7 +230,7 @@ async fn cmd_metadata(app_handle: AppHandle) -> YaakResult<AppMetaData> {
 }
 
 async fn detect_cli_version() -> Option<String> {
-    detect_cli_version_for_binary("yaak").await
+    detect_cli_version_for_binary("yaku").await
 }
 
 async fn detect_cli_version_for_binary(program: &str) -> Option<String> {
@@ -151,45 +249,35 @@ async fn detect_cli_version_for_binary(program: &str) -> Option<String> {
 
 #[tauri::command]
 async fn cmd_template_tokens_to_string<R: Runtime>(
-    window: WebviewWindow<R>,
-    app_handle: AppHandle<R>,
+    _window: WebviewWindow<R>,
+    _app_handle: AppHandle<R>,
     tokens: Tokens,
 ) -> YaakResult<String> {
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
-    let cb = PluginTemplateCallback::new(
-        plugin_manager,
-        encryption_manager,
-        &PluginContext::new(Some(window.label().to_string()), window.workspace_id()),
-        RenderPurpose::Preview,
-    );
+    let cb = BuiltinTemplateCallback::default();
     let new_tokens = transform_args(tokens, &cb)?;
     Ok(new_tokens.to_string())
 }
 
 #[tauri::command]
 async fn cmd_render_template<R: Runtime>(
-    window: WebviewWindow<R>,
+    _window: WebviewWindow<R>,
     app_handle: AppHandle<R>,
     template: &str,
     workspace_id: &str,
     environment_id: Option<&str>,
-    purpose: Option<RenderPurpose>,
+    _purpose: Option<RenderPurpose>,
     ignore_error: Option<bool>,
 ) -> YaakResult<String> {
     let environment_chain =
         app_handle.db().resolve_environments(workspace_id, None, environment_id)?;
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
+    let cb = BuiltinTemplateCallback::for_workspace(
+        app_handle.state::<EncryptionManager>().inner().clone(),
+        workspace_id,
+    );
     let result = render_template(
         template,
         environment_chain,
-        &PluginTemplateCallback::new(
-            plugin_manager,
-            encryption_manager,
-            &PluginContext::new(Some(window.label().to_string()), window.workspace_id()),
-            purpose.unwrap_or(RenderPurpose::Preview),
-        ),
+        &cb,
         &RenderOptions {
             error_behavior: match ignore_error {
                 Some(true) => RenderErrorBehavior::ReturnEmpty,
@@ -229,17 +317,14 @@ async fn cmd_grpc_reflect<R: Runtime>(
     )?;
     let workspace = app_handle.db().get_workspace(&unrendered_request.workspace_id)?;
 
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
+    let template_cb = BuiltinTemplateCallback::for_workspace(
+        app_handle.state::<EncryptionManager>().inner().clone(),
+        unrendered_request.workspace_id.clone(),
+    );
     let req = render_grpc_request(
         &resolved_request,
         environment_chain,
-        &PluginTemplateCallback::new(
-            plugin_manager,
-            encryption_manager,
-            &PluginContext::new(Some(window.label().to_string()), window.workspace_id()),
-            RenderPurpose::Send,
-        ),
+        &template_cb,
         &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
     )
     .await?;
@@ -287,17 +372,14 @@ async fn cmd_grpc_go<R: Runtime>(
     )?;
     let workspace = app_handle.db().get_workspace(&unrendered_request.workspace_id)?;
 
-    let plugin_manager = Arc::new((*app_handle.state::<PluginManager>()).clone());
-    let encryption_manager = Arc::new((*app_handle.state::<EncryptionManager>()).clone());
+    let template_cb = BuiltinTemplateCallback::for_workspace(
+        app_handle.state::<EncryptionManager>().inner().clone(),
+        unrendered_request.workspace_id.clone(),
+    );
     let request = render_grpc_request(
         &resolved_request,
         environment_chain.clone(),
-        &PluginTemplateCallback::new(
-            plugin_manager.clone(),
-            encryption_manager.clone(),
-            &PluginContext::new(Some(window.label().to_string()), window.workspace_id()),
-            RenderPurpose::Send,
-        ),
+        &template_cb,
         &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
     )
     .await?;
@@ -386,12 +468,10 @@ async fn cmd_grpc_go<R: Runtime>(
         Commit,
     }
 
-    let cb = {
+    let event_cb = {
         let cancelled_rx = cancelled_rx.clone();
         let environment_chain = environment_chain.clone();
-        let window = window.clone();
-        let plugin_manager = plugin_manager.clone();
-        let encryption_manager = encryption_manager.clone();
+        let template_cb = template_cb.clone();
 
         move |ev: tauri::Event| {
             if *cancelled_rx.borrow() {
@@ -410,24 +490,13 @@ async fn cmd_grpc_go<R: Runtime>(
 
             match serde_json::from_str::<IncomingMsg>(ev.payload()) {
                 Ok(IncomingMsg::Message(msg)) => {
-                    let window = window.clone();
                     let environment_chain = environment_chain.clone();
-                    let plugin_manager = plugin_manager.clone();
-                    let encryption_manager = encryption_manager.clone();
                     let msg = block_in_place(|| {
                         tauri::async_runtime::block_on(async {
                             let result = render_template(
                                 msg.as_str(),
                                 environment_chain,
-                                &PluginTemplateCallback::new(
-                                    plugin_manager,
-                                    encryption_manager,
-                                    &PluginContext::new(
-                                        Some(window.label().to_string()),
-                                        window.workspace_id(),
-                                    ),
-                                    RenderPurpose::Send,
-                                ),
+                                &template_cb,
                                 &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
                             )
                             .await;
@@ -449,7 +518,8 @@ async fn cmd_grpc_go<R: Runtime>(
             }
         }
     };
-    let event_handler = app_handle.listen_any(format!("grpc_client_msg_{}", conn.id).as_str(), cb);
+    let event_handler =
+        app_handle.listen_any(format!("grpc_client_msg_{}", conn.id).as_str(), event_cb);
 
     let grpc_listen = {
         let window = window.clone();
@@ -461,12 +531,7 @@ async fn cmd_grpc_go<R: Runtime>(
         let msg = render_template(
             msg.as_str(),
             environment_chain,
-            &PluginTemplateCallback::new(
-                plugin_manager.clone(),
-                encryption_manager.clone(),
-                &PluginContext::new(Some(window.label().to_string()), window.workspace_id()),
-                RenderPurpose::Send,
-            ),
+            &template_cb,
             &RenderOptions { error_behavior: RenderErrorBehavior::Throw },
         )
         .await?;
@@ -881,40 +946,6 @@ async fn cmd_format_graphql(text: &str) -> YaakResult<String> {
 }
 
 #[tauri::command]
-async fn cmd_http_response_body<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-    response: HttpResponse,
-    filter: Option<&str>,
-) -> YaakResult<FilterResponse> {
-    let body_path = match response.body_path {
-        None => {
-            return Ok(FilterResponse { content: String::new(), error: None });
-        }
-        Some(p) => p,
-    };
-
-    let content_type = response
-        .headers
-        .iter()
-        .find_map(|h| {
-            if h.name.eq_ignore_ascii_case("content-type") { Some(h.value.as_str()) } else { None }
-        })
-        .unwrap_or_default();
-
-    let body = read_response_body(&body_path, content_type)
-        .await
-        .ok_or(GenericError("Failed to find response body".to_string()))?;
-
-    match filter {
-        Some(filter) if !filter.is_empty() => Ok(plugin_manager
-            .filter_data(&window.plugin_context(), filter, &body, content_type)
-            .await?),
-        _ => Ok(FilterResponse { content: body, error: None }),
-    }
-}
-
-#[tauri::command]
 async fn cmd_http_request_body<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
@@ -967,300 +998,6 @@ async fn cmd_import_data<R: Runtime>(
     file_path: &str,
 ) -> YaakResult<BatchUpsertResult> {
     import_data(&window, file_path).await
-}
-
-#[tauri::command]
-async fn cmd_http_request_actions<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetHttpRequestActionsResponse>> {
-    Ok(plugin_manager.get_http_request_actions(&window.plugin_context()).await?)
-}
-
-#[tauri::command]
-async fn cmd_websocket_request_actions<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetWebsocketRequestActionsResponse>> {
-    Ok(plugin_manager.get_websocket_request_actions(&window.plugin_context()).await?)
-}
-
-#[tauri::command]
-async fn cmd_call_websocket_request_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    req: CallWebsocketRequestActionRequest,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<()> {
-    let websocket_request = window.db().get_websocket_request(&req.args.websocket_request.id)?;
-    Ok(plugin_manager
-        .call_websocket_request_action(
-            &window.plugin_context(),
-            CallWebsocketRequestActionRequest {
-                args: CallWebsocketRequestActionArgs { websocket_request },
-                ..req
-            },
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_workspace_actions<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetWorkspaceActionsResponse>> {
-    Ok(plugin_manager.get_workspace_actions(&window.plugin_context()).await?)
-}
-
-#[tauri::command]
-async fn cmd_call_workspace_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    req: CallWorkspaceActionRequest,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<()> {
-    let workspace = window.db().get_workspace(&req.args.workspace.id)?;
-    Ok(plugin_manager
-        .call_workspace_action(
-            &window.plugin_context(),
-            CallWorkspaceActionRequest { args: CallWorkspaceActionArgs { workspace }, ..req },
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_folder_actions<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetFolderActionsResponse>> {
-    Ok(plugin_manager.get_folder_actions(&window.plugin_context()).await?)
-}
-
-#[tauri::command]
-async fn cmd_call_folder_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    req: CallFolderActionRequest,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<()> {
-    let folder = window.db().get_folder(&req.args.folder.id)?;
-    Ok(plugin_manager
-        .call_folder_action(
-            &window.plugin_context(),
-            CallFolderActionRequest { args: CallFolderActionArgs { folder }, ..req },
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_grpc_request_actions<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetGrpcRequestActionsResponse>> {
-    Ok(plugin_manager.get_grpc_request_actions(&window.plugin_context()).await?)
-}
-
-#[tauri::command]
-async fn cmd_template_function_summaries<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetTemplateFunctionSummaryResponse>> {
-    let results = plugin_manager.get_template_function_summaries(&window.plugin_context()).await?;
-    Ok(results)
-}
-
-#[tauri::command]
-async fn cmd_template_function_config<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-    function_name: &str,
-    values: HashMap<String, JsonPrimitive>,
-    model: AnyModel,
-    _environment_id: Option<&str>,
-) -> YaakResult<GetTemplateFunctionConfigResponse> {
-    Ok(plugin_manager
-        .get_template_function_config(&window.plugin_context(), function_name, values, model.id())
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_get_http_authentication_summaries<R: Runtime>(
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<GetHttpAuthenticationSummaryResponse>> {
-    let results =
-        plugin_manager.get_http_authentication_summaries(&window.plugin_context()).await?;
-    Ok(results.into_iter().map(|(_, a)| a).collect())
-}
-
-#[tauri::command]
-async fn cmd_get_http_authentication_config<R: Runtime>(
-    window: WebviewWindow<R>,
-    app_handle: AppHandle<R>,
-    plugin_manager: State<'_, PluginManager>,
-    encryption_manager: State<'_, EncryptionManager>,
-    auth_name: &str,
-    values: HashMap<String, JsonPrimitive>,
-    model: AnyModel,
-    environment_id: Option<&str>,
-) -> YaakResult<GetHttpAuthenticationConfigResponse> {
-    // Extract workspace_id and folder_id from the model to resolve the environment chain
-    let (workspace_id, folder_id) = match &model {
-        AnyModel::HttpRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::GrpcRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::WebsocketRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::Folder(f) => (f.workspace_id.clone(), f.folder_id.clone()),
-        AnyModel::Workspace(w) => (w.id.clone(), None),
-        _ => return Err(GenericError("Unsupported model type for authentication config".into())),
-    };
-
-    // Resolve environment chain and render the values for token lookup
-    let environment_chain = app_handle.db().resolve_environments(
-        &workspace_id,
-        folder_id.as_deref(),
-        environment_id,
-    )?;
-    let plugin_manager_arc = Arc::new((*plugin_manager).clone());
-    let encryption_manager_arc = Arc::new((*encryption_manager).clone());
-    let cb = PluginTemplateCallback::new(
-        plugin_manager_arc,
-        encryption_manager_arc,
-        &window.plugin_context(),
-        RenderPurpose::Preview,
-    );
-
-    // Convert HashMap<String, JsonPrimitive> to serde_json::Value for rendering
-    let values_json: serde_json::Value = serde_json::to_value(&values)?;
-    let rendered_json =
-        render_json_value(values_json, environment_chain, &cb, &RenderOptions::return_empty())
-            .await?;
-
-    // Convert back to HashMap<String, JsonPrimitive>
-    let rendered_values: HashMap<String, JsonPrimitive> = serde_json::from_value(rendered_json)?;
-
-    Ok(plugin_manager
-        .get_http_authentication_config(
-            &window.plugin_context(),
-            auth_name,
-            rendered_values,
-            model.id(),
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_call_http_request_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    req: CallHttpRequestActionRequest,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<()> {
-    Ok(plugin_manager
-        .call_http_request_action(
-            &window.plugin_context(),
-            CallHttpRequestActionRequest {
-                args: CallHttpRequestActionArgs {
-                    http_request: resolve_http_request(&window, &req.args.http_request)?.0,
-                    ..req.args
-                },
-                ..req
-            },
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_call_grpc_request_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    req: CallGrpcRequestActionRequest,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<()> {
-    Ok(plugin_manager
-        .call_grpc_request_action(
-            &window.plugin_context(),
-            CallGrpcRequestActionRequest {
-                args: CallGrpcRequestActionArgs {
-                    grpc_request: resolve_grpc_request(&window, &req.args.grpc_request)?.0,
-                    ..req.args
-                },
-                ..req
-            },
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_call_http_authentication_action<R: Runtime>(
-    window: WebviewWindow<R>,
-    app_handle: AppHandle<R>,
-    plugin_manager: State<'_, PluginManager>,
-    encryption_manager: State<'_, EncryptionManager>,
-    auth_name: &str,
-    action_index: i32,
-    values: HashMap<String, JsonPrimitive>,
-    model: AnyModel,
-    environment_id: Option<&str>,
-) -> YaakResult<()> {
-    // Extract workspace_id and folder_id from the model to resolve the environment chain
-    let (workspace_id, folder_id) = match &model {
-        AnyModel::HttpRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::GrpcRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::WebsocketRequest(r) => (r.workspace_id.clone(), r.folder_id.clone()),
-        AnyModel::Folder(f) => (f.workspace_id.clone(), f.folder_id.clone()),
-        AnyModel::Workspace(w) => (w.id.clone(), None),
-        _ => return Err(GenericError("Unsupported model type for authentication action".into())),
-    };
-
-    // Resolve environment chain and render the values
-    let environment_chain = app_handle.db().resolve_environments(
-        &workspace_id,
-        folder_id.as_deref(),
-        environment_id,
-    )?;
-    let plugin_manager_arc = Arc::new((*plugin_manager).clone());
-    let encryption_manager_arc = Arc::new((*encryption_manager).clone());
-    let cb = PluginTemplateCallback::new(
-        plugin_manager_arc,
-        encryption_manager_arc,
-        &window.plugin_context(),
-        RenderPurpose::Send,
-    );
-
-    // Convert HashMap<String, JsonPrimitive> to serde_json::Value for rendering
-    let values_json: serde_json::Value = serde_json::to_value(&values)?;
-    let rendered_json =
-        render_json_value(values_json, environment_chain, &cb, &RenderOptions::throw()).await?;
-
-    // Convert back to HashMap<String, JsonPrimitive>
-    let rendered_values: HashMap<String, JsonPrimitive> = serde_json::from_value(rendered_json)?;
-
-    Ok(plugin_manager
-        .call_http_authentication_action(
-            &window.plugin_context(),
-            auth_name,
-            action_index,
-            rendered_values,
-            &model.id(),
-        )
-        .await?)
-}
-
-#[tauri::command]
-async fn cmd_curl_to_request<R: Runtime>(
-    window: WebviewWindow<R>,
-    command: &str,
-    plugin_manager: State<'_, PluginManager>,
-    workspace_id: &str,
-) -> YaakResult<HttpRequest> {
-    let import_result = plugin_manager.import_data(&window.plugin_context(), command).await?;
-
-    Ok(import_result
-        .resources
-        .http_requests
-        .get(0)
-        .ok_or(GenericError("No curl command found".to_string()))
-        .map(|r| {
-            let mut request = r.clone();
-            request.workspace_id = workspace_id.into();
-            request.id = "".to_string();
-            request
-        })?)
 }
 
 #[tauri::command]
@@ -1376,33 +1113,6 @@ async fn cmd_send_http_request<R: Runtime>(
     };
 
     Ok(r)
-}
-
-#[tauri::command]
-async fn cmd_reload_plugins<R: Runtime>(
-    app_handle: AppHandle<R>,
-    window: WebviewWindow<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<Vec<(String, String)>> {
-    let plugins = app_handle.db().list_plugins()?;
-    let plugin_context =
-        PluginContext::new(Some(window.label().to_string()), window.workspace_id());
-    let errors = plugin_manager.initialize_all_plugins(plugins, &plugin_context).await;
-    Ok(errors)
-}
-
-#[tauri::command]
-async fn cmd_plugin_info<R: Runtime>(
-    id: &str,
-    app_handle: AppHandle<R>,
-    plugin_manager: State<'_, PluginManager>,
-) -> YaakResult<PluginMetadata> {
-    let plugin = app_handle.db().get_plugin(id)?;
-    Ok(plugin_manager
-        .get_plugin_by_dir(plugin.directory.as_str())
-        .await
-        .ok_or(GenericError("Failed to find plugin for info".to_string()))?
-        .info())
 }
 
 #[tauri::command]
@@ -1545,8 +1255,7 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(yaak_mac_window::init())
-        .plugin(models_ext::init()) // Database setup only. Must be before plugins_ext which depends on db
-        .plugin(plugins_ext::init())
+        .plugin(models_ext::init()) // Database setup only
         .plugin(yaak_fonts::init());
 
     #[cfg(feature = "license")]
@@ -1627,53 +1336,32 @@ pub fn run() {
             let settings = app.db().get_settings();
             app.app_handle().set_native_titlebar(settings.use_native_titlebar);
 
-            monitor_plugin_events(&app.app_handle().clone());
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            cmd_call_http_authentication_action,
-            cmd_call_http_request_action,
-            cmd_call_websocket_request_action,
-            cmd_call_workspace_action,
-            cmd_call_folder_action,
-            cmd_call_grpc_request_action,
             cmd_check_for_updates,
-            cmd_curl_to_request,
             cmd_delete_all_grpc_connections,
             cmd_delete_all_http_responses,
             cmd_delete_send_history,
             cmd_dismiss_notification,
             cmd_export_data,
             cmd_http_request_body,
-            cmd_http_response_body,
             cmd_format_json,
             cmd_format_graphql,
-            cmd_get_http_authentication_summaries,
-            cmd_get_http_authentication_config,
             cmd_get_sse_events,
             cmd_get_http_response_events,
             cmd_get_workspace_meta,
             cmd_grpc_go,
             cmd_grpc_reflect,
-            cmd_grpc_request_actions,
-            cmd_http_request_actions,
-            cmd_websocket_request_actions,
-            cmd_workspace_actions,
-            cmd_folder_actions,
             cmd_import_data,
             cmd_metadata,
             cmd_new_child_window,
             cmd_new_main_window,
-            cmd_plugin_info,
-            cmd_reload_plugins,
             cmd_render_template,
             cmd_restart,
             cmd_save_response,
             cmd_send_ephemeral_request,
             cmd_send_http_request,
-            cmd_template_function_config,
-            cmd_template_function_summaries,
             cmd_template_tokens_to_string,
             //
             //
@@ -1682,10 +1370,26 @@ pub fn run() {
             crate::commands::cmd_default_headers,
             crate::commands::cmd_disable_encryption,
             crate::commands::cmd_enable_encryption,
+            crate::commands::cmd_get_http_authentication_summaries,
+            crate::commands::cmd_get_http_authentication_config,
             crate::commands::cmd_get_themes,
+            crate::commands::cmd_call_folder_action,
+            crate::commands::cmd_call_grpc_request_action,
+            crate::commands::cmd_call_http_request_action,
+            crate::commands::cmd_call_websocket_request_action,
+            crate::commands::cmd_call_workspace_action,
+            crate::commands::cmd_curl_to_request,
+            crate::commands::cmd_folder_actions,
+            crate::commands::cmd_grpc_request_actions,
+            crate::commands::cmd_http_request_actions,
+            crate::commands::cmd_http_response_body,
             crate::commands::cmd_reveal_workspace_key,
             crate::commands::cmd_secure_template,
             crate::commands::cmd_set_workspace_key,
+            crate::commands::cmd_template_function_config,
+            crate::commands::cmd_template_function_summaries,
+            crate::commands::cmd_websocket_request_actions,
+            crate::commands::cmd_workspace_actions,
             //
             // Models commands
             models_ext::models_delete,
@@ -1728,15 +1432,6 @@ pub fn run() {
             git_ext::cmd_git_remotes,
             git_ext::cmd_git_add_remote,
             git_ext::cmd_git_rm_remote,
-            //
-            // Plugin commands
-            plugins_ext::cmd_plugin_init_errors,
-            plugins_ext::cmd_plugins_install_from_directory,
-            plugins_ext::cmd_plugins_search,
-            plugins_ext::cmd_plugins_install,
-            plugins_ext::cmd_plugins_uninstall,
-            plugins_ext::cmd_plugins_updates,
-            plugins_ext::cmd_plugins_update_all,
             //
             // WebSocket commands
             ws_ext::cmd_ws_delete_connections,
@@ -1823,119 +1518,4 @@ fn safe_uri(endpoint: &str) -> String {
     } else {
         format!("http://{}", endpoint)
     }
-}
-
-fn monitor_plugin_events<R: Runtime>(app_handle: &AppHandle<R>) {
-    let app_handle = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
-        let plugin_manager: State<'_, PluginManager> = app_handle.state();
-        let (rx_id, mut rx) = plugin_manager.subscribe("app").await;
-
-        while let Some(event) = rx.recv().await {
-            let app_handle = app_handle.clone();
-            let plugin =
-                match plugin_manager.get_plugin_by_ref_id(event.plugin_ref_id.as_str()).await {
-                    None => {
-                        warn!("Failed to get plugin for event {:?}", event);
-                        continue;
-                    }
-                    Some(p) => p,
-                };
-
-            // We might have recursive back-and-forth calls between app and plugin, so we don't
-            // want to block here
-            tauri::async_runtime::spawn(async move {
-                let ev = plugin_events::handle_plugin_event(&app_handle, &event, &plugin).await;
-
-                let ev = match ev {
-                    Ok(Some(ev)) => ev,
-                    Ok(None) => return,
-                    Err(e) => {
-                        warn!("Failed to handle plugin event: {e:?}");
-                        let _ = app_handle.emit(
-                            "show_toast",
-                            InternalEventPayload::ShowToastRequest(ShowToastRequest {
-                                message: e.to_string(),
-                                color: Some(Color::Danger),
-                                icon: None,
-                                timeout: Some(30000),
-                            }),
-                        );
-                        return;
-                    }
-                };
-
-                let plugin_manager: State<'_, PluginManager> = app_handle.state();
-                if let Err(e) = plugin_manager.reply(&event, &ev).await {
-                    warn!("Failed to reply to plugin manager: {:?}", e)
-                }
-            });
-        }
-        plugin_manager.unsubscribe(rx_id.as_str()).await;
-    });
-}
-
-async fn call_frontend<R: Runtime>(
-    window: &WebviewWindow<R>,
-    event: &InternalEvent,
-) -> Option<InternalEventPayload> {
-    window.emit_to(window.label(), "plugin_event", event.clone()).unwrap();
-    let (tx, mut rx) = tokio::sync::watch::channel(None);
-
-    let reply_id = event.id.clone();
-    let event_id = window.clone().listen(reply_id, move |ev| {
-        let resp: InternalEvent = serde_json::from_str(ev.payload()).unwrap();
-        if let Err(e) = tx.send(Some(resp.payload)) {
-            warn!("Failed to prompt for text {e:?}");
-        }
-    });
-
-    // When reply shows up, unlisten to events and return
-    if let Err(e) = rx.changed().await {
-        warn!("Failed to check channel changed {e:?}");
-    }
-    window.unlisten(event_id);
-
-    let v = rx.borrow();
-    v.to_owned()
-}
-
-fn get_window_from_plugin_context<R: Runtime>(
-    app_handle: &AppHandle<R>,
-    plugin_context: &PluginContext,
-) -> Result<WebviewWindow<R>> {
-    let label = match &plugin_context.label {
-        Some(label) => label,
-        None => {
-            return app_handle
-                .webview_windows()
-                .iter()
-                .next()
-                .map(|(_, w)| w.to_owned())
-                .ok_or(GenericError("No windows open".to_string()));
-        }
-    };
-
-    let window = app_handle
-        .webview_windows()
-        .iter()
-        .find_map(|(_, w)| if w.label() == label { Some(w.to_owned()) } else { None });
-
-    if window.is_none() {
-        error!("Failed to find window by {plugin_context:?}");
-    }
-
-    Ok(window.ok_or(GenericError(format!("Failed to find window for {}", label)))?)
-}
-
-fn workspace_from_window<R: Runtime>(window: &WebviewWindow<R>) -> Option<Workspace> {
-    window.workspace_id().and_then(|id| window.db().get_workspace(&id).ok())
-}
-
-fn environment_from_window<R: Runtime>(window: &WebviewWindow<R>) -> Option<Environment> {
-    window.environment_id().and_then(|id| window.db().get_environment(&id).ok())
-}
-
-fn cookie_jar_from_window<R: Runtime>(window: &WebviewWindow<R>) -> Option<CookieJar> {
-    window.cookie_jar_id().and_then(|id| window.db().get_cookie_jar(&id).ok())
 }

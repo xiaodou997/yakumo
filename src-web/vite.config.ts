@@ -52,7 +52,7 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
-    port: parseInt(process.env.YAAK_DEV_PORT ?? "1420", 10),
+    port: parseInt(process.env.YAKUMO_DEV_PORT ?? "1420", 10),
     strictPort: true,
   },
   envPrefix: ["VITE_", "TAURI_"],

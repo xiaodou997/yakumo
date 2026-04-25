@@ -44,11 +44,6 @@ export function SettingsDropdown() {
             });
           },
         },
-        {
-          label: t("settings.plugins"),
-          leftSlot: <Icon icon="puzzle" />,
-          onSelect: () => openSettings.mutate("plugins"),
-        },
         { type: "separator", label: t("settings.menu.shareWorkspaces") },
         {
           label: t("settings.menu.importData"),
@@ -60,12 +55,7 @@ export function SettingsDropdown() {
           leftSlot: <Icon icon="folder_output" />,
           onSelect: () => exportData.mutate(),
         },
-        {
-          label: t("settings.menu.createRunButton"),
-          leftSlot: <Icon icon="rocket" />,
-          onSelect: () => openUrl("https://yaak.app/button/new"),
-        },
-        { type: "separator", label: `Yaak v${appInfo.version}` },
+        { type: "separator", label: `Yakumo API v${appInfo.version}` },
         {
           label: t("settings.menu.checkForUpdates"),
           leftSlot: <Icon icon="update" />,
@@ -88,19 +78,6 @@ export function SettingsDropdown() {
           leftSlot: <Icon icon="square_terminal" />,
           rightSlot: <Icon icon="external_link" color="secondary" />,
           onSelect: () => openUrl("https://yaak.app/docs/cli"),
-        },
-        {
-          label: t("settings.menu.feedback"),
-          leftSlot: <Icon icon="chat" />,
-          rightSlot: <Icon icon="external_link" color="secondary" />,
-          onSelect: () => openUrl("https://yaak.app/feedback"),
-        },
-        {
-          label: t("settings.menu.changelog"),
-          leftSlot: <Icon icon="cake" />,
-          rightSlot: <Icon icon="external_link" color="secondary" />,
-          onSelect: () =>
-            openUrl(`https://yaak.app/changelog/${appInfo.version}`),
         },
       ]}
     >

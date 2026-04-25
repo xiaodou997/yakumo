@@ -1,39 +1,10 @@
-import type { GetThemesResponse } from "@yaakapp-internal/plugins";
-import { invokeCmd } from "../tauri";
 import type { Appearance } from "./appearance";
 import { resolveAppearance } from "./appearance";
 
-export async function getThemes() {
-  const themes = (await invokeCmd<GetThemesResponse[]>("cmd_get_themes")).flatMap((t) => t.themes);
-  themes.sort((a, b) => a.label.localeCompare(b.label));
-  // Remove duplicates, in case multiple plugins provide the same theme
-  const uniqueThemes = Array.from(new Map(themes.map((t) => [t.id, t])).values());
-  return { themes: [yaakDark, yaakLight, ...uniqueThemes] };
-}
-
-export async function getResolvedTheme(
-  preferredAppearance: Appearance,
-  appearanceSetting: string,
-  themeLight: string,
-  themeDark: string,
-) {
-  const appearance = resolveAppearance(preferredAppearance, appearanceSetting);
-  const { themes } = await getThemes();
-
-  const darkThemes = themes.filter((t) => t.dark);
-  const lightThemes = themes.filter((t) => !t.dark);
-
-  const dark = darkThemes.find((t) => t.id === themeDark) ?? darkThemes[0] ?? yaakDark;
-  const light = lightThemes.find((t) => t.id === themeLight) ?? lightThemes[0] ?? yaakLight;
-
-  const active = appearance === "dark" ? dark : light;
-
-  return { dark, light, active };
-}
-
+// Built-in themes for Yakumo API
 const yaakDark = {
   id: "yaak-dark",
-  label: "Yaak",
+  label: "Yakumo API",
   dark: true,
   base: {
     surface: "hsl(244,23%,14%)",
@@ -80,7 +51,7 @@ const yaakDark = {
 
 const yaakLight = {
   id: "yaak-light",
-  label: "Yaak",
+  label: "Yakumo API",
   dark: false,
   base: {
     surface: "hsl(0,0%,100%)",
@@ -108,3 +79,20 @@ const yaakLight = {
 
 export const defaultDarkTheme = yaakDark;
 export const defaultLightTheme = yaakLight;
+
+export async function getResolvedTheme(
+  preferredAppearance: Appearance,
+  appearanceSetting: string,
+  themeLight: string,
+  themeDark: string,
+) {
+  const appearance = resolveAppearance(preferredAppearance, appearanceSetting);
+
+  // Use built-in themes directly
+  const dark = themeDark === "yaak-dark" ? yaakDark : yaakDark;
+  const light = themeLight === "yaak-light" ? yaakLight : yaakLight;
+
+  const active = appearance === "dark" ? dark : light;
+
+  return { dark, light, active };
+}

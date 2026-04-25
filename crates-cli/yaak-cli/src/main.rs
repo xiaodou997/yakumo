@@ -1,14 +1,13 @@
 mod cli;
 mod commands;
 mod context;
-mod plugin_events;
 mod ui;
 mod utils;
 mod version;
 mod version_check;
 
 use clap::Parser;
-use cli::{Cli, Commands, PluginCommands, RequestCommands};
+use cli::{Cli, Commands, RequestCommands};
 use context::{CliContext, CliExecutionContext};
 use std::path::PathBuf;
 use yaak_models::queries::any_request::AnyRequest;
@@ -29,41 +28,23 @@ async fn main() {
         }
     }
 
-    let app_id = if cfg!(debug_assertions) { "app.yaak.desktop.dev" } else { "app.yaak.desktop" };
+    let app_id =
+        if cfg!(debug_assertions) { "app.yakumo.desktop.dev" } else { "app.yakumo.desktop" };
 
     let data_dir = data_dir.unwrap_or_else(|| resolve_data_dir(app_id));
 
     version_check::maybe_check_for_updates().await;
 
     let exit_code = match command {
-        Commands::Auth(args) => commands::auth::run(args).await,
-        Commands::Plugin(args) => match args.command {
-            PluginCommands::Build(args) => commands::plugin::run_build(args).await,
-            PluginCommands::Dev(args) => commands::plugin::run_dev(args).await,
-            PluginCommands::Generate(args) => commands::plugin::run_generate(args).await,
-            PluginCommands::Publish(args) => commands::plugin::run_publish(args).await,
-            PluginCommands::Install(install_args) => {
-                let mut context = CliContext::new(data_dir.clone(), app_id);
-                context.init_plugins(CliExecutionContext::default()).await;
-                let exit_code = commands::plugin::run_install(&context, install_args).await;
-                context.shutdown().await;
-                exit_code
-            }
-        },
-        Commands::Build(args) => commands::plugin::run_build(args).await,
-        Commands::Dev(args) => commands::plugin::run_dev(args).await,
-        Commands::Generate(args) => commands::plugin::run_generate(args).await,
-        Commands::Publish(args) => commands::plugin::run_publish(args).await,
         Commands::Send(args) => {
-            let mut context = CliContext::new(data_dir.clone(), app_id);
+            let context = CliContext::new(data_dir.clone(), app_id);
             match resolve_send_execution_context(
                 &context,
                 &args.id,
                 environment.as_deref(),
                 cookie_jar.as_deref(),
             ) {
-                Ok(execution_context) => {
-                    context.init_plugins(execution_context).await;
+                Ok(_execution_context) => {
                     let exit_code = commands::send::run(
                         &context,
                         args,
@@ -94,7 +75,7 @@ async fn main() {
             exit_code
         }
         Commands::Request(args) => {
-            let mut context = CliContext::new(data_dir.clone(), app_id);
+            let context = CliContext::new(data_dir.clone(), app_id);
             let execution_context_result = match &args.command {
                 RequestCommands::Send { request_id } => resolve_request_execution_context(
                     &context,
@@ -105,14 +86,7 @@ async fn main() {
                 _ => Ok(CliExecutionContext::default()),
             };
             match execution_context_result {
-                Ok(execution_context) => {
-                    let with_plugins = matches!(
-                        &args.command,
-                        RequestCommands::Send { .. } | RequestCommands::Schema { .. }
-                    );
-                    if with_plugins {
-                        context.init_plugins(execution_context).await;
-                    }
+                Ok(_execution_context) => {
                     let exit_code = commands::request::run(
                         &context,
                         args,

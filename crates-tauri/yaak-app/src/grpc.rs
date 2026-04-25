@@ -1,14 +1,12 @@
 use std::collections::BTreeMap;
 
-use crate::PluginContextExt;
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use KeyAndValueRef::{Ascii, Binary};
 use tauri::{Manager, Runtime, WebviewWindow};
+use yaak_features::auth;
 use yaak_grpc::{KeyAndValueRef, MetadataMap};
 use yaak_models::models::GrpcRequest;
-use yaak_plugins::events::{CallHttpAuthenticationRequest, HttpHeader};
-use yaak_plugins::manager::PluginManager;
 
 pub(crate) fn metadata_to_map(metadata: MetadataMap) -> BTreeMap<String, String> {
     let mut entries = BTreeMap::new();
@@ -39,11 +37,10 @@ pub(crate) fn resolve_grpc_request<R: Runtime>(
 }
 
 pub(crate) async fn build_metadata<R: Runtime>(
-    window: &WebviewWindow<R>,
+    _window: &WebviewWindow<R>,
     request: &GrpcRequest,
-    authentication_context_id: &str,
+    _authentication_context_id: &str,
 ) -> Result<BTreeMap<String, String>> {
-    let plugin_manager = window.state::<PluginManager>();
     let mut metadata = BTreeMap::new();
 
     // Add the rest of metadata
@@ -59,6 +56,7 @@ pub(crate) async fn build_metadata<R: Runtime>(
         metadata.insert(h.name, h.value);
     }
 
+    // Handle built-in authentication types
     match request.authentication_type.clone() {
         None => {
             // No authentication found. Not even inherited
@@ -67,30 +65,19 @@ pub(crate) async fn build_metadata<R: Runtime>(
             // Explicitly no authentication
         }
         Some(authentication_type) => {
-            let auth = request.authentication.clone();
-            let plugin_req = CallHttpAuthenticationRequest {
-                context_id: format!("{:x}", md5::compute(authentication_context_id)),
-                values: serde_json::from_value(serde_json::to_value(&auth)?)?,
-                method: "POST".to_string(),
-                url: request.url.clone(),
-                headers: metadata
-                    .iter()
-                    .map(|(name, value)| HttpHeader {
-                        name: name.to_string(),
-                        value: value.to_string(),
-                    })
-                    .collect(),
-            };
-            let plugin_result = plugin_manager
-                .call_http_authentication(
-                    &window.plugin_context(),
-                    &authentication_type,
-                    plugin_req,
-                )
-                .await?;
-            for header in plugin_result.set_headers.unwrap_or_default() {
+            // Convert BTreeMap to HashMap for auth module
+            let auth_values: std::collections::HashMap<String, serde_json::Value> =
+                request.authentication.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+
+            // Use built-in authentication handlers
+            let auth_result = auth::apply_auth(&authentication_type, &auth_values);
+
+            // Add headers from auth result
+            for header in auth_result.headers {
                 metadata.insert(header.name, header.value);
             }
+
+            // Add query params if needed (not typically used for gRPC)
         }
     }
 

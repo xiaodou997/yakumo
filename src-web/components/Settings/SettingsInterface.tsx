@@ -1,6 +1,5 @@
 import { type } from "@tauri-apps/plugin-os";
 import { useFonts } from "@yaakapp-internal/fonts";
-import { useLicense } from "@yaakapp-internal/license";
 import type { EditorKeymap, Settings } from "@yaakapp-internal/models";
 import { patchModel, settingsAtom } from "@yaakapp-internal/models";
 import { useAtomValue } from "jotai";
@@ -8,16 +7,13 @@ import { useState } from "react";
 
 import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { clamp } from "../../lib/clamp";
-import { showConfirm } from "../../lib/confirm";
 import { useTranslate } from "../../lib/i18n";
 import { languageOptions } from "../../lib/i18n/locales";
 import { invokeCmd } from "../../lib/tauri";
-import { CargoFeature } from "../CargoFeature";
 import { Button } from "../core/Button";
 import { Checkbox } from "../core/Checkbox";
 import { Heading } from "../core/Heading";
 import { Icon } from "../core/Icon";
-import { Link } from "../core/Link";
 import { Select } from "../core/Select";
 import { HStack, VStack } from "../core/Stacks";
 
@@ -51,6 +47,19 @@ export function SettingsInterface() {
         <Heading>{t("settings.interface.heading")}</Heading>
         <p className="text-text-subtle">{t("settings.interface.subtitle")}</p>
       </div>
+      <Select
+        leftSlot={<Icon icon="palette" color="secondary" />}
+        name="appearance"
+        label={t("settings.theme.appearance")}
+        size="sm"
+        value={settings.appearance}
+        onChange={(appearance) => patchModel(settings, { appearance })}
+        options={[
+          { label: t("settings.theme.appearance.automatic"), value: "system" },
+          { label: t("settings.theme.appearance.light"), value: "light" },
+          { label: t("settings.theme.appearance.dark"), value: "dark" },
+        ]}
+      />
       <Select
         leftSlot={<Icon icon="globe" color="secondary" />}
         name="language"
@@ -187,9 +196,6 @@ export function SettingsInterface() {
         title={t("settings.interface.colorizeMethods")}
         onChange={(coloredMethods) => patchModel(settings, { coloredMethods })}
       />
-      <CargoFeature feature="license">
-        <LicenseSettings settings={settings} />
-      </CargoFeature>
 
       <NativeTitlebarSetting settings={settings} />
 
@@ -233,52 +239,5 @@ function NativeTitlebarSetting({ settings }: { settings: Settings }) {
         </Button>
       )}
     </div>
-  );
-}
-
-function LicenseSettings({ settings }: { settings: Settings }) {
-  const t = useTranslate();
-  const license = useLicense();
-  if (license.check.data?.status !== "personal_use") {
-    return null;
-  }
-
-  return (
-    <Checkbox
-      checked={settings.hideLicenseBadge}
-      title={t("settings.interface.hideLicenseBadge")}
-      onChange={async (hideLicenseBadge) => {
-        if (hideLicenseBadge) {
-          const confirmed = await showConfirm({
-            id: "hide-license-badge",
-            title: t("settings.interface.confirmPersonalUse"),
-            confirmText: t("common.confirm"),
-            description: (
-              <VStack space={3}>
-                <p>{t("settings.interface.personalUseGreeting")}</p>
-                <p>
-                  {t("settings.interface.personalUseMessage")}
-                  <strong>
-                    {t("settings.interface.personalUseLicenseRequired")}
-                  </strong>
-                </p>
-                <p>
-                  {t("settings.interface.personalUseSupport")}
-                  <Link href="https://yaak.app/pricing?s=badge">
-                    {t("settings.interface.personalUsePurchase")}
-                  </Link>
-                </p>
-              </VStack>
-            ),
-            requireTyping: t("settings.interface.requirePersonalUse"),
-            color: "info",
-          });
-          if (!confirmed) {
-            return; // Cancel
-          }
-        }
-        await patchModel(settings, { hideLicenseBadge });
-      }}
-    />
   );
 }

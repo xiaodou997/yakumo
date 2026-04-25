@@ -4,8 +4,6 @@ import { atom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { invokeCmd } from "../lib/tauri";
-import { showErrorToast } from "../lib/toast";
-import { usePluginsKey } from "./usePlugins";
 
 const httpAuthenticationSummariesAtom = atom<GetHttpAuthenticationSummaryResponse[]>([]);
 const orderedHttpAuthenticationAtom = atom((get) =>
@@ -18,14 +16,12 @@ export function useHttpAuthenticationSummaries() {
 
 export function useSubscribeHttpAuthentication() {
   const [numResults, setNumResults] = useState<number>(0);
-  const pluginsKey = usePluginsKey();
 
   useQuery({
-    queryKey: ["http_authentication_summaries", pluginsKey],
+    queryKey: ["http_authentication_summaries"],
     // Fetch periodically until functions are returned
     // NOTE: visibilitychange (refetchOnWindowFocus) does not work on Windows, so we'll rely on this logic
     //  to refetch things until that's working again
-    // TODO: Update plugin system to wait for plugins to initialize before sending the first event to them
     refetchInterval: numResults > 0 ? Number.POSITIVE_INFINITY : 1000,
     refetchOnMount: true,
     placeholderData: (prev) => prev, // Keep previous data on refetch
@@ -38,11 +34,8 @@ export function useSubscribeHttpAuthentication() {
         jotaiStore.set(httpAuthenticationSummariesAtom, result);
         return result;
       } catch (err) {
-        showErrorToast({
-          id: "http-authentication-error",
-          title: "HTTP Authentication Error",
-          message: err,
-        });
+        console.warn("Failed to get authentication summaries:", err);
+        return [];
       }
     },
   });

@@ -7,9 +7,7 @@ import type {
   JsonPrimitive,
   ShowToastRequest,
 } from "@yaakapp-internal/plugins";
-import { updateAllPlugins } from "@yaakapp-internal/plugins";
 import type {
-  PluginUpdateNotification,
   UpdateInfo,
   UpdateResponse,
   YaakNotification,
@@ -119,46 +117,8 @@ export function initGlobalListeners() {
     showNotificationToast(payload);
   });
 
-  // Listen for plugin update events
-  listenToTauriEvent<PluginUpdateNotification>("plugin_updates_available", ({ payload }) => {
-    console.log("Got plugin updates event", payload);
-    showPluginUpdatesToast(payload);
-  });
-
-  // Check for plugin initialization errors
-  fireAndForget(
-    invokeCmd<[string, string][]>("cmd_plugin_init_errors").then((errors) => {
-      for (const [dir, message] of errors) {
-        const dirBasename = dir.split("/").pop() ?? dir;
-        showToast({
-          id: `plugin-init-error-${dirBasename}`,
-          color: "warning",
-          timeout: null,
-          message: (
-            <VStack>
-              <h2 className="font-semibold">Plugin failed to load</h2>
-              <p className="text-text-subtle text-sm">
-                {dirBasename}: {message}
-              </p>
-            </VStack>
-          ),
-          action: ({ hide }) => (
-            <Button
-              size="xs"
-              color="warning"
-              variant="border"
-              onClick={() => {
-                hide();
-                openSettings.mutate("plugins:installed");
-              }}
-            >
-              View Plugins
-            </Button>
-          ),
-        });
-      }
-    }),
-  );
+  // Plugin system has been removed from Yakumo API
+  // All functionality is now built-in
 }
 
 function showUpdateInstalledToast(version: string) {
@@ -235,63 +195,6 @@ async function showUpdateAvailableToast(updateInfo: UpdateInfo) {
           }}
         >
           What&apos;s New
-        </Button>
-      </HStack>
-    ),
-  });
-}
-
-function showPluginUpdatesToast(updateInfo: PluginUpdateNotification) {
-  const PLUGIN_UPDATE_TOAST_ID = "plugin-updates";
-  const count = updateInfo.updateCount;
-  const pluginNames = updateInfo.plugins.map((p: { name: string }) => p.name);
-
-  showToast({
-    id: PLUGIN_UPDATE_TOAST_ID,
-    color: "info",
-    timeout: null,
-    message: (
-      <VStack>
-        <h2 className="font-semibold">
-          {count === 1 ? "1 plugin update" : `${count} plugin updates`} available
-        </h2>
-        <p className="text-text-subtle text-sm">
-          {count === 1
-            ? pluginNames[0]
-            : `${pluginNames.slice(0, 2).join(", ")}${count > 2 ? `, and ${count - 2} more` : ""}`}
-        </p>
-      </VStack>
-    ),
-    action: ({ hide }) => (
-      <HStack space={1.5}>
-        <ButtonInfiniteLoading
-          size="xs"
-          color="info"
-          className="min-w-[5rem]"
-          loadingChildren="Updating..."
-          onClick={async () => {
-            const updated = await updateAllPlugins();
-            hide();
-            if (updated.length > 0) {
-              showToast({
-                color: "success",
-                message: `Successfully updated ${updated.length} plugin${updated.length === 1 ? "" : "s"}`,
-              });
-            }
-          }}
-        >
-          Update All
-        </ButtonInfiniteLoading>
-        <Button
-          size="xs"
-          color="info"
-          variant="border"
-          onClick={() => {
-            hide();
-            openSettings.mutate("plugins:installed");
-          }}
-        >
-          View Updates
         </Button>
       </HStack>
     ),

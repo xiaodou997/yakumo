@@ -150,13 +150,6 @@ pub(crate) fn create_window<R: Runtime>(
             "zoom_in" => w.emit("zoom_in", true).unwrap(),
             "zoom_out" => w.emit("zoom_out", true).unwrap(),
             "settings" => w.emit("settings", true).unwrap(),
-            "open_feedback" => {
-                if let Err(e) =
-                    w.app_handle().opener().open_url("https://yaak.app/feedback", None::<&str>)
-                {
-                    warn!("Failed to open feedback {e:?}")
-                }
-            }
 
             // Commands for development
             "dev.reset_size" => webview_window

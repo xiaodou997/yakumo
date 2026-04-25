@@ -33,7 +33,7 @@ pub enum Error {
     LicenseError(#[from] yaak_license::error::Error),
 
     #[error(transparent)]
-    PluginError(#[from] yaak_plugins::error::Error),
+    PluginError(#[from] yaak_features::error::Error),
 
     #[error(transparent)]
     ApiError(#[from] yaak_api::Error),

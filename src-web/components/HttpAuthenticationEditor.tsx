@@ -13,9 +13,6 @@ import { useHttpAuthenticationConfig } from "../hooks/useHttpAuthenticationConfi
 import { useInheritedAuthentication } from "../hooks/useInheritedAuthentication";
 import { useRenderTemplate } from "../hooks/useRenderTemplate";
 import { resolvedModelName } from "../lib/resolvedModelName";
-import { Dropdown, type DropdownItem } from "./core/Dropdown";
-import { Icon } from "./core/Icon";
-import { IconButton } from "./core/IconButton";
 import { InlineCode } from "./core/InlineCode";
 import { Input, type InputProps } from "./core/Input";
 import { Link } from "./core/Link";
@@ -128,24 +125,6 @@ export function HttpAuthenticationEditor({ model }: Props) {
               await handleChange({ ...model.authentication, disabled });
             }}
           />
-          {authConfig.data?.actions && authConfig.data.actions.length > 0 && (
-            <Dropdown
-              items={authConfig.data.actions.map(
-                (a): DropdownItem => ({
-                  label: a.label,
-                  leftSlot: a.icon ? <Icon icon={a.icon} /> : null,
-                  onSelect: () => a.call(model),
-                }),
-              )}
-            >
-              <IconButton
-                title="Authentication Actions"
-                icon="settings"
-                size="xs"
-                className="!text-secondary"
-              />
-            </Dropdown>
-          )}
         </HStack>
         {typeof model.authentication.disabled === "string" && (
           <div className="mt-3">

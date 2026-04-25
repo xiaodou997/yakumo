@@ -1,69 +1,43 @@
-<p align="center">
-  <a href="https://github.com/JamesIves/github-sponsors-readme-action">
-    <img width="200px" src="crates-tauri/yaak-app/icons/icon.png">
-  </a>
-</p>
+# Yakumo API
 
-<h1 align="center">
-  💫 Yakumo API ➟ Desktop API Client 💫
-</h1>
+Yakumo API is a local-first desktop API client for HTTP, GraphQL, gRPC, WebSocket, and SSE workflows. It is built with Tauri, Rust, React, and TypeScript.
 
-<p align="center">
-    A fast, privacy-first API client for REST, GraphQL, SSE, WebSocket, and gRPC – built with Tauri, Rust, and React.
-</p>
+This project is derived from the open-source Yaak project and keeps the original MIT license and attribution.
 
-<p align="center">
-  本项目基于 <a href="https://github.com/mountain-loop/yaak">Yaak</a> 开源项目演进，保留 MIT License。
-</p>
+## Current Scope
 
-<br>
+- Desktop app builds remain the primary supported distribution path.
+- `yaku` is kept as a local AI-friendly CLI built from source.
+- npm CLI packages, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows are frozen until the Yakumo release pipeline is rebuilt.
+- The JavaScript plugin system is removed from the product surface. Core capabilities are implemented as built-in Yakumo features.
 
-<p align="center">
-  <!-- sponsors-premium --><!-- sponsors will be updated when project launches --><!-- sponsors-premium -->
-</p>
+## Capabilities
 
-![Yakumo API Client](crates-tauri/yaak-app/icons/icon.png)
+- Create and send HTTP, GraphQL, gRPC, WebSocket, and SSE requests.
+- Organize requests with workspaces, folders, environments, cookie jars, and sync metadata.
+- Use built-in auth, template functions, importers, response tooling, and request actions.
+- Encrypt workspace secrets using the operating-system keychain through `yaak-crypto`.
+- Use `yaku` for schema/list/show/create/update/delete workflows and HTTP send automation.
 
-## Features
+For the implementation status matrix, see [`FEATURES.md`](FEATURES.md). For the active refactor roadmap, see [`docs/yakumo-refactor-roadmap.md`](docs/yakumo-refactor-roadmap.md).
 
-Yakumo API 是一个离线优先的 API 客户端，设计上尽量不打扰你，但在需要时提供所有功能。
-基于 [Tauri](https://tauri.app)、Rust 和 React 构建，快速、轻量、私密。无遥测，无云端锁定。
+## Development
 
-### 🌐 支持多种 API
+```bash
+bun install
+bun run typecheck
+bun run lint
+bun run build
+cargo check --locked --workspace --all-targets
+```
 
-- 从 Postman、Insomnia、OpenAPI、Swagger 或 Curl 导入集合。
-- 通过 REST、GraphQL、gRPC、WebSocket 或 SSE 发送请求。
-- 使用 JSONPath 或 XPath 过滤和检查响应。
-
-### 🔐 安全性
-
-- 使用 OAuth 2.0、JWT、Basic Auth 或自定义插件进行认证。
-- 使用加密的 secrets 保护敏感值。
-- 将 secrets 存储在操作系统 keychain 中。
-
-### ☁️ 组织与协作
-
-- 将请求分组到 workspace 和嵌套文件夹中。
-- 使用环境变量在 dev、staging 和 prod 之间切换。
-- 将 workspace 镜像到文件系统，以便在 Git 中版本控制或与 Dropbox 同步。
-
-### 🧩 扩展与自定义
-
-- 使用模板标签插入动态值，如 UUID 或时间戳。
-- 从内置主题中选择或构建自己的主题。
-- 创建插件以扩展认证、模板标签或 UI。
-
-## Contribution Policy
-
-> [!IMPORTANT]
-> Community PRs are currently limited to bug fixes and small-scope improvements.
-> See [`CONTRIBUTING.md`](CONTRIBUTING.md) for policy details and [`DEVELOPMENT.md`](DEVELOPMENT.md) for local setup.
+Use `YAKUMO_DEV_PORT` to override the desktop development port. The default is `1420`.
 
 ## Useful Resources
 
-- [Documentation](https://yaak.app/docs) (待更新)
 - [Original Yaak Project](https://github.com/mountain-loop/yaak)
+- [Tauri Documentation](https://v2.tauri.app/)
 
 ## License
 
-MIT License - 本项目基于 Yaak 开源项目演进，保留原作者版权声明。
+MIT License. Yakumo API keeps the original Yaak copyright notices and adds independent maintenance on top.

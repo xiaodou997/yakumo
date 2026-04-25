@@ -1,18 +1,12 @@
-use crate::PluginContextExt;
 use crate::error::Result;
 use crate::import::import_data;
-use crate::models_ext::QueryManagerExt;
 use log::{info, warn};
 use std::collections::HashMap;
 use std::fs;
-use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use yaak_api::{ApiClientKind, yaak_api_client};
+use yaak_features::events::{Color, ShowToastRequest};
 use yaak_models::util::generate_id;
-use yaak_plugins::events::{Color, ShowToastRequest};
-use yaak_plugins::install::download_and_install;
-use yaak_plugins::manager::PluginManager;
 
 pub(crate) async fn handle_deep_link<R: Runtime>(
     app_handle: &AppHandle<R>,
@@ -27,46 +21,17 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
 
     match command {
         "install-plugin" => {
-            let name = query_map.get("name").unwrap();
-            let version = query_map.get("version").cloned();
-            _ = window.set_focus();
-            let confirmed_install = app_handle
-                .dialog()
-                .message(format!("Install plugin {name} {version:?}?"))
-                .kind(MessageDialogKind::Info)
-                .buttons(MessageDialogButtons::OkCancelCustom(
-                    "Install".to_string(),
-                    "Cancel".to_string(),
-                ))
-                .blocking_show();
-            if !confirmed_install {
-                // Cancelled installation
-                return Ok(());
-            }
-
-            let plugin_manager = Arc::new((*window.state::<PluginManager>()).clone());
-            let query_manager = app_handle.db_manager();
-            let app_version = app_handle.package_info().version.to_string();
-            let http_client = yaak_api_client(ApiClientKind::App, &app_version)?;
-            let plugin_context = window.plugin_context();
-            let pv = download_and_install(
-                plugin_manager,
-                &query_manager,
-                &http_client,
-                &plugin_context,
-                name,
-                version,
-            )
-            .await?;
+            // Plugin system removed - show error message
             app_handle.emit(
                 "show_toast",
                 ShowToastRequest {
-                    message: format!("Installed {name}@{}", pv.version),
-                    color: Some(Color::Success),
+                    message: "Plugin installation is not available in this version".to_string(),
+                    color: Some(Color::Warning),
                     icon: None,
                     timeout: Some(5000),
                 },
             )?;
+            warn!("Plugin install requested but plugin system is removed");
         }
         "import-data" => {
             let mut file_path = query_map.get("path").map(|s| s.to_owned());
@@ -88,8 +53,9 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
                 }
 
                 let app_version = app_handle.package_info().version.to_string();
-                let resp =
-                    yaak_api_client(ApiClientKind::App, &app_version)?.get(file_url).send().await?;
+                let http_client =
+                    yaak_api::yaak_api_client(yaak_api::ApiClientKind::App, &app_version)?;
+                let resp = http_client.get(file_url).send().await?;
                 let json = resp.bytes().await?;
                 let p = app_handle
                     .path()

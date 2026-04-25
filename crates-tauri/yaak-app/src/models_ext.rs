@@ -15,7 +15,6 @@ use yaak_models::error::Result;
 use yaak_models::models::{AnyModel, GraphQlIntrospection, GrpcEvent, Settings, WebsocketEvent};
 use yaak_models::query_manager::QueryManager;
 use yaak_models::util::UpdateSource;
-use yaak_plugins::manager::PluginManager;
 
 const MODEL_CHANGES_RETENTION_HOURS: i64 = 1;
 const MODEL_CHANGES_POLL_INTERVAL_MS: u64 = 1000;
@@ -259,7 +258,6 @@ pub(crate) fn models_upsert_graphql_introspection<R: Runtime>(
 pub(crate) async fn models_workspace_models<R: Runtime>(
     window: WebviewWindow<R>,
     workspace_id: Option<&str>,
-    plugin_manager: State<'_, PluginManager>,
 ) -> Result<String> {
     let mut l: Vec<AnyModel> = Vec::new();
 
@@ -269,15 +267,9 @@ pub(crate) async fn models_workspace_models<R: Runtime>(
         l.push(db.get_settings().into());
         l.append(&mut db.list_workspaces()?.into_iter().map(Into::into).collect());
         l.append(&mut db.list_key_values()?.into_iter().map(Into::into).collect());
+        // Add plugins from database (no need to resolve them with plugin_manager)
+        l.append(&mut db.list_plugins()?.into_iter().map(Into::into).collect());
     }
-
-    let plugins = {
-        let db = window.db();
-        db.list_plugins()?
-    };
-
-    let plugins = plugin_manager.resolve_plugins_for_runtime_from_db(plugins).await;
-    l.append(&mut plugins.into_iter().map(Into::into).collect());
 
     // Add the workspace children
     if let Some(wid) = workspace_id {

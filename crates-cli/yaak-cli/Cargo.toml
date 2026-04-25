@@ -1,11 +1,12 @@
 [package]
-name = "yaak-cli"
+name = "yaku-cli"
 version = "0.1.0"
 edition = "2024"
 publish = false
+description = "Yaku CLI - Yakumo API 命令行工具"
 
 [[bin]]
-name = "yaak"
+name = "yaku"
 path = "src/main.rs"
 
 [dependencies]
@@ -18,13 +19,10 @@ env_logger = "0.11"
 futures = "0.3"
 inquire = { version = "0.7", features = ["editor"] }
 hex = { workspace = true }
-include_dir = "0.7"
 keyring = { workspace = true, features = ["apple-native", "windows-native", "sync-secret-service"] }
 log = { workspace = true }
 rand = "0.8"
 reqwest = { workspace = true }
-rolldown = "0.1.0"
-oxc_resolver = "=11.10.0"
 schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -37,16 +35,11 @@ tokio = { workspace = true, features = [
   "signal",
   "time",
 ] }
-walkdir = "2"
-webbrowser = "1"
-zip = "4"
 yaak = { workspace = true }
-yaak-api = { workspace = true }
 yaak-crypto = { workspace = true }
 yaak-http = { workspace = true }
 yaak-models = { workspace = true }
-yaak-plugins = { workspace = true }
-yaak-templates = { workspace = true }
+yaak-features = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = "2"

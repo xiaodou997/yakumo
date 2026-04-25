@@ -1,0 +1,124 @@
+//! Yakumo/Yaak workspace import.
+//!
+//! Imports workspace data from exported JSON.
+
+use crate::events::{ImportResources, ImportResponse};
+use yaak_models::models::{
+    Environment, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,
+};
+
+/// Import Yakumo/Yaak workspace from JSON content.
+pub fn import_yakumo(content: &str) -> Result<Option<ImportResponse>, String> {
+    // Try to parse the JSON content
+    let json: serde_json::Value =
+        serde_json::from_str(content).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+    // Check if it's a valid export format
+    if !json.is_object() {
+        return Ok(None);
+    }
+
+    let resources = parse_import_resources(&json)?;
+
+    // If no resources were found, return None
+    if resources.workspace.is_none()
+        && resources.http_requests.is_empty()
+        && resources.grpc_requests.is_empty()
+        && resources.websocket_requests.is_empty()
+    {
+        return Ok(None);
+    }
+
+    Ok(Some(ImportResponse { resources: Some(resources), error: None }))
+}
+
+/// Parse import resources from JSON.
+fn parse_import_resources(json: &serde_json::Value) -> Result<ImportResources, String> {
+    let obj = json.as_object().ok_or("Expected object")?;
+
+    // Parse the first workspace if present
+    let workspace = obj
+        .get("workspaces")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| parse_workspace(v).ok());
+
+    let environment = obj
+        .get("environments")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| parse_environment(v).ok());
+
+    let folders = parse_array(obj.get("folders"), parse_folder)?;
+    let http_requests = parse_array(obj.get("httpRequests"), parse_http_request)?;
+    let grpc_requests = parse_array(obj.get("grpcRequests"), parse_grpc_request)?;
+    let websocket_requests = parse_array(obj.get("websocketRequests"), parse_websocket_request)?;
+
+    Ok(ImportResources {
+        workspace,
+        environment,
+        folders,
+        http_requests,
+        grpc_requests,
+        websocket_requests,
+    })
+}
+
+/// Parse an array of items using a parser function.
+fn parse_array<T, F>(value: Option<&serde_json::Value>, parser: F) -> Result<Vec<T>, String>
+where
+    F: Fn(&serde_json::Value) -> Result<T, String>,
+{
+    match value {
+        Some(serde_json::Value::Array(arr)) => arr.iter().map(parser).collect(),
+        _ => Ok(vec![]),
+    }
+}
+
+/// Parse a workspace from JSON.
+fn parse_workspace(json: &serde_json::Value) -> Result<Workspace, String> {
+    serde_json::from_value(json.clone()).map_err(|e| format!("Failed to parse workspace: {}", e))
+}
+
+/// Parse an environment from JSON.
+fn parse_environment(json: &serde_json::Value) -> Result<Environment, String> {
+    serde_json::from_value(json.clone()).map_err(|e| format!("Failed to parse environment: {}", e))
+}
+
+/// Parse a folder from JSON.
+fn parse_folder(json: &serde_json::Value) -> Result<Folder, String> {
+    serde_json::from_value(json.clone()).map_err(|e| format!("Failed to parse folder: {}", e))
+}
+
+/// Parse an HTTP request from JSON.
+fn parse_http_request(json: &serde_json::Value) -> Result<HttpRequest, String> {
+    serde_json::from_value(json.clone()).map_err(|e| format!("Failed to parse HTTP request: {}", e))
+}
+
+/// Parse a gRPC request from JSON.
+fn parse_grpc_request(json: &serde_json::Value) -> Result<GrpcRequest, String> {
+    serde_json::from_value(json.clone()).map_err(|e| format!("Failed to parse gRPC request: {}", e))
+}
+
+/// Parse a WebSocket request from JSON.
+fn parse_websocket_request(json: &serde_json::Value) -> Result<WebsocketRequest, String> {
+    serde_json::from_value(json.clone())
+        .map_err(|e| format!("Failed to parse WebSocket request: {}", e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_import_empty() {
+        let result = import_yakumo("{}").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_import_invalid_json() {
+        let result = import_yakumo("not json");
+        assert!(result.is_err());
+    }
+}

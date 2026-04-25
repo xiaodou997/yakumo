@@ -1,37 +1,24 @@
-# Yakumo API Roadmap
+# Yakumo API TODO
 
-This fork is being independentized as a new project. The first phase keeps the current Yaak product name and package/crate identifiers so the desktop app can keep running while the build system is migrated.
+Yakumo API is now treated as a new project baseline. Do not reintroduce the JavaScript plugin runtime, npm CLI publishing, Flatpak release flow, or old Yaak release automation unless a later phase explicitly reopens that scope.
 
-For the detailed beginner-friendly implementation checklist, see `docs/yakumo-api-independentization-tasks.md`.
+## Phase 1 Quality Gate
 
-## Phase 1: Toolchain and Runtime Stability
+- Keep `bun run typecheck`, `bun run lint`, `bun run build`, and `cargo check --locked --workspace --all-targets` passing.
+- Keep desktop app development on `YAKUMO_DEV_PORT`.
+- Keep `yaku` as a source-built local CLI; do not publish npm CLI packages.
+- Keep plugin compatibility code out of the runtime path.
 
-- Use Bun as the primary package manager and script runner.
-- Use official Vite, Vitest, and `@vitejs/plugin-react` instead of Vite+ packages.
-- Keep the existing Tauri desktop app flow and current Chinese i18n work intact.
-- Automatically prepare required vendored assets before desktop development starts:
-  - `crates-tauri/yaak-app/vendored/protoc/include`
-  - `crates-tauri/yaak-app/vendored/plugin-runtime`
-  - `crates-tauri/yaak-app/vendored/plugins`
-  - `crates-tauri/yaak-app/vendored/node`
-- Keep the current vendored Node plugin runtime during this phase so plugins remain stable.
+## Product Work
 
-## Phase 2: Yakumo API Branding
+- Finish built-in importers for Postman, Insomnia, OpenAPI 3, and Swagger 2.
+- Finish response filters for JSONPath and XPath.
+- Expand built-in template functions where `FEATURES.md` still marks gaps.
+- Continue reducing Tauri capabilities to the minimum required permission set.
+- Rename internal crate/package identifiers from `yaak-*` only after the app and CLI quality gates stay green.
 
-- Rename visible product branding to `Yakumo API`.
-- Replace Tauri `productName`, `identifier`, deep link scheme, icons, and app metadata.
-- Rename CLI/package references where appropriate.
-- Update README and screenshots for the independent project.
-- Add a source/attribution note explaining that this project started from Yaak.
+## Documentation
 
-## Phase 3: Plugin Runtime Experiment
-
-- Add a configurable JavaScript runtime abstraction on the Rust side.
-- Vendor a Bun runtime as an experiment alongside the existing Node runtime.
-- Validate whether `packages/plugin-runtime` CJS output runs correctly under Bun.
-- Keep Node as a fallback if Bun runtime compatibility is incomplete.
-
-## Licensing
-
-- Keep the MIT license and existing Yaak copyright notices.
-- Do not remove open-source attribution while renaming or rebranding.
+- Keep [`FEATURES.md`](FEATURES.md) status labels accurate.
+- Keep [`docs/yakumo-refactor-roadmap.md`](docs/yakumo-refactor-roadmap.md) as the active refactor entry point.
+- Keep Yaak attribution and MIT license notices intact.

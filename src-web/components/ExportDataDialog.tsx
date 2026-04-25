@@ -175,15 +175,7 @@ function ExportDataDialogContent({
         </DetailsBanner>
       </VStack>
       <footer className="px-5 grid grid-cols-[1fr_auto] items-center bg-surface-highlight py-2 border-t border-border-subtle">
-        <div>
-          <Link
-            href="https://yaak.app/button/new"
-            noUnderline
-            className="text-text-subtle"
-          >
-            {t("export.createRunButton")}
-          </Link>
-        </div>
+        <div />
         <HStack space={2} justifyContent="end">
           <Button size="sm" className="focus" variant="border" onClick={onHide}>
             {t("common.cancel")}
