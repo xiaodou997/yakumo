@@ -26,9 +26,9 @@
 ### 完成的任务
 
 #### 1. vite-plus 残留清理
-- `src-web/lib/model_util.test.ts`: `vite-plus/test` → `vitest`
-- `src-web/components/core/Editor/twig/twig.test.ts`: `vite-plus/test` → `vitest`
-- `src-web/vite-env.d.ts`: `vite-plus/client` → `vite/client`
+- `src/lib/model_util.test.ts`: `vite-plus/test` → `vitest`
+- `src/components/core/Editor/twig/twig.test.ts`: `vite-plus/test` → `vitest`
+- `src/vite-env.d.ts`: `vite-plus/client` → `vite/client`
 
 #### 2. 环境变量名统一化 (YAAK_* → YAKUMO_*)
 - `scripts/run-dev.mjs`: `YAAK_DEV_PORT` → `YAKUMO_DEV_PORT`
@@ -81,11 +81,11 @@ feat: 第一阶段工具链迁移完成 - Bun/Vite/Tauri稳定
 #### 2. 用户可见品牌修改
 - `README.md`: 标题改为 "Yakumo API"，添加中文描述和来源说明
 - `CONTRIBUTING.md`: 改为 "Contributing to Yakumo API"
-- `src-web/index.html`: `<title>` 改为 "Yakumo API"
-- `src-web/commands/openSettings.tsx`: 窗口标题改为 "Yakumo API Settings"
-- `src-web/lib/initGlobalListeners.tsx`: 更新通知文案
-- `src-web/components/Settings/SettingsGeneral.tsx`: 更新隐私说明
-- `src-web/components/responseViewers/WebPageViewer.tsx`: iframe title 更新
+- `src/index.html`: `<title>` 改为 "Yakumo API"
+- `src/commands/openSettings.tsx`: 窗口标题改为 "Yakumo API Settings"
+- `src/lib/initGlobalListeners.tsx`: 更新通知文案
+- `src/components/Settings/SettingsGeneral.tsx`: 更新隐私说明
+- `src/components/responseViewers/WebPageViewer.tsx`: iframe title 更新
 
 #### 3. Tauri 标识和 deep link
 - `tauri.conf.json`:

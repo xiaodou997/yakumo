@@ -13,7 +13,7 @@
 | `README.md` | 标题 "Yaak"、描述、链接 | "Yakumo API" | 高 |
 | `CONTRIBUTING.md` | "Contributing to Yaak" | "Contributing to Yakumo API" | 高 |
 | `DEVELOPMENT.md` | 开发说明中的 Yaak 名称 | Yakumo API | 高 |
-| `src-web/index.html` | `<title>Yaak App</title>` | `<title>Yakumo API</title>` | 高 |
+| `src/index.html` | `<title>Yaak App</title>` | `<title>Yakumo API</title>` | 高 |
 | `docs/*.md` | 文档中的项目名称 | Yakumo API | 高 |
 
 ### 1.2 界面文案
@@ -34,16 +34,16 @@
 
 | 文件 | 当前值 | 目标值 | 优先级 |
 |-----|------|------|--------|
-| `crates-tauri/yaak-app/tauri.conf.json` | `productName: "Yaak"` | `productName: "Yakumo API"` | 高 |
+| `src-tauri/tauri.conf.json` | `productName: "Yaak"` | `productName: "Yakumo API"` | 高 |
 | 同上 | `identifier: "app.yaak.desktop"` | `identifier: "app.yakumo.api"` | 高 |
 | 同上 | deep link scheme: `"yaak"` | `"yakumo"` | 高 |
-| `crates-tauri/yaak-app/tauri.development.conf.json` | 同上配置 | 同步更新 | 高 |
+| `src-tauri/tauri.development.conf.json` | 同上配置 | 同步更新 | 高 |
 
 ### 2.2 macOS 特定文件
 
 | 文件 | 需要修改 |
 |-----|---------|
-| `crates-tauri/yaak-app/macos/entitlements.*.plist` | 检查是否包含 Yaak 引用 |
+| `src-tauri/macos/entitlements.*.plist` | 检查是否包含 Yaak 引用 |
 | Info.plist 相关配置 | CFBundleName, CFBundleIdentifier 等 |
 
 ### 2.3 Windows/Linux 特定文件
@@ -64,7 +64,7 @@
 | `yaak-app` | `yakumo-app` | `package.json` |
 | `@yaakapp/cli` | `@yakumo/cli` | `npm/cli/package.json` |
 | `@yaakapp/cli-*` | `@yakumo/cli-*` | `npm/cli-*/*.json` |
-| `@yaakapp/app` | `@yakumo/app` | `src-web/package.json` |
+| `@yaakapp/app` | `@yakumo/app` | `src/package.json` |
 | `@yaakapp/api` | `@yakumo/api` | `packages/plugin-runtime-types/package.json` |
 | `@yaakapp-internal/*` | `@yakumo-internal/*` | 各 packages 目录 |
 | `@yaak/*` (plugins) | `@yakumo/*` | 各 plugins 目录 |
@@ -73,7 +73,7 @@
 
 | 当前名称 | 目标名称 | 文件位置 |
 |---------|---------|---------|
-| `yaak-app` | `yakumo-app` | `crates-tauri/yaak-app/Cargo.toml` |
+| `yaak-app` | `yakumo-app` | `src-tauri/Cargo.toml` |
 | `yaak-models` | `yakumo-models` | `crates/yaak-models/Cargo.toml` |
 | `yaak-plugins` | `yakumo-plugins` | `crates/yaak-plugins/Cargo.toml` |
 | `yaak-cli` | `yakumo-cli` | `crates-cli/yaak-cli/Cargo.toml` |
@@ -135,7 +135,7 @@
 
 | 目录/文件 | 需要修改 |
 |---------|---------|
-| `crates-tauri/yaak-app/icons/` | 替换为新 Yakumo API 图标 |
+| `src-tauri/icons/` | 替换为新 Yakumo API 图标 |
 | README 截图链接 | 更新为 Yakumo API 截图 |
 | 文档中的图片 | 更新品牌相关图片 |
 

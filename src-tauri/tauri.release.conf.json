@@ -44,13 +44,13 @@
       "deb": {
         "desktopTemplate": "./template.desktop",
         "files": {
-          "/usr/share/metainfo/app.yaak.Yaak.metainfo.xml": "../../flatpak/app.yaak.Yaak.metainfo.xml"
+          "/usr/share/metainfo/app.yaak.Yaak.metainfo.xml": "../flatpak/app.yaak.Yaak.metainfo.xml"
         }
       },
       "rpm": {
         "desktopTemplate": "./template.desktop",
         "files": {
-          "/usr/share/metainfo/app.yaak.Yaak.metainfo.xml": "../../flatpak/app.yaak.Yaak.metainfo.xml"
+          "/usr/share/metainfo/app.yaak.Yaak.metainfo.xml": "../flatpak/app.yaak.Yaak.metainfo.xml"
         }
       }
     }

@@ -1,30 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/yaak",
-  # Shared crates (no Tauri dependency)
-  "crates/yaak-core",
-  "crates/yaak-common",
-  "crates/yaak-crypto",
-  "crates/yaak-git",
-  "crates/yaak-grpc",
-  "crates/yaak-http",
-  "crates/yaak-models",
-  "crates/yaak-features",
-  "crates/yaak-sse",
-  "crates/yaak-sync",
-  "crates/yaak-templates",
-  "crates/yaak-tls",
-  "crates/yaak-ws",
-  "crates/yaak-api",
-  # CLI crates
+  "crates/*",
   "crates-cli/yaak-cli",
-  # Tauri-specific crates
-  "crates-tauri/yaak-app",
-  "crates-tauri/yaak-fonts",
-  "crates-tauri/yaak-license",
-  "crates-tauri/yaak-mac-window",
-  "crates-tauri/yaak-tauri-utils",
+  "src-tauri",
 ]
 
 [workspace.dependencies]
@@ -65,10 +44,10 @@ yaak-ws = { path = "crates/yaak-ws" }
 yaak-api = { path = "crates/yaak-api" }
 
 # Internal crates - Tauri-specific
-yaak-fonts = { path = "crates-tauri/yaak-fonts" }
-yaak-license = { path = "crates-tauri/yaak-license" }
-yaak-mac-window = { path = "crates-tauri/yaak-mac-window" }
-yaak-tauri-utils = { path = "crates-tauri/yaak-tauri-utils" }
+yaak-fonts = { path = "crates/yaak-fonts" }
+yaak-license = { path = "crates/yaak-license" }
+yaak-mac-window = { path = "crates/yaak-mac-window" }
+yaak-tauri-utils = { path = "crates/yaak-tauri-utils" }
 
 [profile.release]
 strip = false

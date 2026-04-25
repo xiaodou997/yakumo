@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "yaak-app",
+      "name": "yakumo-app",
       "dependencies": {
         "@codemirror/lang-go": "^6.0.1",
         "@codemirror/lang-java": "^6.0.2",
@@ -22,19 +22,19 @@
         "vitest": "^4.1.5",
       },
     },
-    "crates-tauri/yaak-app": {
+    "src-tauri": {
       "name": "@yaakapp-internal/tauri",
       "version": "1.0.0",
     },
-    "crates-tauri/yaak-fonts": {
+    "crates/yaak-fonts": {
       "name": "@yaakapp-internal/fonts",
       "version": "1.0.0",
     },
-    "crates-tauri/yaak-license": {
+    "crates/yaak-license": {
       "name": "@yaakapp-internal/license",
       "version": "1.0.0",
     },
-    "crates-tauri/yaak-mac-window": {
+    "crates/yaak-mac-window": {
       "name": "@yaakapp-internal/mac-window",
       "version": "1.0.0",
     },
@@ -349,7 +349,7 @@
       "name": "@yaak/themes-yaak",
       "version": "0.1.0",
     },
-    "src-web": {
+    "src": {
       "name": "@yaakapp/app",
       "version": "1.0.0",
       "dependencies": {
@@ -1091,15 +1091,15 @@
 
     "@yaakapp-internal/crypto": ["@yaakapp-internal/crypto@workspace:crates/yaak-crypto"],
 
-    "@yaakapp-internal/fonts": ["@yaakapp-internal/fonts@workspace:crates-tauri/yaak-fonts"],
+    "@yaakapp-internal/fonts": ["@yaakapp-internal/fonts@workspace:crates/yaak-fonts"],
 
     "@yaakapp-internal/git": ["@yaakapp-internal/git@workspace:crates/yaak-git"],
 
     "@yaakapp-internal/lib": ["@yaakapp-internal/lib@workspace:packages/common-lib"],
 
-    "@yaakapp-internal/license": ["@yaakapp-internal/license@workspace:crates-tauri/yaak-license"],
+    "@yaakapp-internal/license": ["@yaakapp-internal/license@workspace:crates/yaak-license"],
 
-    "@yaakapp-internal/mac-window": ["@yaakapp-internal/mac-window@workspace:crates-tauri/yaak-mac-window"],
+    "@yaakapp-internal/mac-window": ["@yaakapp-internal/mac-window@workspace:crates/yaak-mac-window"],
 
     "@yaakapp-internal/models": ["@yaakapp-internal/models@workspace:crates/yaak-models"],
 
@@ -1111,7 +1111,7 @@
 
     "@yaakapp-internal/sync": ["@yaakapp-internal/sync@workspace:crates/yaak-sync"],
 
-    "@yaakapp-internal/tauri": ["@yaakapp-internal/tauri@workspace:crates-tauri/yaak-app"],
+    "@yaakapp-internal/tauri": ["@yaakapp-internal/tauri@workspace:src-tauri"],
 
     "@yaakapp-internal/templates": ["@yaakapp-internal/templates@workspace:crates/yaak-templates"],
 
@@ -1119,7 +1119,7 @@
 
     "@yaakapp/api": ["@yaakapp/api@workspace:packages/plugin-runtime-types"],
 
-    "@yaakapp/app": ["@yaakapp/app@workspace:src-web"],
+    "@yaakapp/app": ["@yaakapp/app@workspace:src"],
 
     "@yaakapp/cli": ["@yaakapp/cli@0.5.2", "https://registry.npmmirror.com/@yaakapp/cli/-/cli-0.5.2.tgz", { "optionalDependencies": { "@yaakapp/cli-darwin-arm64": "0.5.2", "@yaakapp/cli-darwin-x64": "0.5.2", "@yaakapp/cli-linux-arm64": "0.5.2", "@yaakapp/cli-linux-x64": "0.5.2", "@yaakapp/cli-win32-arm64": "0.5.2", "@yaakapp/cli-win32-x64": "0.5.2" }, "bin": { "yaak": "bin/cli.js", "yaakcli": "bin/cli.js" } }, "sha512-ikMm987jcn7eAAGOXEeePd0viPavudjSArJhHX1NTWy0d3NnaS9m0WMvPP/rsbjKwvLnhNLP+JHfPvqm829hmw=="],
 

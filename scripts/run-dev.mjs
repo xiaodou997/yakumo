@@ -41,7 +41,7 @@ const args = [
   "dev",
   "--no-watch",
   "--config",
-  "crates-tauri/yaak-app/tauri.development.conf.json",
+  "src-tauri/tauri.development.conf.json",
   "--config",
   config,
   ...additionalArgs,

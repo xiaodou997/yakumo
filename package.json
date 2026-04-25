@@ -6,20 +6,10 @@
     "type": "git"
   },
   "workspaces": [
-    "packages/common-lib",
-    "crates-tauri/yaak-app",
-    "crates-tauri/yaak-fonts",
-    "crates-tauri/yaak-license",
-    "crates-tauri/yaak-mac-window",
-    "crates/yaak-crypto",
-    "crates/yaak-git",
-    "crates/yaak-models",
-    "crates/yaak-features",
-    "crates/yaak-sse",
-    "crates/yaak-sync",
-    "crates/yaak-templates",
-    "crates/yaak-ws",
-    "src-web"
+    "packages/*",
+    "src-tauri",
+    "crates/*",
+    "src"
   ],
   "scripts": {
     "init": "bun install && bun run bootstrap",
@@ -31,8 +21,8 @@
     "build": "bun run bootstrap:install-wasm-pack && bun run --workspaces --if-present --sequential build",
     "test": "bun run --workspaces --if-present test",
     "icons": "bun run icons:dev && bun run icons:release",
-    "icons:dev": "tauri icon crates-tauri/yaak-app/icons/icon-dev.png --output crates-tauri/yaak-app/icons/dev",
-    "icons:release": "tauri icon crates-tauri/yaak-app/icons/icon.png --output crates-tauri/yaak-app/icons/release",
+    "icons:dev": "tauri icon src-tauri/icons/icon-dev.png --output src-tauri/icons/dev",
+    "icons:release": "tauri icon src-tauri/icons/icon.png --output src-tauri/icons/release",
     "bootstrap": "bun run bootstrap:install-wasm-pack && bun run bootstrap:build && bun run bootstrap:vendor",
     "bootstrap:install-wasm-pack": "node scripts/install-wasm-pack.cjs",
     "bootstrap:build": "bun run build",

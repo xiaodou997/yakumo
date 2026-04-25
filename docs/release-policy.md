@@ -86,5 +86,5 @@ git push origin v1.0.0
 - `.github/workflows/release-app.yml`
 - `.github/workflows/release-cli-npm.yml`
 - `.github/workflows/release-api-npm.yml`
-- `crates-tauri/yaak-app/tauri.release.conf.json`
+- `src-tauri/tauri.release.conf.json`
 - `npm/prepare-publish.js`

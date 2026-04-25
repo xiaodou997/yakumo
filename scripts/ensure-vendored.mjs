@@ -10,7 +10,7 @@ const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const checks = [
   {
     name: "Protocol Buffers includes",
-    path: "crates-tauri/yaak-app/vendored/protoc/include",
+    path: "src-tauri/vendored/protoc/include",
     command: ["bun", "run", "vendor:vendor-protoc"],
   },
 ];

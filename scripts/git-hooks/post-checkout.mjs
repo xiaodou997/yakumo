@@ -114,8 +114,7 @@ const tauriWorktreeConfig = {
 
 const tauriConfigPath = path.join(
   process.cwd(),
-  "crates-tauri",
-  "yaak-app",
+  "src-tauri",
   "tauri.worktree.conf.json",
 );
 fs.writeFileSync(tauriConfigPath, JSON.stringify(tauriWorktreeConfig, null, 2) + "\n", "utf8");

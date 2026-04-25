@@ -8,7 +8,7 @@
 
 - 第一阶段工具链迁移已经基本完成：主入口是 `bun run dev`，包管理器是 Bun，前端构建使用官方 Vite。
 - 当前仍保留 Yaak 的应用名、Tauri identifier、deep link scheme、crate/package 名称，避免第一阶段破坏启动和插件系统。
-- 插件运行时仍使用 vendored Node：`crates-tauri/yaak-app/vendored/node/yaaknode`。
+- 插件运行时仍使用 vendored Node：`src-tauri/vendored/node/yaaknode`。
 - 后续品牌统一目标是 `Yakumo API`，已记录在 `TODO.md`。
 
 ### 工作原则
@@ -82,8 +82,8 @@ rg "vite-plus|@voidzero|\bvp\b|npm run|npm install|run-s|run-p|package-lock"
 - `scripts/run-dev.mjs`
 - `scripts/run-workspaces-dev.mjs`
 - `scripts/ensure-vendored.mjs`
-- `crates-tauri/yaak-app/tauri.conf.json`
-- `crates-tauri/yaak-app/tauri.development.conf.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/tauri.development.conf.json`
 
 **要确认的行为**：
 
@@ -117,8 +117,8 @@ bun run dev
 - `package.json`
 - `crates/yaak-templates/package.json`
 - `crates/yaak-templates/build-wasm.cjs`
-- `src-web/package.json`
-- `src-web/vite.config.ts`
+- `src/package.json`
+- `src/vite.config.ts`
 
 **验收命令**：
 
@@ -147,7 +147,7 @@ bun run build
 
 - `biome.json`
 - `package.json`
-- `src-web/package.json`
+- `src/package.json`
 
 **建议策略**：
 
@@ -235,10 +235,10 @@ bun run build
 
 **重点文件**：
 
-- `crates-tauri/yaak-app/tauri.conf.json`
-- `crates-tauri/yaak-app/tauri.development.conf.json`
-- `crates-tauri/yaak-app/Capabilities` 或 `capabilities` 目录
-- Rust 中处理 deep link 的文件，例如 `crates-tauri/yaak-app/src/uri_scheme.rs`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/tauri.development.conf.json`
+- `src-tauri/Capabilities` 或 `capabilities` 目录
+- Rust 中处理 deep link 的文件，例如 `src-tauri/src/uri_scheme.rs`
 - macOS entitlement / plist 相关文件
 
 **建议修改项**：
@@ -272,8 +272,8 @@ cargo check -p yaak-app
 
 **重点目录**：
 
-- `crates-tauri/yaak-app/icons/`
-- `src-web` 中引用图标或 logo 的组件
+- `src-tauri/icons/`
+- `src` 中引用图标或 logo 的组件
 - README 中的图片链接
 
 **建议步骤**：
@@ -308,7 +308,7 @@ bun run icons
 - `crates/yaak-plugins/src/manager.rs`
 - `packages/plugin-runtime/package.json`
 - `packages/plugin-runtime/src/`
-- `crates-tauri/yaak-app/vendored/plugin-runtime/index.cjs`
+- `src-tauri/vendored/plugin-runtime/index.cjs`
 
 **要记录的问题**：
 
@@ -352,7 +352,7 @@ YAKUMO_PLUGIN_RUNTIME=bun bun run dev
 - `scripts/vendor-bun.cjs`
 - `scripts/ensure-vendored.mjs`
 - `package.json`
-- `crates-tauri/yaak-app/tauri.conf.json`
+- `src-tauri/tauri.conf.json`
 
 **要支持的平台**：
 

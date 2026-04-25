@@ -8,7 +8,7 @@
       "!dist",
       "!flatpak",
       "!npm",
-      "!crates-tauri/yaak-app/vendored",
+      "!src-tauri/vendored",
       "!crates/yaak-templates/pkg",
       "!crates/yaak-templates/build-wasm.cjs",
       "!scripts/install-wasm-pack.cjs",

@@ -791,7 +791,7 @@ sha1 = "0.10"             # SHA1（OAuth 1.0 需要）
 
 关键文件：
 ├── crates/yaak-plugins/src/        # 原 crate
-├── crates-tauri/yaak-app/src/       # Tauri 应用
+├── src-tauri/src/       # Tauri 应用
 ├── plugins/                         # 37 个插件源码
 ├── packages/plugin-runtime/         # 运行时
 ├── vendored/                        # 打包资源
