@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Workspace } from "@yaakapp-internal/models";
+import type { Workspace } from "@yakumo-internal/models";
 import type {
   CallWorkspaceActionRequest,
   GetWorkspaceActionsResponse,

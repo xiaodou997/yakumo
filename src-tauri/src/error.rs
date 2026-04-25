@@ -5,38 +5,38 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    TemplateError(#[from] yaak_templates::error::Error),
+    TemplateError(#[from] yakumo_templates::error::Error),
 
     #[error(transparent)]
-    ModelError(#[from] yaak_models::error::Error),
+    ModelError(#[from] yakumo_models::error::Error),
 
     #[error(transparent)]
-    SyncError(#[from] yaak_sync::error::Error),
+    SyncError(#[from] yakumo_sync::error::Error),
 
     #[error(transparent)]
-    CryptoError(#[from] yaak_crypto::error::Error),
+    CryptoError(#[from] yakumo_crypto::error::Error),
 
     #[error(transparent)]
-    HttpError(#[from] yaak_http::error::Error),
+    HttpError(#[from] yakumo_http::error::Error),
 
     #[error(transparent)]
-    GitError(#[from] yaak_git::error::Error),
+    GitError(#[from] yakumo_git::error::Error),
 
     #[error(transparent)]
     TokioTimeoutElapsed(#[from] tokio::time::error::Elapsed),
 
     #[error(transparent)]
-    WebsocketError(#[from] yaak_ws::error::Error),
+    WebsocketError(#[from] yakumo_ws::error::Error),
 
     #[cfg(feature = "license")]
     #[error(transparent)]
-    LicenseError(#[from] yaak_license::error::Error),
+    LicenseError(#[from] yakumo_license::error::Error),
 
     #[error(transparent)]
-    PluginError(#[from] yaak_features::error::Error),
+    PluginError(#[from] yakumo_features::error::Error),
 
     #[error(transparent)]
-    ApiError(#[from] yaak_api::Error),
+    ApiError(#[from] yakumo_api::Error),
 
     #[error(transparent)]
     ClipboardError(#[from] tauri_plugin_clipboard_manager::Error),

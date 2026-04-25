@@ -1,5 +1,5 @@
-import { useGit } from "@yaakapp-internal/git";
-import type { WorkspaceMeta } from "@yaakapp-internal/models";
+import { useGit } from "@yakumo-internal/git";
+import type { WorkspaceMeta } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { HTMLAttributes } from "react";
@@ -636,7 +636,7 @@ function SetupGitDropdown({
             const confirmed = await showConfirm({
               id: "hide-git-init-prompt",
               title: "Hide Git Setup",
-              description: "You can initialize a git repo outside of Yaak to bring this back",
+              description: "You can initialize a git repo outside of Yakumo to bring this back",
             });
             if (confirmed) {
               await setHidden((prev) => ({ ...prev, [workspaceId]: true }));

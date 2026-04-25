@@ -1,4 +1,4 @@
-import { changeModelStoreWorkspace } from "@yaakapp-internal/models";
+import { changeModelStoreWorkspace } from "@yakumo-internal/models";
 import { useEffect } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { activeWorkspaceIdAtom } from "./useActiveWorkspace";

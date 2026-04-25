@@ -11,7 +11,7 @@ const checks = [
   {
     name: "Protocol Buffers includes",
     path: "src-tauri/vendored/protoc/include",
-    command: ["bun", "run", "vendor:vendor-protoc"],
+    command: ["bun", "run", "vendor:protoc"],
   },
 ];
 

@@ -1,4 +1,4 @@
-import { getModel } from "@yaakapp-internal/models";
+import { getModel } from "@yakumo-internal/models";
 import type { FolderSettingsTab } from "../components/FolderSettingsDialog";
 import { FolderSettingsDialog } from "../components/FolderSettingsDialog";
 import { showDialog } from "../lib/dialog";

@@ -1,5 +1,5 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { memo, useCallback, useMemo } from "react";
 import { showPrompt } from "../lib/prompt";

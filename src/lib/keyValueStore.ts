@@ -1,5 +1,5 @@
-import type { KeyValue } from "@yaakapp-internal/models";
-import { createGlobalModel, keyValuesAtom, patchModel } from "@yaakapp-internal/models";
+import type { KeyValue } from "@yakumo-internal/models";
+import { createGlobalModel, keyValuesAtom, patchModel } from "@yakumo-internal/models";
 import { jotaiStore } from "./jotai";
 
 export async function setKeyValue<T>({

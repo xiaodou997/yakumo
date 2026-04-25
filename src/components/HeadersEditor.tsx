@@ -1,4 +1,4 @@
-import type { HttpRequestHeader } from "@yaakapp-internal/models";
+import type { HttpRequestHeader } from "@yakumo-internal/models";
 import type { GenericCompletionOption } from "@yakumo/features";
 import { charsets } from "../lib/data/charsets";
 import { connections } from "../lib/data/connections";

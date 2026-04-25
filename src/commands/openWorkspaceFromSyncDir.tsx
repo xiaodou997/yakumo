@@ -1,4 +1,4 @@
-import { applySync, calculateSyncFsOnly } from "@yaakapp-internal/sync";
+import { applySync, calculateSyncFsOnly } from "@yakumo-internal/sync";
 import { createFastMutation } from "../hooks/useFastMutation";
 import { showSimpleAlert } from "../lib/alert";
 import { router } from "../lib/router";

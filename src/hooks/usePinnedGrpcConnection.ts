@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { GrpcConnection, GrpcEvent } from "@yaakapp-internal/models";
+import type { GrpcConnection, GrpcEvent } from "@yakumo-internal/models";
 import {
   grpcConnectionsAtom,
   grpcEventsAtom,
   mergeModelsInStore,
   replaceModelsInStore,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { fireAndForget } from "../lib/fireAndForget";

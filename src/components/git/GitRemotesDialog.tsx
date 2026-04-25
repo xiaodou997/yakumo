@@ -1,4 +1,4 @@
-import { useGit } from "@yaakapp-internal/git";
+import { useGit } from "@yakumo-internal/git";
 import { showDialog } from "../../lib/dialog";
 import { Button } from "../core/Button";
 import { IconButton } from "../core/IconButton";

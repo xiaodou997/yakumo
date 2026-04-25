@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse } from "@yaakapp-internal/models";
+import type { HttpRequest, HttpResponse } from "@yakumo-internal/models";
 import { getActiveCookieJar } from "../hooks/useActiveCookieJar";
 import { invokeCmd } from "./tauri";
 

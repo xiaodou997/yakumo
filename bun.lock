@@ -22,59 +22,55 @@
         "vitest": "^4.1.5",
       },
     },
-    "crates/yaak-crypto": {
-      "name": "@yaakapp-internal/crypto",
+    "crates/yakumo-crypto": {
+      "name": "@yakumo-internal/crypto",
       "version": "1.0.0",
     },
-    "crates/yaak-features": {
+    "crates/yakumo-features": {
       "name": "@yakumo/features",
       "version": "1.0.0",
     },
-    "crates/yaak-fonts": {
-      "name": "@yaakapp-internal/fonts",
+    "crates/yakumo-fonts": {
+      "name": "@yakumo-internal/fonts",
       "version": "1.0.0",
     },
-    "crates/yaak-git": {
-      "name": "@yaakapp-internal/git",
+    "crates/yakumo-git": {
+      "name": "@yakumo-internal/git",
       "version": "1.0.0",
     },
-    "crates/yaak-license": {
-      "name": "@yaakapp-internal/license",
+    "crates/yakumo-license": {
+      "name": "@yakumo-internal/license",
       "version": "1.0.0",
     },
-    "crates/yaak-mac-window": {
-      "name": "@yaakapp-internal/mac-window",
+    "crates/yakumo-mac-window": {
+      "name": "@yakumo-internal/mac-window",
       "version": "1.0.0",
     },
-    "crates/yaak-models": {
-      "name": "@yaakapp-internal/models",
+    "crates/yakumo-models": {
+      "name": "@yakumo-internal/models",
       "version": "1.0.0",
     },
-    "crates/yaak-sse": {
-      "name": "@yaakapp-internal/sse",
+    "crates/yakumo-sse": {
+      "name": "@yakumo-internal/sse",
       "version": "1.0.0",
     },
-    "crates/yaak-sync": {
-      "name": "@yaakapp-internal/sync",
+    "crates/yakumo-sync": {
+      "name": "@yakumo-internal/sync",
       "version": "1.0.0",
     },
-    "crates/yaak-templates": {
-      "name": "@yaakapp-internal/templates",
+    "crates/yakumo-templates": {
+      "name": "@yakumo-internal/templates",
       "version": "1.0.0",
       "devDependencies": {
         "rimraf": "^6.1.2",
       },
     },
-    "crates/yaak-ws": {
-      "name": "@yaakapp-internal/ws",
-      "version": "1.0.0",
-    },
-    "packages/common-lib": {
-      "name": "@yaakapp-internal/lib",
+    "crates/yakumo-ws": {
+      "name": "@yakumo-internal/ws",
       "version": "1.0.0",
     },
     "src": {
-      "name": "@yaakapp/app",
+      "name": "@yakumo/app",
       "version": "1.0.0",
       "dependencies": {
         "@codemirror/commands": "^6.8.1",
@@ -173,7 +169,7 @@
       },
     },
     "src-tauri": {
-      "name": "@yaakapp-internal/tauri",
+      "name": "@yakumo-internal/tauri",
       "version": "1.0.0",
     },
   },
@@ -703,33 +699,31 @@
 
     "@xobotyi/scrollbar-width": ["@xobotyi/scrollbar-width@1.9.5", "https://registry.npmmirror.com/@xobotyi/scrollbar-width/-/scrollbar-width-1.9.5.tgz", {}, "sha512-N8tkAACJx2ww8vFMneJmaAgmjAG1tnVBZJRLRcx061tmsLRZHSEZSLuGWnwPtunsSLvSqXQ2wfp7Mgqg1I+2dQ=="],
 
-    "@yaakapp-internal/crypto": ["@yaakapp-internal/crypto@workspace:crates/yaak-crypto"],
+    "@yakumo-internal/crypto": ["@yakumo-internal/crypto@workspace:crates/yakumo-crypto"],
 
-    "@yaakapp-internal/fonts": ["@yaakapp-internal/fonts@workspace:crates/yaak-fonts"],
+    "@yakumo-internal/fonts": ["@yakumo-internal/fonts@workspace:crates/yakumo-fonts"],
 
-    "@yaakapp-internal/git": ["@yaakapp-internal/git@workspace:crates/yaak-git"],
+    "@yakumo-internal/git": ["@yakumo-internal/git@workspace:crates/yakumo-git"],
 
-    "@yaakapp-internal/lib": ["@yaakapp-internal/lib@workspace:packages/common-lib"],
+    "@yakumo-internal/license": ["@yakumo-internal/license@workspace:crates/yakumo-license"],
 
-    "@yaakapp-internal/license": ["@yaakapp-internal/license@workspace:crates/yaak-license"],
+    "@yakumo-internal/mac-window": ["@yakumo-internal/mac-window@workspace:crates/yakumo-mac-window"],
 
-    "@yaakapp-internal/mac-window": ["@yaakapp-internal/mac-window@workspace:crates/yaak-mac-window"],
+    "@yakumo-internal/models": ["@yakumo-internal/models@workspace:crates/yakumo-models"],
 
-    "@yaakapp-internal/models": ["@yaakapp-internal/models@workspace:crates/yaak-models"],
+    "@yakumo-internal/sse": ["@yakumo-internal/sse@workspace:crates/yakumo-sse"],
 
-    "@yaakapp-internal/sse": ["@yaakapp-internal/sse@workspace:crates/yaak-sse"],
+    "@yakumo-internal/sync": ["@yakumo-internal/sync@workspace:crates/yakumo-sync"],
 
-    "@yaakapp-internal/sync": ["@yaakapp-internal/sync@workspace:crates/yaak-sync"],
+    "@yakumo-internal/tauri": ["@yakumo-internal/tauri@workspace:src-tauri"],
 
-    "@yaakapp-internal/tauri": ["@yaakapp-internal/tauri@workspace:src-tauri"],
+    "@yakumo-internal/templates": ["@yakumo-internal/templates@workspace:crates/yakumo-templates"],
 
-    "@yaakapp-internal/templates": ["@yaakapp-internal/templates@workspace:crates/yaak-templates"],
+    "@yakumo-internal/ws": ["@yakumo-internal/ws@workspace:crates/yakumo-ws"],
 
-    "@yaakapp-internal/ws": ["@yaakapp-internal/ws@workspace:crates/yaak-ws"],
+    "@yakumo/app": ["@yakumo/app@workspace:src"],
 
-    "@yaakapp/app": ["@yaakapp/app@workspace:src"],
-
-    "@yakumo/features": ["@yakumo/features@workspace:crates/yaak-features"],
+    "@yakumo/features": ["@yakumo/features@workspace:crates/yakumo-features"],
 
     "acorn": ["acorn@8.15.0", "https://registry.npmmirror.com/acorn/-/acorn-8.15.0.tgz", { "bin": "bin/acorn" }, "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg=="],
 

@@ -1,5 +1,5 @@
 import { type } from "@tauri-apps/plugin-os";
-import { settingsAtom } from "@yaakapp-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";

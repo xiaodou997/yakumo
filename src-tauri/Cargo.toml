@@ -1,5 +1,5 @@
 [package]
-name = "yaak-app"
+name = "yakumo-app"
 version = "0.0.0"
 edition = "2024"
 authors = ["Gregory Schier"]
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "lib"]
 cargo-clippy = []
 default = []
 updater = []
-license = ["yaak-license"]
+license = ["yakumo-license"]
 
 [build-dependencies]
 tauri-build = { version = "2.5.3", features = [] }
@@ -68,22 +68,22 @@ url = "2"
 tokio-util = { version = "0.7", features = ["codec"] }
 ts-rs = { workspace = true }
 uuid = "1.12.1"
-yaak-api = { workspace = true }
-yaak-common = { workspace = true }
-yaak-tauri-utils = { workspace = true }
-yaak-core = { workspace = true }
-yaak = { workspace = true }
-yaak-crypto = { workspace = true }
-yaak-fonts = { workspace = true }
-yaak-git = { workspace = true }
-yaak-grpc = { workspace = true }
-yaak-http = { workspace = true }
-yaak-license = { workspace = true, optional = true }
-yaak-mac-window = { workspace = true }
-yaak-models = { workspace = true }
-yaak-features = { workspace = true }
-yaak-sse = { workspace = true }
-yaak-sync = { workspace = true }
-yaak-templates = { workspace = true }
-yaak-tls = { workspace = true }
-yaak-ws = { workspace = true }
+yakumo-api = { workspace = true }
+yakumo-common = { workspace = true }
+yakumo-tauri-utils = { workspace = true }
+yakumo-core = { workspace = true }
+yakumo = { workspace = true }
+yakumo-crypto = { workspace = true }
+yakumo-fonts = { workspace = true }
+yakumo-git = { workspace = true }
+yakumo-grpc = { workspace = true }
+yakumo-http = { workspace = true }
+yakumo-license = { workspace = true, optional = true }
+yakumo-mac-window = { workspace = true }
+yakumo-models = { workspace = true }
+yakumo-features = { workspace = true }
+yakumo-sse = { workspace = true }
+yakumo-sync = { workspace = true }
+yakumo-templates = { workspace = true }
+yakumo-tls = { workspace = true }
+yakumo-ws = { workspace = true }

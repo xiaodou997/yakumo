@@ -1,4 +1,4 @@
-import type { HttpRequestHeader } from "@yaakapp-internal/models";
+import type { HttpRequestHeader } from "@yakumo-internal/models";
 import { invokeCmd } from "./tauri";
 
 /**

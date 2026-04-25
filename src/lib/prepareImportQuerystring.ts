@@ -1,4 +1,4 @@
-import type { HttpUrlParameter } from "@yaakapp-internal/models";
+import type { HttpUrlParameter } from "@yakumo-internal/models";
 import { generateId } from "./generateId";
 
 export function prepareImportQuerystring(

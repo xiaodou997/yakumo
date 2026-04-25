@@ -1,4 +1,4 @@
-import { foldersAtom } from "@yaakapp-internal/models";
+import { foldersAtom } from "@yakumo-internal/models";
 import { atom } from "jotai";
 import { activeFolderIdAtom } from "./useActiveFolderId";
 

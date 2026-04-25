@@ -1,0 +1,22 @@
+[package]
+name = "yakumo"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+log = { workspace = true }
+md5 = "0.8.0"
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
+yakumo-http = { workspace = true }
+yakumo-crypto = { workspace = true }
+yakumo-models = { workspace = true }
+yakumo-features = { workspace = true }
+yakumo-templates = { workspace = true }
+yakumo-tls = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

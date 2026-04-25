@@ -16,10 +16,10 @@ This project is derived from the open-source Yaak project and keeps the original
 - Create and send HTTP, GraphQL, gRPC, WebSocket, and SSE requests.
 - Organize requests with workspaces, folders, environments, cookie jars, and sync metadata.
 - Use built-in auth, template functions, importers, response tooling, and request actions.
-- Encrypt workspace secrets using the operating-system keychain through `yaak-crypto`.
+- Encrypt workspace secrets using the operating-system keychain through `yakumo-crypto`.
 - Use `yaku` for schema/list/show/create/update/delete workflows and HTTP send automation.
 
-For the implementation status matrix, see [`FEATURES.md`](FEATURES.md). For the active refactor roadmap, see [`docs/yakumo-refactor-roadmap.md`](docs/yakumo-refactor-roadmap.md).
+For the implementation status matrix, see [`FEATURES.md`](FEATURES.md). For active planning and release rules, see [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Development
 
@@ -28,6 +28,7 @@ bun install
 bun run typecheck
 bun run lint
 bun run build
+bun run test
 cargo check --locked --workspace --all-targets
 ```
 

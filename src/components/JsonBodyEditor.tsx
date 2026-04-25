@@ -1,6 +1,6 @@
 import { linter } from "@codemirror/lint";
-import type { HttpRequest } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { useCallback, useMemo } from "react";
 import { fireAndForget } from "../lib/fireAndForget";
 import { useKeyValue } from "../hooks/useKeyValue";

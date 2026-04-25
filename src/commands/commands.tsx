@@ -1,5 +1,5 @@
-import { createWorkspaceModel, type Folder, modelTypeLabel } from "@yaakapp-internal/models";
-import { applySync, calculateSync } from "@yaakapp-internal/sync";
+import { createWorkspaceModel, type Folder, modelTypeLabel } from "@yakumo-internal/models";
+import { applySync, calculateSync } from "@yakumo-internal/sync";
 import { Banner } from "../components/core/Banner";
 import { Button } from "../components/core/Button";
 import { InlineCode } from "../components/core/InlineCode";

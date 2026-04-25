@@ -1,11 +1,11 @@
-//! Tauri-specific extensions for yaak-git.
+//! Tauri-specific extensions for yakumo-git.
 //!
 //! This module provides the Tauri commands for git functionality.
 
 use crate::error::Result;
 use std::path::{Path, PathBuf};
 use tauri::command;
-use yaak_git::{
+use yakumo_git::{
     BranchDeleteResult, CloneResult, GitCommit, GitRemote, GitStatusSummary, PullResult,
     PushResult, git_add, git_add_credential, git_add_remote, git_checkout_branch, git_clone,
     git_commit, git_create_branch, git_delete_branch, git_delete_remote_branch, git_fetch_all,

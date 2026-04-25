@@ -1,5 +1,5 @@
-import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import { foldersAtom } from "@yaakapp-internal/models";
+import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { foldersAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties, ReactNode } from "react";

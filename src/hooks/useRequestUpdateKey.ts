@@ -1,5 +1,5 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import type { ModelPayload } from "@yaakapp-internal/models";
+import type { ModelPayload } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { generateId } from "../lib/generateId";
 import { jotaiStore } from "../lib/jotai";

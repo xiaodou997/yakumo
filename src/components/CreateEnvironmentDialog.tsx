@@ -1,4 +1,4 @@
-import { createWorkspaceModel } from "@yaakapp-internal/models";
+import { createWorkspaceModel } from "@yakumo-internal/models";
 import { useState } from "react";
 import { useToggle } from "../hooks/useToggle";
 import { ColorIndicator } from "./ColorIndicator";

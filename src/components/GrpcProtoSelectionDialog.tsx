@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import type { GrpcRequest } from "@yaakapp-internal/models";
+import type { GrpcRequest } from "@yakumo-internal/models";
 import { useActiveRequest } from "../hooks/useActiveRequest";
 import { useGrpc } from "../hooks/useGrpc";
 import { useGrpcProtoFiles } from "../hooks/useGrpcProtoFiles";

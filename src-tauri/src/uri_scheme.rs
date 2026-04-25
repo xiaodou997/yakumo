@@ -5,15 +5,15 @@ use std::collections::HashMap;
 use std::fs;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use yaak_features::events::{Color, ShowToastRequest};
-use yaak_models::util::generate_id;
+use yakumo_features::events::{Color, ShowToastRequest};
+use yakumo_models::util::generate_id;
 
 pub(crate) async fn handle_deep_link<R: Runtime>(
     app_handle: &AppHandle<R>,
     url: &Url,
 ) -> Result<()> {
     let command = url.domain().unwrap_or_default();
-    info!("Yaak URI scheme invoked {}?{}", command, url.query().unwrap_or_default());
+    info!("Yakumo URI scheme invoked {}?{}", command, url.query().unwrap_or_default());
 
     let query_map: HashMap<String, String> = url.query_pairs().into_owned().collect();
     let windows = app_handle.webview_windows();
@@ -54,7 +54,7 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
 
                 let app_version = app_handle.package_info().version.to_string();
                 let http_client =
-                    yaak_api::yaak_api_client(yaak_api::ApiClientKind::App, &app_version)?;
+                    yakumo_api::yakumo_api_client(yakumo_api::ApiClientKind::App, &app_version)?;
                 let resp = http_client.get(file_url).send().await?;
                 let json = resp.bytes().await?;
                 let p = app_handle

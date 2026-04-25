@@ -1,5 +1,5 @@
-import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import { createWorkspaceModel } from "@yaakapp-internal/models";
+import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { createWorkspaceModel } from "@yakumo-internal/models";
 import { activeRequestAtom } from "../hooks/useActiveRequest";
 import { jotaiStore } from "./jotai";
 import { router } from "./router";

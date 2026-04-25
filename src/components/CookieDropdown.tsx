@@ -1,4 +1,4 @@
-import { cookieJarsAtom, patchModel } from "@yaakapp-internal/models";
+import { cookieJarsAtom, patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { memo, useMemo } from "react";
 import { useActiveCookieJar } from "../hooks/useActiveCookieJar";

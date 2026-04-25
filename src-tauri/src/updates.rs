@@ -11,10 +11,10 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use tokio::time::sleep;
 use ts_rs::TS;
-use yaak_models::util::generate_id;
+use yakumo_models::util::generate_id;
 
 use url::Url;
-use yaak_api::get_system_proxy_url;
+use yakumo_api::get_system_proxy_url;
 
 use crate::error::Error::GenericError;
 use crate::is_dev;
@@ -24,7 +24,7 @@ const MAX_UPDATE_CHECK_HOURS_BETA: u64 = 3;
 const MAX_UPDATE_CHECK_HOURS_ALPHA: u64 = 1;
 
 // Create updater struct
-pub struct YaakUpdater {
+pub struct YakumoUpdater {
     last_check: Option<Instant>,
 }
 
@@ -61,7 +61,7 @@ pub enum UpdateTrigger {
     User,
 }
 
-impl YaakUpdater {
+impl YakumoUpdater {
     pub fn new() -> Self {
         Self { last_check: None }
     }
@@ -383,7 +383,7 @@ pub fn ensure_download_path<R: Runtime>(
 
     // Generate name based on signature
     let sig_digest = md5::compute(&update.signature);
-    let name = format!("yaak-{}-{:x}", update.version, sig_digest);
+    let name = format!("yakumo-{}-{:x}", update.version, sig_digest);
     let dl_path = base_dir.join(name);
 
     Ok(dl_path)

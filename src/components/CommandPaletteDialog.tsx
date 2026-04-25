@@ -1,4 +1,4 @@
-import { workspacesAtom } from "@yaakapp-internal/models";
+import { workspacesAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { fuzzyFilter } from "fuzzbunny";
 import { useAtomValue } from "jotai";
@@ -167,9 +167,9 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
       if (appInfo.cliVersion != null) {
         commands.push({
           key: "request.copy_cli_send",
-          searchText: `copy cli send yaak request send ${activeRequest.id}`,
+          searchText: `copy cli send yaku request send ${activeRequest.id}`,
           label: "Copy CLI Send Command",
-          onSelect: () => copyToClipboard(`yaak request send ${activeRequest.id}`),
+          onSelect: () => copyToClipboard(`yaku request send ${activeRequest.id}`),
         });
       }
       httpRequestActions.forEach((a, i) => {

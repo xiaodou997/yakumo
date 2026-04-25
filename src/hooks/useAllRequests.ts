@@ -2,7 +2,7 @@ import {
   grpcRequestsAtom,
   httpRequestsAtom,
   websocketRequestsAtom,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 
 export const allRequestsAtom = atom((get) => [

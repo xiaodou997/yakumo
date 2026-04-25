@@ -1,4 +1,4 @@
-import type { HttpResponse, HttpResponseState } from "@yaakapp-internal/models";
+import type { HttpResponse, HttpResponseState } from "@yakumo-internal/models";
 import classNames from "classnames";
 
 interface Props {

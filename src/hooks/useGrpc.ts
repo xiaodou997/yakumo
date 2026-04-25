@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
-import type { GrpcConnection, GrpcRequest } from "@yaakapp-internal/models";
+import type { GrpcConnection, GrpcRequest } from "@yakumo-internal/models";
 import { jotaiStore } from "../lib/jotai";
 import { minPromiseMillis } from "../lib/minPromiseMillis";
 import { invokeCmd } from "../lib/tauri";

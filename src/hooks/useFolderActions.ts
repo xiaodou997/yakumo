@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Folder } from "@yaakapp-internal/models";
+import type { Folder } from "@yakumo-internal/models";
 import type {
   CallFolderActionRequest,
   FolderAction,

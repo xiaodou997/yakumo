@@ -1,4 +1,4 @@
-import { type GrpcRequest, type HttpRequestHeader, patchModel } from "@yaakapp-internal/models";
+import { type GrpcRequest, type HttpRequestHeader, patchModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import type { CSSProperties } from "react";
 import { useCallback, useMemo, useRef } from "react";

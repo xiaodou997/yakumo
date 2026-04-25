@@ -115,12 +115,12 @@ export const en = {
   "settings.interface.optionNewWindow": "Open in new window",
   "settings.interface.personalUseGreeting": "Hey there 👋🏼",
   "settings.interface.personalUseLicenseRequired":
-    "If you’re using Yaak at work, a license is required.",
+    "If you’re using Yakumo at work, a license is required.",
   "settings.interface.personalUseMessage":
-    "Yaak is free for personal projects and learning.",
+    "Yakumo is free for personal projects and learning.",
   "settings.interface.personalUsePurchase": "Purchase a License →",
   "settings.interface.personalUseSupport":
-    "Licenses help keep Yaak independent and sustainable.",
+    "Licenses help keep Yakumo independent and sustainable.",
   "settings.interface.requirePersonalUse": "Personal Use",
   "settings.interface.subtitle":
     "Tweak settings related to the user interface.",
@@ -365,11 +365,11 @@ export const zhCN: typeof en = {
   "settings.interface.optionNewWindow": "在新窗口打开",
   "settings.interface.personalUseGreeting": "你好 👋🏼",
   "settings.interface.personalUseLicenseRequired":
-    "如果你在工作中使用 Yaak，则需要许可证。",
-  "settings.interface.personalUseMessage": "Yaak 可免费用于个人项目和学习。",
+    "如果你在工作中使用 Yakumo，则需要许可证。",
+  "settings.interface.personalUseMessage": "Yakumo 可免费用于个人项目和学习。",
   "settings.interface.personalUsePurchase": "购买许可证 →",
   "settings.interface.personalUseSupport":
-    "许可证能帮助 Yaak 保持独立并持续发展。",
+    "许可证能帮助 Yakumo 保持独立并持续发展。",
   "settings.interface.requirePersonalUse": "个人使用",
   "settings.interface.subtitle": "调整与用户界面相关的设置。",
   "settings.interface.wrapEditorLines": "编辑器自动换行",

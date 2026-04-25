@@ -1,7 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { LicenseCheckStatus } from "@yaakapp-internal/license";
-import { useLicense } from "@yaakapp-internal/license";
-import { settingsAtom } from "@yaakapp-internal/models";
+import type { LicenseCheckStatus } from "@yakumo-internal/license";
+import { useLicense } from "@yakumo-internal/license";
+import { settingsAtom } from "@yakumo-internal/models";
 import { differenceInCalendarDays } from "date-fns";
 import { formatDate } from "date-fns/format";
 import { useAtomValue } from "jotai";

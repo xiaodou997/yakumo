@@ -5,8 +5,8 @@ import type {
   HttpRequest,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
-import { httpResponsesAtom } from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
+import { httpResponsesAtom } from "@yakumo-internal/models";
 import type { GetHttpAuthenticationConfigResponse, JsonPrimitive } from "@yakumo/features";
 import { useAtomValue } from "jotai";
 import { md5 } from "js-md5";

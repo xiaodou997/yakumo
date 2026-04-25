@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useLicense } from "@yaakapp-internal/license";
+import { useLicense } from "@yakumo-internal/license";
 import { useRef } from "react";
 import { openSettings } from "../commands/openSettings";
 import { useCheckForUpdates } from "../hooks/useCheckForUpdates";
@@ -70,14 +70,14 @@ export function SettingsDropdown() {
           rightSlot: (
             <Icon icon="external_link" color="success" className="opacity-60" />
           ),
-          onSelect: () => openUrl("https://yaak.app/pricing"),
+          onSelect: () => openUrl("https://github.com/xiaodou997/yakumo"),
         },
         {
           label: t("settings.menu.installCli"),
           hidden: appInfo.cliVersion != null,
           leftSlot: <Icon icon="square_terminal" />,
           rightSlot: <Icon icon="external_link" color="secondary" />,
-          onSelect: () => openUrl("https://yaak.app/docs/cli"),
+          onSelect: () => openUrl("https://github.com/xiaodou997/yakumo"),
         },
       ]}
     >

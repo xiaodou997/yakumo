@@ -1,4 +1,4 @@
-import type { SyncModel } from "@yaakapp-internal/git";
+import type { SyncModel } from "@yakumo-internal/git";
 import { stringify } from "yaml";
 
 /**

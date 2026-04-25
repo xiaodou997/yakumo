@@ -1,5 +1,5 @@
-import type { Folder, GrpcRequest, WebsocketRequest, Workspace } from "@yaakapp-internal/models";
-import type { HttpRequest } from "@yaakapp-internal/sync";
+import type { Folder, GrpcRequest, WebsocketRequest, Workspace } from "@yakumo-internal/models";
+import type { HttpRequest } from "@yakumo-internal/sync";
 import { router } from "./router.js";
 
 /**

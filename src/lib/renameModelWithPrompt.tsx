@@ -1,5 +1,5 @@
-import type { AnyModel } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { AnyModel } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { InlineCode } from "../components/core/InlineCode";
 import { showPrompt } from "./prompt";
 

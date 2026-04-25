@@ -3,7 +3,7 @@ use chrono::{NaiveDateTime, Utc};
 use log::debug;
 use std::sync::OnceLock;
 use tauri::{AppHandle, Runtime};
-use yaak_models::util::UpdateSource;
+use yakumo_models::util::UpdateSource;
 
 const NAMESPACE: &str = "analytics";
 const NUM_LAUNCHES_KEY: &str = "num_launches";

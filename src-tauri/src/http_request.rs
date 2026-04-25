@@ -7,15 +7,15 @@ use log::warn;
 use std::time::Instant;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 use tokio::sync::watch::Receiver;
-use yaak_crypto::manager::EncryptionManager;
-use yaak_http::cookies::CookieStore;
-use yaak_http::sender::ReqwestSender;
-use yaak_http::transaction::HttpTransaction;
-use yaak_http::types::SendableHttpRequestOptions;
-use yaak_models::blob_manager::BodyChunk;
-use yaak_models::models::{CookieJar, Environment, HttpRequest, HttpResponse, HttpResponseState};
-use yaak_models::util::UpdateSource;
-use yaak_templates::{RenderErrorBehavior, RenderOptions};
+use yakumo_crypto::manager::EncryptionManager;
+use yakumo_http::cookies::CookieStore;
+use yakumo_http::sender::ReqwestSender;
+use yakumo_http::transaction::HttpTransaction;
+use yakumo_http::types::SendableHttpRequestOptions;
+use yakumo_models::blob_manager::BodyChunk;
+use yakumo_models::models::{CookieJar, Environment, HttpRequest, HttpResponse, HttpResponseState};
+use yakumo_models::util::UpdateSource;
+use yakumo_templates::{RenderErrorBehavior, RenderOptions};
 
 /// Context for managing response state during HTTP transactions.
 /// Handles both persisted responses (stored in DB) and ephemeral responses (in-memory only).
@@ -117,7 +117,7 @@ async fn send_http_request_inner<R: Runtime>(
         app_handle.state::<EncryptionManager>().inner().clone(),
         unrendered_request.workspace_id.clone(),
     );
-    let rendered_request = yaak::render::render_http_request(
+    let rendered_request = yakumo::render::render_http_request(
         unrendered_request,
         environment_chain,
         &cb,
@@ -128,7 +128,7 @@ async fn send_http_request_inner<R: Runtime>(
     // Build SendableHttpRequest
     let options = SendableHttpRequestOptions { follow_redirects: true, timeout: None };
     let sendable_request =
-        yaak_http::types::SendableHttpRequest::from_http_request(&rendered_request, options)
+        yakumo_http::types::SendableHttpRequest::from_http_request(&rendered_request, options)
             .await
             .map_err(|e| GenericError(e.to_string()))?;
 
@@ -187,7 +187,7 @@ async fn send_http_request_inner<R: Runtime>(
                 r.body_path = body_path;
                 r.headers = resp_headers
                     .iter()
-                    .map(|(name, value)| yaak_models::models::HttpResponseHeader {
+                    .map(|(name, value)| yakumo_models::models::HttpResponseHeader {
                         name: name.clone(),
                         value: value.clone(),
                     })

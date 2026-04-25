@@ -4,9 +4,9 @@ use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use KeyAndValueRef::{Ascii, Binary};
 use tauri::{Runtime, WebviewWindow};
-use yaak_features::auth;
-use yaak_grpc::{KeyAndValueRef, MetadataMap};
-use yaak_models::models::GrpcRequest;
+use yakumo_features::auth;
+use yakumo_grpc::{KeyAndValueRef, MetadataMap};
+use yakumo_models::models::GrpcRequest;
 
 pub(crate) fn metadata_to_map(metadata: MetadataMap) -> BTreeMap<String, String> {
     let mut entries = BTreeMap::new();

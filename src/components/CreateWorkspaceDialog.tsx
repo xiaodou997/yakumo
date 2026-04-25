@@ -1,6 +1,6 @@
-import { gitMutations } from "@yaakapp-internal/git";
-import type { WorkspaceMeta } from "@yaakapp-internal/models";
-import { createGlobalModel, updateModel } from "@yaakapp-internal/models";
+import { gitMutations } from "@yakumo-internal/git";
+import type { WorkspaceMeta } from "@yakumo-internal/models";
+import { createGlobalModel, updateModel } from "@yakumo-internal/models";
 import { useState } from "react";
 import { router } from "../lib/router";
 import { setupOrConfigureEncryption } from "../lib/setupOrConfigureEncryption";

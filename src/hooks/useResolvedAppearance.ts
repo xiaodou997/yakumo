@@ -1,4 +1,4 @@
-import { settingsAtom } from "@yaakapp-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { resolveAppearance } from "../lib/theme/appearance";
 import { usePreferredAppearance } from "./usePreferredAppearance";

@@ -1,5 +1,5 @@
-import type { GrpcConnection } from "@yaakapp-internal/models";
-import { deleteModel } from "@yaakapp-internal/models";
+import type { GrpcConnection } from "@yakumo-internal/models";
+import { deleteModel } from "@yakumo-internal/models";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useDeleteGrpcConnections } from "../hooks/useDeleteGrpcConnections";
 import { pluralizeCount } from "../lib/pluralize";

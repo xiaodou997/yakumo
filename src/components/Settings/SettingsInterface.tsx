@@ -1,7 +1,7 @@
 import { type } from "@tauri-apps/plugin-os";
-import { useFonts } from "@yaakapp-internal/fonts";
-import type { EditorKeymap, Settings } from "@yaakapp-internal/models";
-import { patchModel, settingsAtom } from "@yaakapp-internal/models";
+import { useFonts } from "@yakumo-internal/fonts";
+import type { EditorKeymap, Settings } from "@yakumo-internal/models";
+import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 

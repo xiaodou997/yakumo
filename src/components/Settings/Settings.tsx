@@ -1,8 +1,8 @@
 import { useSearch } from "@tanstack/react-router";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { type } from "@tauri-apps/plugin-os";
-import { useLicense } from "@yaakapp-internal/license";
-import { settingsAtom } from "@yaakapp-internal/models";
+import { useLicense } from "@yakumo-internal/license";
+import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { useKeyPressEvent } from "react-use";

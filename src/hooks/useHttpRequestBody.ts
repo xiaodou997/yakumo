@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { invokeCmd } from "../lib/tauri";
 
 export function useHttpRequestBody(response: HttpResponse | null) {

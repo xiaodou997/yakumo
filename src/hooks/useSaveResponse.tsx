@@ -1,6 +1,6 @@
 import { save } from "@tauri-apps/plugin-dialog";
-import type { HttpResponse } from "@yaakapp-internal/models";
-import { getModel } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
+import { getModel } from "@yakumo-internal/models";
 import mime from "mime";
 import slugify from "slugify";
 import { InlineCode } from "../components/core/InlineCode";

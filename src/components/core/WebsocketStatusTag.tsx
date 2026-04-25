@@ -1,4 +1,4 @@
-import type { WebsocketConnection } from "@yaakapp-internal/models";
+import type { WebsocketConnection } from "@yakumo-internal/models";
 import classNames from "classnames";
 
 interface Props {

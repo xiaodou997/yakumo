@@ -4,7 +4,7 @@ import type {
   Environment,
   HttpResponseEvent,
   HttpResponseHeader,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { getMimeTypeFromContentType } from "./contentType";
 
 export const BODY_TYPE_NONE = null;

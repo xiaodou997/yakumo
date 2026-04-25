@@ -8544,7 +8544,39 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak"
+name = "yaku-cli"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "assert_cmd",
+ "base64 0.22.1",
+ "clap",
+ "console",
+ "dirs",
+ "env_logger",
+ "futures",
+ "hex",
+ "inquire",
+ "keyring",
+ "log 0.4.29",
+ "predicates",
+ "rand 0.8.5",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "yakumo",
+ "yakumo-crypto",
+ "yakumo-features",
+ "yakumo-http",
+ "yakumo-models",
+]
+
+[[package]]
+name = "yakumo"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -8554,27 +8586,27 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
- "yaak-crypto",
- "yaak-features",
- "yaak-http",
- "yaak-models",
- "yaak-templates",
- "yaak-tls",
+ "yakumo-crypto",
+ "yakumo-features",
+ "yakumo-http",
+ "yakumo-models",
+ "yakumo-templates",
+ "yakumo-tls",
 ]
 
 [[package]]
-name = "yaak-api"
+name = "yakumo-api"
 version = "0.1.0"
 dependencies = [
  "log 0.4.29",
  "reqwest",
  "sysproxy",
  "thiserror 2.0.17",
- "yaak-common",
+ "yakumo-common",
 ]
 
 [[package]]
-name = "yaak-app"
+name = "yakumo-app"
 version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
@@ -8615,29 +8647,29 @@ dependencies = [
  "ts-rs",
  "url",
  "uuid",
- "yaak",
- "yaak-api",
- "yaak-common",
- "yaak-core",
- "yaak-crypto",
- "yaak-features",
- "yaak-fonts",
- "yaak-git",
- "yaak-grpc",
- "yaak-http",
- "yaak-license",
- "yaak-mac-window",
- "yaak-models",
- "yaak-sse",
- "yaak-sync",
- "yaak-tauri-utils",
- "yaak-templates",
- "yaak-tls",
- "yaak-ws",
+ "yakumo",
+ "yakumo-api",
+ "yakumo-common",
+ "yakumo-core",
+ "yakumo-crypto",
+ "yakumo-features",
+ "yakumo-fonts",
+ "yakumo-git",
+ "yakumo-grpc",
+ "yakumo-http",
+ "yakumo-license",
+ "yakumo-mac-window",
+ "yakumo-models",
+ "yakumo-sse",
+ "yakumo-sync",
+ "yakumo-tauri-utils",
+ "yakumo-templates",
+ "yakumo-tls",
+ "yakumo-ws",
 ]
 
 [[package]]
-name = "yaak-common"
+name = "yakumo-common"
 version = "0.1.0"
 dependencies = [
  "serde_json",
@@ -8645,14 +8677,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-core"
+name = "yakumo-core"
 version = "0.0.0"
 dependencies = [
  "thiserror 2.0.17",
 ]
 
 [[package]]
-name = "yaak-crypto"
+name = "yakumo-crypto"
 version = "0.1.0"
 dependencies = [
  "base32",
@@ -8662,11 +8694,11 @@ dependencies = [
  "log 0.4.29",
  "serde",
  "thiserror 2.0.17",
- "yaak-models",
+ "yakumo-models",
 ]
 
 [[package]]
-name = "yaak-features"
+name = "yakumo-features"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
@@ -8693,15 +8725,15 @@ dependencies = [
  "ts-rs",
  "urlencoding",
  "uuid",
- "yaak-common",
- "yaak-crypto",
- "yaak-models",
- "yaak-templates",
+ "yakumo-common",
+ "yakumo-crypto",
+ "yakumo-models",
+ "yakumo-templates",
  "zip-extract",
 ]
 
 [[package]]
-name = "yaak-fonts"
+name = "yakumo-fonts"
 version = "0.1.0"
 dependencies = [
  "font-loader",
@@ -8713,7 +8745,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-git"
+name = "yakumo-git"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -8726,13 +8758,13 @@ dependencies = [
  "tokio",
  "ts-rs",
  "url",
- "yaak-common",
- "yaak-models",
- "yaak-sync",
+ "yakumo-common",
+ "yakumo-models",
+ "yakumo-sync",
 ]
 
 [[package]]
-name = "yaak-grpc"
+name = "yakumo-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -8753,12 +8785,12 @@ dependencies = [
  "tonic",
  "tonic-reflection",
  "uuid",
- "yaak-common",
- "yaak-tls",
+ "yakumo-common",
+ "yakumo-tls",
 ]
 
 [[package]]
-name = "yaak-http"
+name = "yakumo-http"
 version = "0.1.0"
 dependencies = [
  "async-compression",
@@ -8782,15 +8814,15 @@ dependencies = [
  "tower-service",
  "url",
  "urlencoding",
- "yaak-common",
- "yaak-models",
- "yaak-templates",
- "yaak-tls",
+ "yakumo-common",
+ "yakumo-models",
+ "yakumo-templates",
+ "yakumo-tls",
  "zstd",
 ]
 
 [[package]]
-name = "yaak-license"
+name = "yakumo-license"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -8802,13 +8834,13 @@ dependencies = [
  "tauri-plugin",
  "thiserror 2.0.17",
  "ts-rs",
- "yaak-api",
- "yaak-common",
- "yaak-models",
+ "yakumo-api",
+ "yakumo-common",
+ "yakumo-models",
 ]
 
 [[package]]
-name = "yaak-mac-window"
+name = "yakumo-mac-window"
 version = "0.1.0"
 dependencies = [
  "cocoa",
@@ -8821,7 +8853,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-models"
+name = "yakumo-models"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -8840,11 +8872,11 @@ dependencies = [
  "sha2",
  "thiserror 2.0.17",
  "ts-rs",
- "yaak-core",
+ "yakumo-core",
 ]
 
 [[package]]
-name = "yaak-sse"
+name = "yakumo-sse"
 version = "0.1.0"
 dependencies = [
  "serde",
@@ -8852,7 +8884,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-sync"
+name = "yakumo-sync"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -8867,11 +8899,11 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "ts-rs",
- "yaak-models",
+ "yakumo-models",
 ]
 
 [[package]]
-name = "yaak-tauri-utils"
+name = "yakumo-tauri-utils"
 version = "0.1.0"
 dependencies = [
  "regex 1.11.1",
@@ -8879,7 +8911,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-templates"
+name = "yakumo-templates"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
@@ -8894,7 +8926,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yaak-tls"
+name = "yakumo-tls"
 version = "0.1.0"
 dependencies = [
  "log 0.4.29",
@@ -8905,11 +8937,11 @@ dependencies = [
  "serde",
  "thiserror 2.0.17",
  "url",
- "yaak-models",
+ "yakumo-models",
 ]
 
 [[package]]
-name = "yaak-ws"
+name = "yakumo-ws"
 version = "0.1.0"
 dependencies = [
  "futures-util",
@@ -8922,42 +8954,10 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "url",
- "yaak-http",
- "yaak-models",
- "yaak-templates",
- "yaak-tls",
-]
-
-[[package]]
-name = "yaku-cli"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "assert_cmd",
- "base64 0.22.1",
- "clap",
- "console",
- "dirs",
- "env_logger",
- "futures",
- "hex",
- "inquire",
- "keyring",
- "log 0.4.29",
- "predicates",
- "rand 0.8.5",
- "reqwest",
- "schemars",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tokio",
- "yaak",
- "yaak-crypto",
- "yaak-features",
- "yaak-http",
- "yaak-models",
+ "yakumo-http",
+ "yakumo-models",
+ "yakumo-templates",
+ "yakumo-tls",
 ]
 
 [[package]]

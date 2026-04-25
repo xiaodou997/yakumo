@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { useSaveResponse } from "../../hooks/useSaveResponse";
 import { getContentTypeFromHeaders } from "../../lib/model_util";
 import { Banner } from "../core/Banner";

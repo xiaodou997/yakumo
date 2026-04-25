@@ -1,4 +1,4 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
 import classNames from "classnames";
 import type { FormEvent, ReactNode } from "react";
 import { memo, useCallback, useRef, useState } from "react";

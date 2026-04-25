@@ -1,6 +1,6 @@
 import { save } from "@tauri-apps/plugin-dialog";
-import type { Workspace } from "@yaakapp-internal/models";
-import { workspacesAtom } from "@yaakapp-internal/models";
+import type { Workspace } from "@yakumo-internal/models";
+import { workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import slugify from "slugify";

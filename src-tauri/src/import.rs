@@ -4,13 +4,13 @@ use log::info;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use tauri::{Runtime, WebviewWindow};
-use yaak_core::WorkspaceContext;
-use yaak_features::importer::{curl, yakumo};
-use yaak_models::models::{
+use yakumo_core::WorkspaceContext;
+use yakumo_features::importer::{curl, yakumo};
+use yakumo_models::models::{
     Environment, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,
 };
-use yaak_models::util::{BatchUpsertResult, UpdateSource, maybe_gen_id, maybe_gen_id_opt};
-use yaak_tauri_utils::window::WorkspaceWindowTrait;
+use yakumo_models::util::{BatchUpsertResult, UpdateSource, maybe_gen_id, maybe_gen_id_opt};
+use yakumo_tauri_utils::window::WorkspaceWindowTrait;
 
 pub(crate) async fn import_data<R: Runtime>(
     window: &WebviewWindow<R>,
@@ -136,12 +136,12 @@ pub(crate) async fn import_data<R: Runtime>(
 }
 
 /// Import data using built-in importer
-fn import_with_builtin_importer(content: &str) -> Result<yaak_features::events::ImportResponse> {
+fn import_with_builtin_importer(content: &str) -> Result<yakumo_features::events::ImportResponse> {
     // Try curl importer first
     if content.trim().starts_with("curl ") {
         let result =
             curl::import_curl(content).map_err(|e| crate::error::Error::GenericError(e))?;
-        return Ok(result.unwrap_or_else(|| yaak_features::events::ImportResponse {
+        return Ok(result.unwrap_or_else(|| yakumo_features::events::ImportResponse {
             resources: None,
             error: Some("No curl command found".to_string()),
         }));
@@ -151,7 +151,7 @@ fn import_with_builtin_importer(content: &str) -> Result<yaak_features::events::
     let result =
         yakumo::import_yakumo(content).map_err(|e| crate::error::Error::GenericError(e))?;
 
-    Ok(result.unwrap_or_else(|| yaak_features::events::ImportResponse {
+    Ok(result.unwrap_or_else(|| yakumo_features::events::ImportResponse {
         resources: None,
         error: Some("No valid import data found".to_string()),
     }))

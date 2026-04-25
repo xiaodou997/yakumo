@@ -1,4 +1,4 @@
-import { parseTemplate } from "@yaakapp-internal/templates";
+import { parseTemplate } from "@yakumo-internal/templates";
 import { activeEnvironmentIdAtom } from "../hooks/useActiveEnvironment";
 import { activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
 import { jotaiStore } from "./jotai";

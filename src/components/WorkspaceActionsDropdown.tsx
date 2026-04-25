@@ -1,6 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { getModel, settingsAtom, workspacesAtom } from "@yaakapp-internal/models";
+import { getModel, settingsAtom, workspacesAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useMemo } from "react";

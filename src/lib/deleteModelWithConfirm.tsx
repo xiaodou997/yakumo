@@ -1,5 +1,5 @@
-import type { AnyModel } from "@yaakapp-internal/models";
-import { deleteModel, modelTypeLabel } from "@yaakapp-internal/models";
+import type { AnyModel } from "@yakumo-internal/models";
+import { deleteModel, modelTypeLabel } from "@yakumo-internal/models";
 import { InlineCode } from "../components/core/InlineCode";
 import { Prose } from "../components/Prose";
 import { showConfirmDelete } from "./confirm";

@@ -1,6 +1,6 @@
 import { emit } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { debounce } from "@yaakapp-internal/lib";
+import { debounce } from "./debounce";
 import type {
   FormInput,
   InternalEvent,
@@ -10,8 +10,8 @@ import type {
 import type {
   UpdateInfo,
   UpdateResponse,
-  YaakNotification,
-} from "@yaakapp-internal/tauri";
+  YakumoNotification,
+} from "@yakumo-internal/tauri";
 import { openSettings } from "../commands/openSettings";
 import { Button } from "../components/core/Button";
 import { ButtonInfiniteLoading } from "../components/core/ButtonInfiniteLoading";
@@ -112,7 +112,7 @@ export function initGlobalListeners() {
     fireAndForget(showUpdateAvailableToast(payload));
   });
 
-  listenToTauriEvent<YaakNotification>("notification", ({ payload }) => {
+  listenToTauriEvent<YakumoNotification>("notification", ({ payload }) => {
     console.log("Got notification event", payload);
     showNotificationToast(payload);
   });
@@ -191,7 +191,7 @@ async function showUpdateAvailableToast(updateInfo: UpdateInfo) {
           variant="border"
           rightSlot={<Icon icon="external_link" />}
           onClick={async () => {
-            await openUrl(`https://yaak.app/changelog/${version}`);
+            await openUrl(`https://github.com/xiaodou997/yakumo/releases/tag/v${version}`);
           }}
         >
           What&apos;s New
@@ -201,7 +201,7 @@ async function showUpdateAvailableToast(updateInfo: UpdateInfo) {
   });
 }
 
-function showNotificationToast(n: YaakNotification) {
+function showNotificationToast(n: YakumoNotification) {
   const actionUrl = n.action?.url;
   const actionLabel = n.action?.label;
   showToast({

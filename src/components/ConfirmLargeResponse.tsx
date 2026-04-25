@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { type ReactNode, useMemo } from "react";
 import { useSaveResponse } from "../hooks/useSaveResponse";
 import { useToggle } from "../hooks/useToggle";

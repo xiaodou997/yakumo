@@ -1,7 +1,7 @@
 import { jsoncLanguage } from "@shopify/lang-jsonc";
 import { linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
-import type { GrpcRequest } from "@yaakapp-internal/models";
+import type { GrpcRequest } from "@yakumo-internal/models";
 import classNames from "classnames";
 import {
   handleRefresh,

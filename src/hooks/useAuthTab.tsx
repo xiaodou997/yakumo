@@ -1,5 +1,5 @@
-import type { Folder } from "@yaakapp-internal/models";
-import { modelTypeLabel, patchModel } from "@yaakapp-internal/models";
+import type { Folder } from "@yakumo-internal/models";
+import { modelTypeLabel, patchModel } from "@yakumo-internal/models";
 import { useMemo } from "react";
 import { openFolderSettings } from "../commands/openFolderSettings";
 import { openWorkspaceSettings } from "../commands/openWorkspaceSettings";

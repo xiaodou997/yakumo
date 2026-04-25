@@ -37,7 +37,7 @@
     "resources": [
       "static",
       "vendored/protoc/include",
-      "vendored/protoc/yaakprotoc*"
+      "vendored/protoc/yakumoprotoc*"
     ]
   }
 }

@@ -1,5 +1,5 @@
-import type { HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import type { GrpcRequest } from "@yaakapp-internal/sync";
+import type { HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import type { GrpcRequest } from "@yakumo-internal/sync";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { createFolder } from "../commands/commands";

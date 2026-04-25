@@ -35,7 +35,7 @@
 |------|------|------|
 | `secure` | 已实现 | 使用 workspace key 加密/解密。 |
 | UUID / timestamp / hash / base64 / random / JSONPath / regex | 待修复 | 内置 Rust 函数和 Tauri summaries/config 已注册，参数和 UI 仍需补全验证。 |
-| 环境变量渲染 | 已实现 | 由 `yaak-templates` 和环境链解析处理。 |
+| 环境变量渲染 | 已实现 | 由 `yakumo-templates` 和环境链解析处理。 |
 | prompt / cookie / request / response / fs / XML | 待实现 | 插件移除后尚未迁移为内置函数。 |
 
 ## 导入导出
@@ -73,7 +73,7 @@
 |------|------|------|
 | JavaScript 插件安装/运行时 | 已移除 | 不再作为产品能力保留。 |
 | npm CLI 发布 | 已移除 | `yaku` 仅源码构建。 |
-| plugin API npm 发布 | 已移除 | 不维护 `@yaakapp/api` 发布链路。 |
+| plugin API npm 发布 | 已移除 | 不维护旧插件 API 发布链路。 |
 | Flatpak / sponsors / 旧 Yaak release 链路 | 已移除 | 后续按 Yakumo release scope 重建。 |
 
 最后更新：2026-04-25

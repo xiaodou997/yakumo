@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { useMemo } from "react";
 import { CountBadge } from "./core/CountBadge";
 import { DetailsBanner } from "./core/DetailsBanner";

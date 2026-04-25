@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { GrpcRequest } from "@yaakapp-internal/models";
+import type { GrpcRequest } from "@yakumo-internal/models";
 import type {
   CallGrpcRequestActionRequest,
   GetGrpcRequestActionsResponse,

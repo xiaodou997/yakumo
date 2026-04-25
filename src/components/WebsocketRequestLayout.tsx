@@ -1,4 +1,4 @@
-import type { WebsocketRequest } from "@yaakapp-internal/models";
+import type { WebsocketRequest } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties } from "react";

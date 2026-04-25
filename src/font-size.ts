@@ -1,6 +1,6 @@
 // Listen for settings changes, the re-compute theme
 import { listen } from "@tauri-apps/api/event";
-import type { ModelPayload } from "@yaakapp-internal/models";
+import type { ModelPayload } from "@yakumo-internal/models";
 import { fireAndForget } from "./lib/fireAndForget";
 import { getSettings } from "./lib/settings";
 

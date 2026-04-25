@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { HttpRequest } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
 import type {
   CallHttpRequestActionRequest,
   GetHttpRequestActionsResponse,

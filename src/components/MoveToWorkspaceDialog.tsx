@@ -1,5 +1,5 @@
-import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import { patchModel, workspacesAtom } from "@yaakapp-internal/models";
+import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { patchModel, workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { pluralizeCount } from "../lib/pluralize";

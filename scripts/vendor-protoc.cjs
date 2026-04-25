@@ -35,12 +35,12 @@ const SRC_BIN_MAP = {
 };
 
 const DST_BIN_MAP = {
-  [MAC_ARM]: "yaakprotoc",
-  [MAC_X64]: "yaakprotoc",
-  [LNX_ARM]: "yaakprotoc",
-  [LNX_X64]: "yaakprotoc",
-  [WIN_X64]: "yaakprotoc.exe",
-  [WIN_ARM]: "yaakprotoc.exe",
+  [MAC_ARM]: "yakumoprotoc",
+  [MAC_X64]: "yakumoprotoc",
+  [LNX_ARM]: "yakumoprotoc",
+  [LNX_X64]: "yakumoprotoc",
+  [WIN_X64]: "yakumoprotoc.exe",
+  [WIN_ARM]: "yakumoprotoc.exe",
 };
 
 const SHA256_MAP = {

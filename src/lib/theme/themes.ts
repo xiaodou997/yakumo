@@ -2,8 +2,8 @@ import type { Appearance } from "./appearance";
 import { resolveAppearance } from "./appearance";
 
 // Built-in themes for Yakumo API
-const yaakDark = {
-  id: "yaak-dark",
+const yakumoDark = {
+  id: "yakumo-dark",
   label: "Yakumo API",
   dark: true,
   base: {
@@ -49,8 +49,8 @@ const yaakDark = {
   },
 };
 
-const yaakLight = {
-  id: "yaak-light",
+const yakumoLight = {
+  id: "yakumo-light",
   label: "Yakumo API",
   dark: false,
   base: {
@@ -77,8 +77,8 @@ const yaakLight = {
   },
 };
 
-export const defaultDarkTheme = yaakDark;
-export const defaultLightTheme = yaakLight;
+export const defaultDarkTheme = yakumoDark;
+export const defaultLightTheme = yakumoLight;
 
 export async function getResolvedTheme(
   preferredAppearance: Appearance,
@@ -89,8 +89,8 @@ export async function getResolvedTheme(
   const appearance = resolveAppearance(preferredAppearance, appearanceSetting);
 
   // Use built-in themes directly
-  const dark = themeDark === "yaak-dark" ? yaakDark : yaakDark;
-  const light = themeLight === "yaak-light" ? yaakLight : yaakLight;
+  const dark = themeDark === "yakumo-dark" ? yakumoDark : yakumoDark;
+  const light = themeLight === "yakumo-light" ? yakumoLight : yakumoLight;
 
   const active = appearance === "dark" ? dark : light;
 

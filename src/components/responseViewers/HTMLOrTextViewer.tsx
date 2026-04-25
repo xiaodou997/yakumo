@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { useMemo, useState } from "react";
 import { useResponseBodyText } from "../../hooks/useResponseBodyText";
 import { languageFromContentType } from "../../lib/contentType";

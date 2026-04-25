@@ -13,7 +13,7 @@ If your PR is not a bug fix or small-scope improvement, please discuss it with t
 
 ## Development Setup
 
-For local setup and development workflows, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
+For local setup and development workflows, see [`README.md`](README.md).
 
 ## Project Origin
 

@@ -1,5 +1,5 @@
-import type { Environment, EnvironmentVariable } from "@yaakapp-internal/models";
-import { updateModel } from "@yaakapp-internal/models";
+import type { Environment, EnvironmentVariable } from "@yakumo-internal/models";
+import { updateModel } from "@yakumo-internal/models";
 import { openFolderSettings } from "../commands/openFolderSettings";
 import type { PairEditorHandle } from "../components/core/PairEditor";
 import { ensurePairId } from "../components/core/PairEditor.util";

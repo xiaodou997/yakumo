@@ -1,5 +1,5 @@
-import type { ClientCertificate } from "@yaakapp-internal/models";
-import { patchModel, settingsAtom } from "@yaakapp-internal/models";
+import type { ClientCertificate } from "@yakumo-internal/models";
+import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useRef } from "react";
 import { showConfirmDelete } from "../../lib/confirm";

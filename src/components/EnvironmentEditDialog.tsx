@@ -1,5 +1,5 @@
-import type { Environment, Workspace } from "@yaakapp-internal/models";
-import { duplicateModel, patchModel } from "@yaakapp-internal/models";
+import type { Environment, Workspace } from "@yakumo-internal/models";
+import { duplicateModel, patchModel } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createSubEnvironmentAndActivate } from "../commands/createEnvironment";

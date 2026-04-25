@@ -1,58 +1,58 @@
 import type { Theme, ThemeComponentColors } from "@yakumo/features";
 import { defaultDarkTheme, defaultLightTheme } from "./themes";
-import { YaakColor } from "./yaakColor";
+import { YakumoColor } from "./yakumoColor";
 
-export type YaakColors = {
-  surface: YaakColor;
-  surfaceHighlight?: YaakColor;
-  surfaceActive?: YaakColor;
+export type YakumoColors = {
+  surface: YakumoColor;
+  surfaceHighlight?: YakumoColor;
+  surfaceActive?: YakumoColor;
 
-  text: YaakColor;
-  textSubtle?: YaakColor;
-  textSubtlest?: YaakColor;
+  text: YakumoColor;
+  textSubtle?: YakumoColor;
+  textSubtlest?: YakumoColor;
 
-  border?: YaakColor;
-  borderSubtle?: YaakColor;
-  borderFocus?: YaakColor;
+  border?: YakumoColor;
+  borderSubtle?: YakumoColor;
+  borderFocus?: YakumoColor;
 
-  shadow?: YaakColor;
-  backdrop?: YaakColor;
-  selection?: YaakColor;
+  shadow?: YakumoColor;
+  backdrop?: YakumoColor;
+  selection?: YakumoColor;
 
-  primary?: YaakColor;
-  secondary?: YaakColor;
-  info?: YaakColor;
-  success?: YaakColor;
-  notice?: YaakColor;
-  warning?: YaakColor;
-  danger?: YaakColor;
+  primary?: YakumoColor;
+  secondary?: YakumoColor;
+  info?: YakumoColor;
+  success?: YakumoColor;
+  notice?: YakumoColor;
+  warning?: YakumoColor;
+  danger?: YakumoColor;
 };
 
-export type YaakTheme = {
+export type YakumoTheme = {
   id: string;
   name: string;
-  base: YaakColors;
+  base: YakumoColors;
   components?: Partial<{
-    dialog: Partial<YaakColors>;
-    menu: Partial<YaakColors>;
-    toast: Partial<YaakColors>;
-    sidebar: Partial<YaakColors>;
-    responsePane: Partial<YaakColors>;
-    appHeader: Partial<YaakColors>;
-    button: Partial<YaakColors>;
-    banner: Partial<YaakColors>;
-    templateTag: Partial<YaakColors>;
-    urlBar: Partial<YaakColors>;
-    editor: Partial<YaakColors>;
-    input: Partial<YaakColors>;
+    dialog: Partial<YakumoColors>;
+    menu: Partial<YakumoColors>;
+    toast: Partial<YakumoColors>;
+    sidebar: Partial<YakumoColors>;
+    responsePane: Partial<YakumoColors>;
+    appHeader: Partial<YakumoColors>;
+    button: Partial<YakumoColors>;
+    banner: Partial<YakumoColors>;
+    templateTag: Partial<YakumoColors>;
+    urlBar: Partial<YakumoColors>;
+    editor: Partial<YakumoColors>;
+    input: Partial<YakumoColors>;
   }>;
 };
 
-export type YaakColorKey = keyof ThemeComponentColors;
+export type YakumoColorKey = keyof ThemeComponentColors;
 
-type ComponentName = keyof NonNullable<YaakTheme["components"]>;
+type ComponentName = keyof NonNullable<YakumoTheme["components"]>;
 
-type CSSVariables = Record<YaakColorKey, string | undefined>;
+type CSSVariables = Record<YakumoColorKey, string | undefined>;
 
 function themeVariables(
   theme: Theme,
@@ -78,7 +78,7 @@ function themeVariables(
     textSubtlest: cmp.textSubtlest ?? c(cmp.text)?.lower(0.3)?.css(),
     shadow:
       cmp.shadow ??
-      YaakColor.black()
+      YakumoColor.black()
         .translucify(theme.dark ? 0.7 : 0.93)
         .css(),
     primary: cmp.primary,
@@ -92,15 +92,15 @@ function themeVariables(
 
   // Extend with base
   for (const [k, v] of Object.entries(vars)) {
-    if (!v && base?.[k as YaakColorKey]) {
-      vars[k as YaakColorKey] = base[k as YaakColorKey];
+    if (!v && base?.[k as YakumoColorKey]) {
+      vars[k as YakumoColorKey] = base[k as YakumoColorKey];
     }
   }
 
   return vars;
 }
 
-function templateTagColorVariables(color: YaakColor | null): Partial<CSSVariables> {
+function templateTagColorVariables(color: YakumoColor | null): Partial<CSSVariables> {
   if (color == null) return {};
 
   return {
@@ -114,7 +114,7 @@ function templateTagColorVariables(color: YaakColor | null): Partial<CSSVariable
   };
 }
 
-function toastColorVariables(color: YaakColor | null): Partial<CSSVariables> {
+function toastColorVariables(color: YakumoColor | null): Partial<CSSVariables> {
   if (color == null) return {};
 
   return {
@@ -126,7 +126,7 @@ function toastColorVariables(color: YaakColor | null): Partial<CSSVariables> {
   };
 }
 
-function bannerColorVariables(color: YaakColor | null): Partial<CSSVariables> {
+function bannerColorVariables(color: YakumoColor | null): Partial<CSSVariables> {
   if (color == null) return {};
 
   return {
@@ -138,7 +138,7 @@ function bannerColorVariables(color: YaakColor | null): Partial<CSSVariables> {
   };
 }
 
-function _inputCSS(color: YaakColor | null): Partial<CSSVariables> {
+function _inputCSS(color: YakumoColor | null): Partial<CSSVariables> {
   if (color == null) return {};
 
   const theme: Partial<ThemeComponentColors> = {
@@ -149,7 +149,7 @@ function _inputCSS(color: YaakColor | null): Partial<CSSVariables> {
 }
 
 function buttonSolidColorVariables(
-  color: YaakColor | null,
+  color: YakumoColor | null,
   isDefault = false,
 ): Partial<CSSVariables> {
   if (color == null) return {};
@@ -171,7 +171,7 @@ function buttonSolidColorVariables(
 }
 
 function buttonBorderColorVariables(
-  color: YaakColor | null,
+  color: YakumoColor | null,
   isDefault = false,
 ): Partial<CSSVariables> {
   if (color == null) return {};
@@ -220,56 +220,56 @@ function componentCSS(theme: Theme, component: ComponentName): string | null {
 
 function buttonCSS(
   theme: Theme,
-  color: YaakColorKey,
+  color: YakumoColorKey,
   colors?: ThemeComponentColors,
 ): string | null {
-  const yaakColor = yc(theme, colors?.[color]);
-  if (yaakColor == null) {
+  const yakumoColor = yc(theme, colors?.[color]);
+  if (yakumoColor == null) {
     return null;
   }
 
   return [
-    variablesToCSS(`.x-theme-button--solid--${color}`, buttonSolidColorVariables(yaakColor)),
-    variablesToCSS(`.x-theme-button--border--${color}`, buttonBorderColorVariables(yaakColor)),
+    variablesToCSS(`.x-theme-button--solid--${color}`, buttonSolidColorVariables(yakumoColor)),
+    variablesToCSS(`.x-theme-button--border--${color}`, buttonBorderColorVariables(yakumoColor)),
   ].join("\n\n");
 }
 
 function bannerCSS(
   theme: Theme,
-  color: YaakColorKey,
+  color: YakumoColorKey,
   colors?: ThemeComponentColors,
 ): string | null {
-  const yaakColor = yc(theme, colors?.[color]);
-  if (yaakColor == null) {
+  const yakumoColor = yc(theme, colors?.[color]);
+  if (yakumoColor == null) {
     return null;
   }
 
-  return [variablesToCSS(`.x-theme-banner--${color}`, bannerColorVariables(yaakColor))].join(
+  return [variablesToCSS(`.x-theme-banner--${color}`, bannerColorVariables(yakumoColor))].join(
     "\n\n",
   );
 }
 
-function toastCSS(theme: Theme, color: YaakColorKey, colors?: ThemeComponentColors): string | null {
-  const yaakColor = yc(theme, colors?.[color]);
-  if (yaakColor == null) {
+function toastCSS(theme: Theme, color: YakumoColorKey, colors?: ThemeComponentColors): string | null {
+  const yakumoColor = yc(theme, colors?.[color]);
+  if (yakumoColor == null) {
     return null;
   }
 
-  return [variablesToCSS(`.x-theme-toast--${color}`, toastColorVariables(yaakColor))].join("\n\n");
+  return [variablesToCSS(`.x-theme-toast--${color}`, toastColorVariables(yakumoColor))].join("\n\n");
 }
 
 function templateTagCSS(
   theme: Theme,
-  color: YaakColorKey,
+  color: YakumoColorKey,
   colors?: ThemeComponentColors,
 ): string | null {
-  const yaakColor = yc(theme, colors?.[color]);
-  if (yaakColor == null) {
+  const yakumoColor = yc(theme, colors?.[color]);
+  if (yakumoColor == null) {
     return null;
   }
 
   return [
-    variablesToCSS(`.x-theme-templateTag--${color}`, templateTagColorVariables(yaakColor)),
+    variablesToCSS(`.x-theme-templateTag--${color}`, templateTagColorVariables(yakumoColor)),
   ].join("\n\n");
 }
 
@@ -280,7 +280,7 @@ export function getThemeCSS(theme: Theme): string {
   const { components, id, label } = theme;
   const colors = Object.keys(theme.base).reduce((prev, key) => {
     // oxlint-disable-next-line no-accumulating-spread
-    return { ...prev, [key]: theme.base[key as YaakColorKey] };
+    return { ...prev, [key]: theme.base[key as YakumoColorKey] };
   }, {}) as ThemeComponentColors;
 
   let themeCSS = "";
@@ -298,16 +298,16 @@ export function getThemeCSS(theme: Theme): string {
         buttonBorderColorVariables(yc(theme, theme.base.surface), true),
       ),
       ...Object.keys(colors ?? {}).map((key) =>
-        buttonCSS(theme, key as YaakColorKey, theme.components?.button ?? colors),
+        buttonCSS(theme, key as YakumoColorKey, theme.components?.button ?? colors),
       ),
       ...Object.keys(colors ?? {}).map((key) =>
-        bannerCSS(theme, key as YaakColorKey, theme.components?.banner ?? colors),
+        bannerCSS(theme, key as YakumoColorKey, theme.components?.banner ?? colors),
       ),
       ...Object.keys(colors ?? {}).map((key) =>
-        toastCSS(theme, key as YaakColorKey, theme.components?.banner ?? colors),
+        toastCSS(theme, key as YakumoColorKey, theme.components?.banner ?? colors),
       ),
       ...Object.keys(colors ?? {}).map((key) =>
-        templateTagCSS(theme, key as YaakColorKey, theme.components?.templateTag ?? colors),
+        templateTagCSS(theme, key as YakumoColorKey, theme.components?.templateTag ?? colors),
       ),
     ].join("\n\n");
   } catch (err) {
@@ -354,9 +354,9 @@ export function indent(text: string, space = "    "): string {
 function yc<T extends string | null | undefined>(
   theme: Theme,
   s: T,
-): T extends string ? YaakColor : null {
+): T extends string ? YakumoColor : null {
   if (s == null) return null as never;
-  return new YaakColor(s, theme.dark ? "dark" : "light") as never;
+  return new YakumoColor(s, theme.dark ? "dark" : "light") as never;
 }
 
 export function completeTheme(theme: Theme): Theme {

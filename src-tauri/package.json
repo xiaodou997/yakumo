@@ -1,5 +1,5 @@
 {
-  "name": "@yaakapp-internal/tauri",
+  "name": "@yakumo-internal/tauri",
   "version": "1.0.0",
   "private": true,
   "main": "bindings/index.ts"

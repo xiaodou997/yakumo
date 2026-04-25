@@ -1,4 +1,4 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
 import mime from "mime";
 import { useKeyValue } from "../hooks/useKeyValue";
 import { Banner } from "./core/Banner";

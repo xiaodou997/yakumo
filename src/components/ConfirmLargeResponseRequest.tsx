@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { type ReactNode, useMemo } from "react";
 import { getRequestBodyText as getHttpResponseRequestBodyText } from "../hooks/useHttpRequestBody";
 import { useToggle } from "../hooks/useToggle";

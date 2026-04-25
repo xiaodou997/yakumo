@@ -1,6 +1,6 @@
-import { debounce } from "@yaakapp-internal/lib";
-import type { AnyModel, ModelPayload } from "@yaakapp-internal/models";
-import { watchWorkspaceFiles } from "@yaakapp-internal/sync";
+import { debounce } from "../lib/debounce";
+import type { AnyModel, ModelPayload } from "@yakumo-internal/models";
+import { watchWorkspaceFiles } from "@yakumo-internal/sync";
 import { syncWorkspace } from "../commands/commands";
 import { activeWorkspaceIdAtom, activeWorkspaceMetaAtom } from "../hooks/useActiveWorkspace";
 import { listenToTauriEvent } from "../hooks/useListenToTauriEvent";

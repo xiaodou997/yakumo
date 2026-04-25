@@ -5,17 +5,17 @@ use base64::prelude::BASE64_STANDARD;
 use serde_json::{Value, json};
 use tauri::{Manager, Runtime, State, WebviewWindow, command};
 use tauri_plugin_clipboard_manager::ClipboardExt;
-use yaak_crypto::manager::EncryptionManager;
-use yaak_features::actions::{copy_curl, copy_grpcurl};
-use yaak_features::auth::{get_authentication_config, get_authentication_summaries};
-use yaak_features::events::{
+use yakumo_crypto::manager::EncryptionManager;
+use yakumo_features::actions::{copy_curl, copy_grpcurl};
+use yakumo_features::auth::{get_authentication_config, get_authentication_summaries};
+use yakumo_features::events::{
     GetThemesResponse, HttpAuthenticationConfig, HttpAuthenticationSummary,
 };
-use yaak_features::importer::curl;
-use yaak_features::themes::all_themes;
-use yaak_models::models::{GrpcRequest, HttpRequest, HttpRequestHeader, HttpResponse};
-use yaak_models::queries::workspaces::default_headers;
-use yaak_templates::{Parser, Token, Val};
+use yakumo_features::importer::curl;
+use yakumo_features::themes::all_themes;
+use yakumo_models::models::{GrpcRequest, HttpRequest, HttpRequestHeader, HttpResponse};
+use yakumo_models::queries::workspaces::default_headers;
+use yakumo_templates::{Parser, Token, Val};
 
 /// Extension trait for accessing the EncryptionManager from Tauri Manager types.
 pub trait EncryptionManagerExt<'a, R> {
@@ -57,7 +57,7 @@ pub(crate) async fn cmd_secure_template<R: Runtime>(
 pub(crate) async fn cmd_get_themes<R: Runtime>(
     _window: WebviewWindow<R>,
 ) -> Result<Vec<GetThemesResponse>> {
-    // Return built-in themes from yaak_features
+    // Return built-in themes from yakumo_features
     let themes = all_themes();
     Ok(vec![GetThemesResponse { themes }])
 }

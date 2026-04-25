@@ -4,8 +4,8 @@ import type {
   HttpRequest,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { useCallback } from "react";
 import { openFolderSettings } from "../commands/openFolderSettings";
 import { openWorkspaceSettings } from "../commands/openWorkspaceSettings";
@@ -59,7 +59,7 @@ export function HttpAuthenticationEditor({ model }: Props) {
           <p>
             Apply auth to all requests in <strong>{resolvedModelName(model)}</strong>
           </p>
-          <Link href="https://yaak.app/docs/using-yaak/request-inheritance">Documentation</Link>
+          <Link href="https://github.com/xiaodou997/yakumo">Documentation</Link>
         </EmptyStateText>
       );
     }

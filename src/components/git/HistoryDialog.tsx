@@ -1,4 +1,4 @@
-import type { GitCommit } from "@yaakapp-internal/git";
+import type { GitCommit } from "@yakumo-internal/git";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
   Table,

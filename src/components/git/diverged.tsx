@@ -1,4 +1,4 @@
-import type { DivergedStrategy } from "@yaakapp-internal/git";
+import type { DivergedStrategy } from "@yakumo-internal/git";
 import { useState } from "react";
 import { showDialog } from "../../lib/dialog";
 import { Button } from "../core/Button";

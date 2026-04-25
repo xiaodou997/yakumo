@@ -8,6 +8,6 @@ export type UpdateResponseAction = "install" | "skip";
 
 export type WatchResult = { unlistenEvent: string, };
 
-export type YaakNotification = { timestamp: string, timeout: number | null, id: string, title: string | null, message: string, color: string | null, action: YaakNotificationAction | null, };
+export type YakumoNotification = { timestamp: string, timeout: number | null, id: string, title: string | null, message: string, color: string | null, action: YakumoNotificationAction | null, };
 
-export type YaakNotificationAction = { label: string, url: string, };
+export type YakumoNotificationAction = { label: string, url: string, };

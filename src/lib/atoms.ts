@@ -1,5 +1,5 @@
 import deepEqual from "@gilbarbara/deep-equal";
-import type { UpdateInfo } from "@yaakapp-internal/tauri";
+import type { UpdateInfo } from "@yakumo-internal/tauri";
 import type { Atom } from "jotai";
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";

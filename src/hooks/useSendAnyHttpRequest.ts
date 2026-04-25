@@ -1,5 +1,5 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
-import { getModel } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
+import { getModel } from "@yakumo-internal/models";
 import { invokeCmd } from "../lib/tauri";
 import { getActiveCookieJar } from "./useActiveCookieJar";
 import { getActiveEnvironment } from "./useActiveEnvironment";

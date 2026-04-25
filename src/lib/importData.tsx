@@ -1,4 +1,4 @@
-import type { BatchUpsertResult } from "@yaakapp-internal/models";
+import type { BatchUpsertResult } from "@yakumo-internal/models";
 import { Button } from "../components/core/Button";
 import { FormattedError } from "../components/core/FormattedError";
 import { VStack } from "../components/core/Stacks";

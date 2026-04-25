@@ -1,4 +1,4 @@
-import type { Environment } from "@yaakapp-internal/models";
+import type { Environment } from "@yakumo-internal/models";
 import { showColorPicker } from "../lib/showColorPicker";
 import { ColorIndicator } from "./ColorIndicator";
 

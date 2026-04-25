@@ -1,4 +1,4 @@
-import type { PullResult, PushResult } from "@yaakapp-internal/git";
+import type { PullResult, PushResult } from "@yakumo-internal/git";
 import { showToast } from "../../lib/toast";
 
 export function handlePushResult(r: PushResult) {

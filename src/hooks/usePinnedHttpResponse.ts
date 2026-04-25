@@ -1,5 +1,5 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
-import { httpResponsesAtom } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
+import { httpResponsesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useKeyValue } from "./useKeyValue";
 import { useLatestHttpResponse } from "./useLatestHttpResponse";

@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
   "crates/*",
-  "crates-cli/yaak-cli",
   "src-tauri",
 ]
 
@@ -27,27 +26,27 @@ tokio = "1.48.0"
 ts-rs = "11.1.0"
 
 # Internal crates - shared
-yaak-core = { path = "crates/yaak-core" }
-yaak = { path = "crates/yaak" }
-yaak-common = { path = "crates/yaak-common" }
-yaak-crypto = { path = "crates/yaak-crypto" }
-yaak-git = { path = "crates/yaak-git" }
-yaak-grpc = { path = "crates/yaak-grpc" }
-yaak-http = { path = "crates/yaak-http" }
-yaak-models = { path = "crates/yaak-models" }
-yaak-features = { path = "crates/yaak-features" }
-yaak-sse = { path = "crates/yaak-sse" }
-yaak-sync = { path = "crates/yaak-sync" }
-yaak-templates = { path = "crates/yaak-templates" }
-yaak-tls = { path = "crates/yaak-tls" }
-yaak-ws = { path = "crates/yaak-ws" }
-yaak-api = { path = "crates/yaak-api" }
+yakumo-core = { path = "crates/yakumo-core" }
+yakumo = { path = "crates/yakumo" }
+yakumo-common = { path = "crates/yakumo-common" }
+yakumo-crypto = { path = "crates/yakumo-crypto" }
+yakumo-git = { path = "crates/yakumo-git" }
+yakumo-grpc = { path = "crates/yakumo-grpc" }
+yakumo-http = { path = "crates/yakumo-http" }
+yakumo-models = { path = "crates/yakumo-models" }
+yakumo-features = { path = "crates/yakumo-features" }
+yakumo-sse = { path = "crates/yakumo-sse" }
+yakumo-sync = { path = "crates/yakumo-sync" }
+yakumo-templates = { path = "crates/yakumo-templates" }
+yakumo-tls = { path = "crates/yakumo-tls" }
+yakumo-ws = { path = "crates/yakumo-ws" }
+yakumo-api = { path = "crates/yakumo-api" }
 
 # Internal crates - Tauri-specific
-yaak-fonts = { path = "crates/yaak-fonts" }
-yaak-license = { path = "crates/yaak-license" }
-yaak-mac-window = { path = "crates/yaak-mac-window" }
-yaak-tauri-utils = { path = "crates/yaak-tauri-utils" }
+yakumo-fonts = { path = "crates/yakumo-fonts" }
+yakumo-license = { path = "crates/yakumo-license" }
+yakumo-mac-window = { path = "crates/yakumo-mac-window" }
+yakumo-tauri-utils = { path = "crates/yakumo-tauri-utils" }
 
 [profile.release]
 strip = false

@@ -1,5 +1,5 @@
-import type { Environment } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { Environment } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { EnvironmentColorPicker } from "../components/EnvironmentColorPicker";
 import { showDialog } from "./dialog";
 

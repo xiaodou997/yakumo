@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
 use ts_rs::TS;
-use yaak_api::{ApiClientKind, yaak_api_client};
-use yaak_common::platform::get_os_str;
-use yaak_models::util::UpdateSource;
+use yakumo_api::{ApiClientKind, yakumo_api_client};
+use yakumo_common::platform::get_os_str;
+use yakumo_models::util::UpdateSource;
 
 // Check for updates every hour
 const MAX_UPDATE_CHECK_SECONDS: u64 = 60 * 60;
@@ -19,32 +19,32 @@ const KV_NAMESPACE: &str = "notifications";
 const KV_KEY: &str = "seen";
 
 // Create updater struct
-pub struct YaakNotifier {
+pub struct YakumoNotifier {
     last_check: Option<Instant>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
 #[serde(default, rename_all = "camelCase")]
 #[ts(export, export_to = "index.ts")]
-pub struct YaakNotification {
+pub struct YakumoNotification {
     timestamp: DateTime<Utc>,
     timeout: Option<f64>,
     id: String,
     title: Option<String>,
     message: String,
     color: Option<String>,
-    action: Option<YaakNotificationAction>,
+    action: Option<YakumoNotificationAction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
 #[serde(default, rename_all = "camelCase")]
 #[ts(export, export_to = "index.ts")]
-pub struct YaakNotificationAction {
+pub struct YakumoNotificationAction {
     label: String,
     url: String,
 }
 
-impl YaakNotifier {
+impl YakumoNotifier {
     pub fn new() -> Self {
         Self { last_check: None }
     }
@@ -83,7 +83,7 @@ impl YaakNotifier {
 
         #[cfg(feature = "license")]
         let license_check = {
-            use yaak_license::{LicenseCheckStatus, check_license};
+            use yakumo_license::{LicenseCheckStatus, check_license};
             match check_license(window).await {
                 Ok(LicenseCheckStatus::PersonalUse { .. }) => "personal",
                 Ok(LicenseCheckStatus::Active { .. }) => "commercial",
@@ -102,8 +102,8 @@ impl YaakNotifier {
 
         let launch_info = get_or_upsert_launch_info(app_handle);
         let app_version = app_handle.package_info().version.to_string();
-        let req = yaak_api_client(ApiClientKind::App, &app_version)?
-            .request(Method::GET, "https://notify.yaak.app/notifications")
+        let req = yakumo_api_client(ApiClientKind::App, &app_version)?
+            .request(Method::GET, "https://notify.yakumo.local/notifications")
             .query(&[
                 ("version", &launch_info.current_version),
                 ("version_prev", &launch_info.previous_version),
@@ -119,7 +119,7 @@ impl YaakNotifier {
             return Ok(());
         }
 
-        for notification in resp.json::<Vec<YaakNotification>>().await? {
+        for notification in resp.json::<Vec<YakumoNotification>>().await? {
             let seen = get_kv(app_handle).await?;
             if seen.contains(&notification.id) {
                 debug!("Already seen notification {}", notification.id);

@@ -1,4 +1,4 @@
-import { patchModel, settingsAtom } from "@yaakapp-internal/models";
+import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { fuzzyMatch } from "fuzzbunny";
 import { useAtomValue } from "jotai";

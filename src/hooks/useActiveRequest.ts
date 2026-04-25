@@ -1,4 +1,4 @@
-import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
+import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { activeRequestIdAtom } from "./useActiveRequestId";
 import { allRequestsAtom } from "./useAllRequests";

@@ -1,4 +1,4 @@
-import type { WebsocketEvent, WebsocketRequest } from "@yaakapp-internal/models";
+import type { WebsocketEvent, WebsocketRequest } from "@yakumo-internal/models";
 import { hexy } from "hexy";
 import { useAtomValue } from "jotai";
 import { useMemo, useState } from "react";

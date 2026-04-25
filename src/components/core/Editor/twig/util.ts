@@ -1,5 +1,5 @@
 import type { FormInput, TemplateFunction } from "@yakumo/features";
-import type { Tokens } from "@yaakapp-internal/templates";
+import type { Tokens } from "@yakumo-internal/templates";
 
 /**
  * Process the initial tokens from the template and merge those with the default values pulled from

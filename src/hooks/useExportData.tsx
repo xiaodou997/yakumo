@@ -1,4 +1,4 @@
-import { workspacesAtom } from "@yaakapp-internal/models";
+import { workspacesAtom } from "@yakumo-internal/models";
 import { ExportDataDialog } from "../components/ExportDataDialog";
 import { showAlert } from "../lib/alert";
 import { translate } from "../lib/i18n";

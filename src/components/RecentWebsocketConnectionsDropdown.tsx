@@ -1,5 +1,5 @@
-import type { WebsocketConnection } from "@yaakapp-internal/models";
-import { deleteModel, getModel } from "@yaakapp-internal/models";
+import type { WebsocketConnection } from "@yakumo-internal/models";
+import { deleteModel, getModel } from "@yakumo-internal/models";
 import { formatDistanceToNowStrict } from "date-fns";
 import { deleteWebsocketConnections } from "../commands/deleteWebsocketConnections";
 import { pluralizeCount } from "../lib/pluralize";

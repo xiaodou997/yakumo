@@ -1,4 +1,4 @@
-//! Tauri-specific extensions for yaak-models.
+//! Tauri-specific extensions for yakumo-models.
 //!
 //! This module provides the Tauri plugin initialization and extension traits
 //! that allow accessing QueryManager and BlobManager from Tauri's Manager types.
@@ -9,12 +9,12 @@ use std::time::Duration;
 use tauri::plugin::TauriPlugin;
 use tauri::{Emitter, Manager, Runtime, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-use yaak_models::blob_manager::BlobManager;
-use yaak_models::db_context::DbContext;
-use yaak_models::error::Result;
-use yaak_models::models::{AnyModel, GraphQlIntrospection, GrpcEvent, Settings, WebsocketEvent};
-use yaak_models::query_manager::QueryManager;
-use yaak_models::util::UpdateSource;
+use yakumo_models::blob_manager::BlobManager;
+use yakumo_models::db_context::DbContext;
+use yakumo_models::error::Result;
+use yakumo_models::models::{AnyModel, GraphQlIntrospection, GrpcEvent, Settings, WebsocketEvent};
+use yakumo_models::query_manager::QueryManager;
+use yakumo_models::util::UpdateSource;
 
 const MODEL_CHANGES_RETENTION_HOURS: i64 = 1;
 const MODEL_CHANGES_POLL_INTERVAL_MS: u64 = 1000;
@@ -110,7 +110,7 @@ impl<'a, R: Runtime, M: Manager<R>> QueryManagerExt<'a, R> for M {
 /// Extension trait for accessing the BlobManager from Tauri Manager types.
 pub trait BlobManagerExt<'a, R> {
     fn blob_manager(&'a self) -> State<'a, BlobManager>;
-    fn blobs(&'a self) -> yaak_models::blob_manager::BlobContext;
+    fn blobs(&'a self) -> yakumo_models::blob_manager::BlobContext;
 }
 
 impl<'a, R: Runtime, M: Manager<R>> BlobManagerExt<'a, R> for M {
@@ -118,13 +118,13 @@ impl<'a, R: Runtime, M: Manager<R>> BlobManagerExt<'a, R> for M {
         self.state::<BlobManager>()
     }
 
-    fn blobs(&'a self) -> yaak_models::blob_manager::BlobContext {
+    fn blobs(&'a self) -> yakumo_models::blob_manager::BlobContext {
         let manager = self.state::<BlobManager>();
         manager.inner().connect()
     }
 }
 
-// Commands for yaak-models
+// Commands for yakumo-models
 use tauri::WebviewWindow;
 
 #[tauri::command]
@@ -132,7 +132,7 @@ pub(crate) fn models_upsert<R: Runtime>(
     window: WebviewWindow<R>,
     model: AnyModel,
 ) -> Result<String> {
-    use yaak_models::error::Error::GenericError;
+    use yakumo_models::error::Error::GenericError;
 
     let db = window.db();
     let blobs = window.blob_manager();
@@ -161,7 +161,7 @@ pub(crate) fn models_delete<R: Runtime>(
     window: WebviewWindow<R>,
     model: AnyModel,
 ) -> Result<String> {
-    use yaak_models::error::Error::GenericError;
+    use yakumo_models::error::Error::GenericError;
 
     let blobs = window.blob_manager();
     // Use transaction for deletions because it might recurse
@@ -190,7 +190,7 @@ pub(crate) fn models_duplicate<R: Runtime>(
     window: WebviewWindow<R>,
     model: AnyModel,
 ) -> Result<String> {
-    use yaak_models::error::Error::GenericError;
+    use yakumo_models::error::Error::GenericError;
 
     // Use transaction for duplications because it might recurse
     window.with_tx(|tx| {
@@ -311,14 +311,14 @@ fn escape_str_for_webview(input: &str) -> String {
 /// Commands are in the main invoke_handler.
 /// This must be registered before other plugins that depend on the database.
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    tauri::plugin::Builder::new("yaak-models-db")
+    tauri::plugin::Builder::new("yakumo-models-db")
         .setup(|app_handle, _api| {
             let app_path = app_handle.path().app_data_dir().unwrap();
             let db_path = app_path.join("db.sqlite");
             let blob_path = app_path.join("blobs.sqlite");
 
             let (query_manager, blob_manager, rx) =
-                match yaak_models::init_standalone(&db_path, &blob_path) {
+                match yakumo_models::init_standalone(&db_path, &blob_path) {
                     Ok(result) => result,
                     Err(e) => {
                         app_handle

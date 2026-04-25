@@ -1,4 +1,4 @@
-import { debounce } from "@yaakapp-internal/lib";
+import { debounce } from "../lib/debounce";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 

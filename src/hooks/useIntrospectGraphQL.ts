@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import type { GraphQlIntrospection, HttpRequest } from "@yaakapp-internal/models";
+import type { GraphQlIntrospection, HttpRequest } from "@yakumo-internal/models";
 import type { GraphQLSchema, IntrospectionQuery } from "graphql";
 import { buildClientSchema, getIntrospectionQuery } from "graphql";
 import { useCallback, useEffect, useMemo, useState } from "react";

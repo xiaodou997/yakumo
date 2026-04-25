@@ -1,2 +1,4 @@
-- Tag safety: app releases use `v*` tags and CLI releases use `yaak-cli-*` tags; always confirm which one is requested before retagging.
-- Do not commit, push, or tag without explicit approval
+- App releases use `v*` tags. Do not create, delete, or retag without explicit approval.
+- The `yaku` CLI is source-built only in this phase; there is no npm CLI release tag.
+- Do not commit, push, or tag without explicit approval.
+- Keep JavaScript plugins, npm CLI publishing, plugin API publishing, Flatpak, sponsors, and old Yaak release automation out of scope unless explicitly reopened.

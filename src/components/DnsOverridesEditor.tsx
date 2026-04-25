@@ -1,5 +1,5 @@
-import type { DnsOverride, Workspace } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { DnsOverride, Workspace } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { useCallback, useId, useMemo } from "react";
 import { fireAndForget } from "../lib/fireAndForget";
 import { Button } from "./core/Button";

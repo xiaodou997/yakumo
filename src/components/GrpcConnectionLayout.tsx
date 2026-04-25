@@ -1,4 +1,4 @@
-import { patchModel } from "@yaakapp-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties } from "react";

@@ -1,4 +1,4 @@
-import type { GrpcEvent, GrpcRequest } from "@yaakapp-internal/models";
+import type { GrpcEvent, GrpcRequest } from "@yakumo-internal/models";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";

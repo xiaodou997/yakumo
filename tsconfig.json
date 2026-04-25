@@ -20,6 +20,6 @@
   },
   "exclude": [
     "dist",
-    "crates/yaak-templates/pkg"
+    "crates/yakumo-templates/pkg"
   ]
 }

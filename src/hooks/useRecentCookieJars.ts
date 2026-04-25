@@ -1,4 +1,4 @@
-import { cookieJarsAtom } from "@yaakapp-internal/models";
+import { cookieJarsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";

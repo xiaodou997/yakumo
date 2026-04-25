@@ -1,5 +1,5 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
-import type { ServerSentEvent } from "@yaakapp-internal/sse";
+import type { HttpResponse } from "@yakumo-internal/models";
+import type { ServerSentEvent } from "@yakumo-internal/sse";
 import classNames from "classnames";
 import { Fragment, useMemo, useState } from "react";
 import { useFormatText } from "../../hooks/useFormatText";

@@ -5,10 +5,10 @@ import type {
   HttpRequest,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import type { TemplateFunction } from "@yakumo/features";
-import type { FnArg, Tokens } from "@yaakapp-internal/templates";
-import { parseTemplate } from "@yaakapp-internal/templates";
+import type { FnArg, Tokens } from "@yakumo-internal/templates";
+import { parseTemplate } from "@yakumo-internal/templates";
 import classNames from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { activeWorkspaceAtom } from "../hooks/useActiveWorkspace";

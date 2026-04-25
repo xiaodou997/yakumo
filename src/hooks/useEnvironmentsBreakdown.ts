@@ -1,4 +1,4 @@
-import { environmentsAtom } from "@yaakapp-internal/models";
+import { environmentsAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 
 export const environmentsBreakdownAtom = atom((get) => {

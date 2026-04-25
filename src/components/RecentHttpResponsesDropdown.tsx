@@ -1,5 +1,5 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
-import { deleteModel } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
+import { deleteModel } from "@yakumo-internal/models";
 import { useCopyHttpResponse } from "../hooks/useCopyHttpResponse";
 import { useDeleteHttpResponses } from "../hooks/useDeleteHttpResponses";
 import { useSaveResponse } from "../hooks/useSaveResponse";

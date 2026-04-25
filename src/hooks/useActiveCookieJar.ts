@@ -1,6 +1,6 @@
 import { useSearch } from "@tanstack/react-router";
-import type { CookieJar } from "@yaakapp-internal/models";
-import { cookieJarsAtom } from "@yaakapp-internal/models";
+import type { CookieJar } from "@yakumo-internal/models";
+import { cookieJarsAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { jotaiStore } from "../lib/jotai";

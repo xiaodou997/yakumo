@@ -1,5 +1,5 @@
-import type { Cookie } from "@yaakapp-internal/models";
-import { cookieJarsAtom, patchModel } from "@yaakapp-internal/models";
+import type { Cookie } from "@yakumo-internal/models";
+import { cookieJarsAtom, patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { cookieDomain } from "../lib/model_util";
 import { Banner } from "./core/Banner";

@@ -1,4 +1,4 @@
-import { formatSize } from "@yaakapp-internal/lib/formatSize";
+import { formatSize } from "../../lib/formatSize";
 
 interface Props {
   contentLength: number;

@@ -3,8 +3,8 @@ import {
   enableEncryption,
   revealWorkspaceKey,
   setWorkspaceKey,
-} from "@yaakapp-internal/crypto";
-import type { WorkspaceMeta } from "@yaakapp-internal/models";
+} from "@yakumo-internal/crypto";
+import type { WorkspaceMeta } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";

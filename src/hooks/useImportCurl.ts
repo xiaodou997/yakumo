@@ -1,5 +1,5 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
-import { patchModelById } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
+import { patchModelById } from "@yakumo-internal/models";
 import { createRequestAndNavigate } from "../lib/createRequestAndNavigate";
 import { jotaiStore } from "../lib/jotai";
 import { invokeCmd } from "../lib/tauri";

@@ -1,4 +1,4 @@
-//! Tauri-specific extensions for yaak-sync.
+//! Tauri-specific extensions for yakumo-sync.
 //!
 //! This module provides the Tauri commands for sync functionality.
 
@@ -12,12 +12,12 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Listener, Runtime, command};
 use tokio::sync::watch;
 use ts_rs::TS;
-use yaak_sync::error::Error::InvalidSyncDirectory;
-use yaak_sync::sync::{
+use yakumo_sync::error::Error::InvalidSyncDirectory;
+use yakumo_sync::sync::{
     FsCandidate, SyncOp, apply_sync_ops, apply_sync_state_ops, compute_sync_ops, get_db_candidates,
     get_fs_candidates,
 };
-use yaak_sync::watch::{WatchEvent, watch_directory};
+use yakumo_sync::watch::{WatchEvent, watch_directory};
 
 #[command]
 pub(crate) async fn cmd_sync_calculate<R: Runtime>(

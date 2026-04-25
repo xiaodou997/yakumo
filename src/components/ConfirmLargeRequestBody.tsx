@@ -1,12 +1,11 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
-import { patchModel } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import type { ReactNode } from "react";
 import { useToggle } from "../hooks/useToggle";
 import { showConfirm } from "../lib/confirm";
 import { Banner } from "./core/Banner";
 import { Button } from "./core/Button";
 import { InlineCode } from "./core/InlineCode";
-import { Link } from "./core/Link";
 import { SizeTag } from "./core/SizeTag";
 import { HStack } from "./core/Stacks";
 
@@ -36,13 +35,6 @@ export function ConfirmLargeRequestBody({ children, request }: Props) {
             <SizeTag contentLength={tooLargeBytes} />
           </InlineCode>{" "}
           may impact performance.
-        </p>
-        <p>
-          See{" "}
-          <Link href="https://feedback.yaak.app/en/help/articles/1198684-working-with-large-values">
-            Working With Large Values
-          </Link>{" "}
-          for tips.
         </p>
         <HStack wrap space={2}>
           <Button color="primary" size="xs" onClick={toggleShowLargeResponse}>

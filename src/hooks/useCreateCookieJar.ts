@@ -1,4 +1,4 @@
-import { createWorkspaceModel } from "@yaakapp-internal/models";
+import { createWorkspaceModel } from "@yakumo-internal/models";
 import { jotaiStore } from "../lib/jotai";
 import { showPrompt } from "../lib/prompt";
 import { setWorkspaceSearchParams } from "../lib/setWorkspaceSearchParams";

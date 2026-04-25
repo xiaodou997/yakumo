@@ -1,4 +1,4 @@
-import type { HttpResponseEvent } from "@yaakapp-internal/models";
+import type { HttpResponseEvent } from "@yakumo-internal/models";
 import { describe, expect, test } from "vitest";
 import { getCookieCounts } from "./model_util";
 

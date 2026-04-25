@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { setWindowTheme } from "@yaakapp-internal/mac-window";
-import type { ModelPayload } from "@yaakapp-internal/models";
+import { setWindowTheme } from "@yakumo-internal/mac-window";
+import type { ModelPayload } from "@yakumo-internal/models";
 import { getSettings } from "./lib/settings";
 import type { Appearance } from "./lib/theme/appearance";
 import { getCSSAppearance, subscribeToPreferredAppearance } from "./lib/theme/appearance";

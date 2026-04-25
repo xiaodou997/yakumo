@@ -1,5 +1,5 @@
-import { setWindowTitle } from "@yaakapp-internal/mac-window";
-import { settingsAtom } from "@yaakapp-internal/models";
+import { setWindowTitle } from "@yakumo-internal/mac-window";
+import { settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { appInfo } from "../lib/appInfo";
@@ -16,7 +16,7 @@ export function useSyncWorkspaceRequestTitle() {
 
   useEffect(() => {
     const settings = jotaiStore.get(settingsAtom);
-    let newTitle = activeWorkspace ? activeWorkspace.name : "Yaak";
+    let newTitle = activeWorkspace ? activeWorkspace.name : "Yakumo";
     if (activeEnvironment) {
       newTitle += ` (${activeEnvironment.name})`;
     }

@@ -1,4 +1,4 @@
-import { patchModel, workspaceMetasAtom, workspacesAtom } from "@yaakapp-internal/models";
+import { patchModel, workspaceMetasAtom, workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useAuthTab } from "../hooks/useAuthTab";
 import { useHeadersTab } from "../hooks/useHeadersTab";

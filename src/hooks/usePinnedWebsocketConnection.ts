@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { WebsocketConnection, WebsocketEvent } from "@yaakapp-internal/models";
+import type { WebsocketConnection, WebsocketEvent } from "@yakumo-internal/models";
 import {
   mergeModelsInStore,
   replaceModelsInStore,
   websocketConnectionsAtom,
   websocketEventsAtom,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { fireAndForget } from "../lib/fireAndForget";

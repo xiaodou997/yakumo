@@ -1,5 +1,5 @@
-import type { GitStatusEntry } from "@yaakapp-internal/git";
-import { useGit } from "@yaakapp-internal/git";
+import type { GitStatusEntry } from "@yakumo-internal/git";
+import { useGit } from "@yakumo-internal/git";
 import type {
   Environment,
   Folder,
@@ -7,7 +7,7 @@ import type {
   HttpRequest,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { modelToYaml } from "../../lib/diffYaml";
@@ -80,7 +80,7 @@ export function GitCommitDialog({ syncDir, onDone, workspace }: Props) {
 
   const { internalEntries, externalEntries, allEntries } = useMemo(() => {
     const allEntries = [];
-    const yaakEntries = [];
+    const internalEntries = [];
     const externalEntries = [];
 
     for (const entry of status.data?.entries ?? []) {
@@ -88,10 +88,10 @@ export function GitCommitDialog({ syncDir, onDone, workspace }: Props) {
       if (entry.next == null && entry.prev == null) {
         externalEntries.push(entry);
       } else {
-        yaakEntries.push(entry);
+        internalEntries.push(entry);
       }
     }
-    return { internalEntries: yaakEntries, externalEntries, allEntries };
+    return { internalEntries: internalEntries, externalEntries, allEntries };
   }, [status.data?.entries]);
 
   const hasAddedAnything = allEntries.find((e) => e.staged) != null;

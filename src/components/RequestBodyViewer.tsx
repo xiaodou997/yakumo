@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import { lazy, Suspense } from "react";
 import { useHttpRequestBody } from "../hooks/useHttpRequestBody";
 import { getMimeTypeFromContentType, languageFromContentType } from "../lib/contentType";

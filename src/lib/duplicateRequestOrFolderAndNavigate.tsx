@@ -1,5 +1,5 @@
-import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import { duplicateModel } from "@yaakapp-internal/models";
+import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { duplicateModel } from "@yakumo-internal/models";
 import { activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
 import { jotaiStore } from "./jotai";
 import { navigateToRequestOrFolderOrWorkspace } from "./setWorkspaceSearchParams";

@@ -1,4 +1,4 @@
-import { workspacesAtom } from "@yaakapp-internal/models";
+import { workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { getRecentCookieJars } from "../hooks/useRecentCookieJars";

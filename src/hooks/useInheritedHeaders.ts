@@ -5,8 +5,8 @@ import type {
   HttpRequestHeader,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
-import { foldersAtom, workspacesAtom } from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
+import { foldersAtom, workspacesAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { defaultHeaders } from "../lib/defaultHeaders";
 

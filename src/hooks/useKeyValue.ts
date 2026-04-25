@@ -1,6 +1,6 @@
 import deepEqual from "@gilbarbara/deep-equal";
 import { useMutation } from "@tanstack/react-query";
-import { keyValuesAtom } from "@yaakapp-internal/models";
+import { keyValuesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";

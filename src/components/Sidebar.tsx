@@ -1,6 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import { Compartment } from "@codemirror/state";
-import { debounce } from "@yaakapp-internal/lib";
+import { debounce } from "../lib/debounce";
 import type {
   AnyModel,
   Folder,
@@ -9,7 +9,7 @@ import type {
   ModelPayload,
   WebsocketRequest,
   Workspace,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import {
   duplicateModel,
   foldersAtom,
@@ -20,7 +20,7 @@ import {
   patchModel,
   websocketConnectionsAtom,
   workspacesAtom,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";

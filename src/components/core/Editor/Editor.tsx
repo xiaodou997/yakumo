@@ -8,8 +8,8 @@ import { emacs } from "@replit/codemirror-emacs";
 import { vim } from "@replit/codemirror-vim";
 
 import { vscodeKeymap } from "@replit/codemirror-vscode-keymap";
-import type { EditorKeymap } from "@yaakapp-internal/models";
-import { settingsAtom } from "@yaakapp-internal/models";
+import type { EditorKeymap } from "@yakumo-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import type { EditorLanguage, TemplateFunction } from "@yakumo/features";
 import classNames from "classnames";
 import type { GraphQLSchema } from "graphql";
@@ -629,7 +629,7 @@ function getExtensions({
 const placeholderElFromText = (text: string | undefined) => {
   const el = document.createElement("div");
   // Default to <SPACE> because codemirror needs it for sizing. I'm not sure why, but probably something
-  // to do with how Yaak "hacks" it with CSS for single line input.
+  // to do with how Yakumo "hacks" it with CSS for single line input.
   el.innerHTML = text ? text.replaceAll("\n", "<br/>") : " ";
   return el;
 };

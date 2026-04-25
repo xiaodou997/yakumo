@@ -1,4 +1,4 @@
-import { createWorkspaceModel, foldersAtom, patchModel } from "@yaakapp-internal/models";
+import { createWorkspaceModel, foldersAtom, patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { Fragment, useMemo } from "react";
 import { useAuthTab } from "../hooks/useAuthTab";
@@ -167,7 +167,7 @@ export function FolderSettingsDialog({ folderId, tab }: Props) {
               <VStack alignItems="center" space={1.5}>
                 <p>
                   Override{" "}
-                  <Link href="https://yaak.app/docs/using-yaak/environments-and-variables">
+                  <Link href="https://github.com/xiaodou997/yakumo">
                     Variables
                   </Link>{" "}
                   for requests within this folder.

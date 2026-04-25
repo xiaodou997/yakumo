@@ -1,5 +1,5 @@
-import type { Workspace } from "@yaakapp-internal/models";
-import { patchModel, settingsAtom } from "@yaakapp-internal/models";
+import type { Workspace } from "@yakumo-internal/models";
+import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { switchWorkspace } from "../commands/switchWorkspace";

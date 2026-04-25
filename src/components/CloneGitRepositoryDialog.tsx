@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { gitClone } from "@yaakapp-internal/git";
+import { gitClone } from "@yakumo-internal/git";
 import { useState } from "react";
 import { openWorkspaceFromSyncDir } from "../commands/openWorkspaceFromSyncDir";
 import { appInfo } from "../lib/appInfo";
@@ -118,7 +118,7 @@ export function CloneGitRepositoryDialog({ hide }: Props) {
         checked={hasSubdirectory}
         onChange={setHasSubdirectory}
         title="Workspace is in a subdirectory"
-        help="Enable if the Yaak workspace files are not at the root of the repository"
+        help="Enable if the Yakumo workspace files are not at the root of the repository"
       />
 
       {hasSubdirectory && (

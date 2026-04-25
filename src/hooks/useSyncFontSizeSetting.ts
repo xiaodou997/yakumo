@@ -1,5 +1,5 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { settingsAtom } from "@yaakapp-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 

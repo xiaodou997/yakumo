@@ -1,5 +1,5 @@
-import type { Environment, EnvironmentVariable } from "@yaakapp-internal/models";
-import { foldersAtom } from "@yaakapp-internal/models";
+import type { Environment, EnvironmentVariable } from "@yakumo-internal/models";
+import { foldersAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";

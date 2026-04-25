@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { HttpResponse, HttpResponseEvent } from "@yaakapp-internal/models";
+import type { HttpResponse, HttpResponseEvent } from "@yakumo-internal/models";
 import {
   httpResponseEventsAtom,
   mergeModelsInStore,
   replaceModelsInStore,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { fireAndForget } from "../lib/fireAndForget";

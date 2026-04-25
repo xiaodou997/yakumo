@@ -4,13 +4,13 @@ use crate::grpc::{build_metadata, metadata_to_map, resolve_grpc_request};
 use crate::http_request::send_http_request;
 use crate::import::import_data;
 use crate::models_ext::{BlobManagerExt, QueryManagerExt};
-use crate::notifications::YaakNotifier;
+use crate::notifications::YakumoNotifier;
 use crate::render::{render_grpc_request, render_template};
-use crate::updates::{UpdateMode, UpdateTrigger, YaakUpdater};
+use crate::updates::{UpdateMode, UpdateTrigger, YakumoUpdater};
 use crate::uri_scheme::handle_deep_link;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use error::Result as YaakResult;
+use error::Result as YakumoResult;
 use eventsource_client::{EventParser, SSE};
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
@@ -30,24 +30,24 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 use tokio::sync::Mutex;
 use tokio::task::block_in_place;
 use tokio::time;
-use yaak_common::command::new_checked_command;
-use yaak_crypto::manager::EncryptionManager;
-use yaak_features::events::{Color, RenderPurpose, ShowToastRequest};
-use yaak_grpc::manager::{GrpcConfig, GrpcHandle};
-use yaak_grpc::{Code, ServiceDefinition, serialize_message};
-use yaak_mac_window::AppHandleMacWindowExt;
-use yaak_models::models::{
+use yakumo_common::command::new_checked_command;
+use yakumo_crypto::manager::EncryptionManager;
+use yakumo_features::events::{Color, RenderPurpose, ShowToastRequest};
+use yakumo_grpc::manager::{GrpcConfig, GrpcHandle};
+use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
+use yakumo_mac_window::AppHandleMacWindowExt;
+use yakumo_models::models::{
     GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, HttpRequest, HttpResponse,
     HttpResponseEvent, HttpResponseState, WorkspaceMeta,
 };
-use yaak_models::util::{BatchUpsertResult, UpdateSource, get_workspace_export_resources};
-use yaak_sse::sse::ServerSentEvent;
-use yaak_templates::format_json::format_json;
-use yaak_templates::strip_json_comments::strip_json_comments;
-use yaak_templates::{
+use yakumo_models::util::{BatchUpsertResult, UpdateSource, get_workspace_export_resources};
+use yakumo_sse::sse::ServerSentEvent;
+use yakumo_templates::format_json::format_json;
+use yakumo_templates::strip_json_comments::strip_json_comments;
+use yakumo_templates::{
     RenderErrorBehavior, RenderOptions, TemplateCallback, Tokens, transform_args,
 };
-use yaak_tls::find_client_certificate;
+use yakumo_tls::find_client_certificate;
 
 mod commands;
 mod encoding;
@@ -92,66 +92,66 @@ impl TemplateCallback for BuiltinTemplateCallback {
         &self,
         fn_name: &str,
         args: HashMap<String, serde_json::Value>,
-    ) -> yaak_templates::error::Result<String> {
-        use yaak_features::template::*;
+    ) -> yakumo_templates::error::Result<String> {
+        use yakumo_features::template::*;
 
         // Dispatch to appropriate template function
         match fn_name {
             // UUID functions
             "uuid.v4" => {
-                uuid::UuidV4.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+                uuid::UuidV4.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
             }
             "uuid.v7" => {
-                uuid::UuidV7.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+                uuid::UuidV7.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
             }
             "uuid.v3" => {
-                uuid::UuidV3.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+                uuid::UuidV3.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
             }
             "uuid.v5" => {
-                uuid::UuidV5.render(&args).map_err(|e| yaak_templates::error::Error::RenderError(e))
+                uuid::UuidV5.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
             }
             // Timestamp functions
             "timestamp.unix" => timestamp::TimestampUnix
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "timestamp.unixMillis" => timestamp::TimestampUnixMillis
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "timestamp.iso8601" => timestamp::TimestampIso8601
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "timestamp.format" => timestamp::TimestampFormat
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "timestamp.offset" => timestamp::TimestampOffset
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // Hash functions
             "hash.sha256" => hash::HashSha256
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // Encode functions
             "base64.encode" => encode::Base64Encode
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // Random functions (only RandomString available)
             "random.string" => random::RandomString
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // JSONPath functions
             "jsonpath.query" => jsonpath::JsonPathQuery
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // Regex functions
             "regex.match" => regex::RegexMatch
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "regex.replace" => regex::RegexReplace
                 .render(&args)
-                .map_err(|e| yaak_templates::error::Error::RenderError(e)),
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "secure" => {
                 let value = args.get("value").and_then(|v| v.as_str()).ok_or_else(|| {
-                    yaak_templates::error::Error::RenderError(
+                    yakumo_templates::error::Error::RenderError(
                         "secure() requires a value argument".to_string(),
                     )
                 })?;
@@ -162,20 +162,20 @@ impl TemplateCallback for BuiltinTemplateCallback {
                     return Ok(value.to_string());
                 };
                 let encrypted = BASE64_STANDARD.decode(value).map_err(|e| {
-                    yaak_templates::error::Error::RenderError(format!(
+                    yakumo_templates::error::Error::RenderError(format!(
                         "Failed to decode secure template: {e}"
                     ))
                 })?;
                 let decrypted = encryption_manager
                     .decrypt(workspace_id, &encrypted)
-                    .map_err(|e| yaak_templates::error::Error::RenderError(e.to_string()))?;
+                    .map_err(|e| yakumo_templates::error::Error::RenderError(e.to_string()))?;
                 String::from_utf8(decrypted).map_err(|e| {
-                    yaak_templates::error::Error::RenderError(format!(
+                    yakumo_templates::error::Error::RenderError(format!(
                         "Secure template is not valid UTF-8: {e}"
                     ))
                 })
             }
-            _ => Err(yaak_templates::error::Error::RenderError(format!(
+            _ => Err(yakumo_templates::error::Error::RenderError(format!(
                 "Unknown template function: {fn_name}"
             ))),
         }
@@ -186,7 +186,7 @@ impl TemplateCallback for BuiltinTemplateCallback {
         _fn_name: &str,
         _arg_name: &str,
         arg_value: &str,
-    ) -> yaak_templates::error::Result<String> {
+    ) -> yakumo_templates::error::Result<String> {
         Ok(arg_value.to_string())
     }
 }
@@ -206,7 +206,7 @@ struct AppMetaData {
 }
 
 #[tauri::command]
-async fn cmd_metadata(app_handle: AppHandle) -> YaakResult<AppMetaData> {
+async fn cmd_metadata(app_handle: AppHandle) -> YakumoResult<AppMetaData> {
     let app_data_dir = app_handle.path().app_data_dir()?;
     let app_log_dir = app_handle.path().app_log_dir()?;
     let default_project_dir = app_handle.path().home_dir()?.join("YakumoProjects");
@@ -247,7 +247,7 @@ async fn cmd_template_tokens_to_string<R: Runtime>(
     _window: WebviewWindow<R>,
     _app_handle: AppHandle<R>,
     tokens: Tokens,
-) -> YaakResult<String> {
+) -> YakumoResult<String> {
     let cb = BuiltinTemplateCallback::default();
     let new_tokens = transform_args(tokens, &cb)?;
     Ok(new_tokens.to_string())
@@ -262,7 +262,7 @@ async fn cmd_render_template<R: Runtime>(
     environment_id: Option<&str>,
     _purpose: Option<RenderPurpose>,
     ignore_error: Option<bool>,
-) -> YaakResult<String> {
+) -> YakumoResult<String> {
     let environment_chain =
         app_handle.db().resolve_environments(workspace_id, None, environment_id)?;
     let cb = BuiltinTemplateCallback::for_workspace(
@@ -288,9 +288,9 @@ async fn cmd_render_template<R: Runtime>(
 async fn cmd_dismiss_notification<R: Runtime>(
     window: WebviewWindow<R>,
     notification_id: &str,
-    yaak_notifier: State<'_, Mutex<YaakNotifier>>,
-) -> YaakResult<()> {
-    Ok(yaak_notifier.lock().await.seen(&window, notification_id).await?)
+    yakumo_notifier: State<'_, Mutex<YakumoNotifier>>,
+) -> YakumoResult<()> {
+    Ok(yakumo_notifier.lock().await.seen(&window, notification_id).await?)
 }
 
 #[tauri::command]
@@ -301,7 +301,7 @@ async fn cmd_grpc_reflect<R: Runtime>(
     window: WebviewWindow<R>,
     app_handle: AppHandle<R>,
     grpc_handle: State<'_, Mutex<GrpcHandle>>,
-) -> YaakResult<Vec<ServiceDefinition>> {
+) -> YakumoResult<Vec<ServiceDefinition>> {
     let unrendered_request = app_handle.db().get_grpc_request(request_id)?;
     let (resolved_request, auth_context_id) = resolve_grpc_request(&window, &unrendered_request)?;
 
@@ -357,7 +357,7 @@ async fn cmd_grpc_go<R: Runtime>(
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
     grpc_handle: State<'_, Mutex<GrpcHandle>>,
-) -> YaakResult<String> {
+) -> YakumoResult<String> {
     let unrendered_request = app_handle.db().get_grpc_request(request_id)?;
     let (resolved_request, auth_context_id) = resolve_grpc_request(&window, &unrendered_request)?;
     let environment_chain = app_handle.db().resolve_environments(
@@ -673,7 +673,7 @@ async fn cmd_grpc_go<R: Runtime>(
                         )
                         .unwrap();
                 }
-                Some(Err(yaak_grpc::error::Error::GrpcStreamError(e))) => {
+                Some(Err(yakumo_grpc::error::Error::GrpcStreamError(e))) => {
                     app_handle
                         .db()
                         .upsert_grpc_event(
@@ -739,7 +739,7 @@ async fn cmd_grpc_go<R: Runtime>(
                         .unwrap();
                     stream.into_inner()
                 }
-                Some(Err(yaak_grpc::error::Error::GrpcStreamError(e))) => {
+                Some(Err(yakumo_grpc::error::Error::GrpcStreamError(e))) => {
                     warn!("GRPC stream error {e:?}");
                     app_handle
                         .db()
@@ -893,7 +893,7 @@ async fn cmd_grpc_go<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_restart<R: Runtime>(app_handle: AppHandle<R>) -> YaakResult<()> {
+async fn cmd_restart<R: Runtime>(app_handle: AppHandle<R>) -> YakumoResult<()> {
     app_handle.request_restart();
     Ok(())
 }
@@ -905,7 +905,7 @@ async fn cmd_send_ephemeral_request<R: Runtime>(
     cookie_jar_id: Option<&str>,
     window: WebviewWindow,
     app_handle: AppHandle<R>,
-) -> YaakResult<HttpResponse> {
+) -> YakumoResult<HttpResponse> {
     let response = HttpResponse::default();
     request.id = "".to_string();
     let environment = match environment_id {
@@ -928,12 +928,12 @@ async fn cmd_send_ephemeral_request<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_format_json(text: &str) -> YaakResult<String> {
+async fn cmd_format_json(text: &str) -> YakumoResult<String> {
     Ok(format_json(text, "  "))
 }
 
 #[tauri::command]
-async fn cmd_format_graphql(text: &str) -> YaakResult<String> {
+async fn cmd_format_graphql(text: &str) -> YakumoResult<String> {
     match pretty_graphql::format_text(text, &Default::default()) {
         Ok(formatted) => Ok(formatted),
         Err(_) => Ok(text.to_string()),
@@ -944,7 +944,7 @@ async fn cmd_format_graphql(text: &str) -> YaakResult<String> {
 async fn cmd_http_request_body<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
-) -> YaakResult<Option<Vec<u8>>> {
+) -> YakumoResult<Option<Vec<u8>>> {
     let body_id = format!("{}.request", response_id);
     let chunks = app_handle.blobs().get_chunks(&body_id)?;
 
@@ -958,7 +958,7 @@ async fn cmd_http_request_body<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_get_sse_events(file_path: &str) -> YaakResult<Vec<ServerSentEvent>> {
+async fn cmd_get_sse_events(file_path: &str) -> YakumoResult<Vec<ServerSentEvent>> {
     let body = fs::read(file_path)?;
     let mut event_parser = EventParser::new();
     event_parser.process_bytes(body.into())?;
@@ -982,7 +982,7 @@ async fn cmd_get_sse_events(file_path: &str) -> YaakResult<Vec<ServerSentEvent>>
 async fn cmd_get_http_response_events<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
-) -> YaakResult<Vec<HttpResponseEvent>> {
+) -> YakumoResult<Vec<HttpResponseEvent>> {
     let events: Vec<HttpResponseEvent> = app_handle.db().list_http_response_events(response_id)?;
     Ok(events)
 }
@@ -991,7 +991,7 @@ async fn cmd_get_http_response_events<R: Runtime>(
 async fn cmd_import_data<R: Runtime>(
     window: WebviewWindow<R>,
     file_path: &str,
-) -> YaakResult<BatchUpsertResult> {
+) -> YakumoResult<BatchUpsertResult> {
     import_data(&window, file_path).await
 }
 
@@ -1001,7 +1001,7 @@ async fn cmd_export_data<R: Runtime>(
     export_path: &str,
     workspace_ids: Vec<&str>,
     include_private_environments: bool,
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     let db = app_handle.db();
     let version = app_handle.package_info().version.to_string();
     let export_data =
@@ -1027,7 +1027,7 @@ async fn cmd_save_response<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
     filepath: &str,
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     let response = app_handle.db().get_http_response(response_id)?;
 
     let body_path =
@@ -1047,7 +1047,7 @@ async fn cmd_send_http_request<R: Runtime>(
     //   condition where the user may have just edited a field before sending
     //   that has not yet been saved in the DB.
     request: HttpRequest,
-) -> YaakResult<HttpResponse> {
+) -> YakumoResult<HttpResponse> {
     let blobs = app_handle.blob_manager();
     let response = app_handle.db().upsert_http_response(
         &HttpResponse {
@@ -1115,7 +1115,7 @@ async fn cmd_delete_all_grpc_connections<R: Runtime>(
     request_id: &str,
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     Ok(app_handle.db().delete_all_grpc_connections_for_request(
         request_id,
         &UpdateSource::from_window_label(window.label()),
@@ -1127,7 +1127,7 @@ async fn cmd_delete_send_history<R: Runtime>(
     workspace_id: &str,
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     Ok(app_handle.with_tx(|tx| {
         let source = &UpdateSource::from_window_label(window.label());
         tx.delete_all_http_responses_for_workspace(workspace_id, source)?;
@@ -1142,7 +1142,7 @@ async fn cmd_delete_all_http_responses<R: Runtime>(
     request_id: &str,
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     Ok(app_handle.db().delete_all_http_responses_for_request(
         request_id,
         &UpdateSource::from_window_label(window.label()),
@@ -1153,7 +1153,7 @@ async fn cmd_delete_all_http_responses<R: Runtime>(
 async fn cmd_get_workspace_meta<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: &str,
-) -> YaakResult<WorkspaceMeta> {
+) -> YakumoResult<WorkspaceMeta> {
     let db = app_handle.db();
     let workspace = db.get_workspace(workspace_id)?;
     Ok(db.get_or_create_workspace_meta(&workspace.id)?)
@@ -1166,13 +1166,13 @@ async fn cmd_new_child_window(
     label: &str,
     title: &str,
     inner_size: (f64, f64),
-) -> YaakResult<()> {
+) -> YakumoResult<()> {
     window::create_child_window(&parent_window, url, label, title, inner_size)?;
     Ok(())
 }
 
 #[tauri::command]
-async fn cmd_new_main_window(app_handle: AppHandle, url: &str) -> YaakResult<()> {
+async fn cmd_new_main_window(app_handle: AppHandle, url: &str) -> YakumoResult<()> {
     window::create_main_window(&app_handle, url)?;
     Ok(())
 }
@@ -1180,11 +1180,11 @@ async fn cmd_new_main_window(app_handle: AppHandle, url: &str) -> YaakResult<()>
 #[tauri::command]
 async fn cmd_check_for_updates<R: Runtime>(
     window: WebviewWindow<R>,
-    yaak_updater: State<'_, Mutex<YaakUpdater>>,
-) -> YaakResult<bool> {
+    yakumo_updater: State<'_, Mutex<YakumoUpdater>>,
+) -> YakumoResult<bool> {
     let update_mode = get_update_mode(&window).await?;
     let settings = window.db().get_settings();
-    Ok(yaak_updater
+    Ok(yakumo_updater
         .lock()
         .await
         .check_now(&window, update_mode, settings.auto_download_updates, UpdateTrigger::User)
@@ -1249,13 +1249,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(yaak_mac_window::init())
+        .plugin(yakumo_mac_window::init())
         .plugin(models_ext::init()) // Database setup only
-        .plugin(yaak_fonts::init());
+        .plugin(yakumo_fonts::init());
 
     #[cfg(feature = "license")]
     {
-        builder = builder.plugin(yaak_license::init());
+        builder = builder.plugin(yakumo_license::init());
     }
 
     #[cfg(feature = "updater")]
@@ -1266,13 +1266,13 @@ pub fn run() {
     builder
         .setup(|app| {
             // Initialize HTTP connection manager
-            app.manage(yaak_http::manager::HttpConnectionManager::new());
+            app.manage(yakumo_http::manager::HttpConnectionManager::new());
 
             // Initialize encryption manager
             let query_manager =
-                app.state::<yaak_models::query_manager::QueryManager>().inner().clone();
+                app.state::<yakumo_models::query_manager::QueryManager>().inner().clone();
             let app_id = app.config().identifier.to_string();
-            app.manage(yaak_crypto::manager::EncryptionManager::new(query_manager, app_id));
+            app.manage(yakumo_crypto::manager::EncryptionManager::new(query_manager, app_id));
 
             {
                 let app_handle = app.app_handle().clone();
@@ -1302,29 +1302,29 @@ pub fn run() {
             };
 
             // Add updater
-            let yaak_updater = YaakUpdater::new();
-            app.manage(Mutex::new(yaak_updater));
+            let yakumo_updater = YakumoUpdater::new();
+            app.manage(Mutex::new(yakumo_updater));
 
             // Add notifier
-            let yaak_notifier = YaakNotifier::new();
-            app.manage(Mutex::new(yaak_notifier));
+            let yakumo_notifier = YakumoNotifier::new();
+            app.manage(Mutex::new(yakumo_notifier));
 
             // Add GRPC manager
             let protoc_include_dir = app
                 .path()
                 .resolve("vendored/protoc/include", BaseDirectory::Resource)
                 .expect("failed to resolve protoc include directory");
-            let protoc_bin_name = if cfg!(windows) { "yaakprotoc.exe" } else { "yaakprotoc" };
+            let protoc_bin_name = if cfg!(windows) { "yakumoprotoc.exe" } else { "yakumoprotoc" };
             let protoc_bin_path = app
                 .path()
                 .resolve(format!("vendored/protoc/{}", protoc_bin_name), BaseDirectory::Resource)
-                .expect("failed to resolve yaakprotoc binary");
+                .expect("failed to resolve yakumoprotoc binary");
             let grpc_config = GrpcConfig { protoc_include_dir, protoc_bin_path };
             let grpc_handle = GrpcHandle::new(grpc_config);
             app.manage(Mutex::new(grpc_handle));
 
             // Add WebSocket manager
-            let ws_manager = yaak_ws::WebsocketManager::new();
+            let ws_manager = yakumo_ws::WebsocketManager::new();
             app.manage(Mutex::new(ws_manager));
 
             // Specific settings
@@ -1443,7 +1443,7 @@ pub fn run() {
                     let h = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
                         let info = history::get_or_upsert_launch_info(&h);
-                        debug!("Launched Yaak {:?}", info);
+                        debug!("Launched Yakumo {:?}", info);
                     });
 
                     // Cancel pending requests
@@ -1464,7 +1464,7 @@ pub fn run() {
                             let settings = w.db().get_settings();
                             if settings.autoupdate {
                                 time::sleep(Duration::from_secs(3)).await; // Wait a bit so it's not so jarring
-                                let val: State<'_, Mutex<YaakUpdater>> = h.state();
+                                let val: State<'_, Mutex<YakumoUpdater>> = h.state();
                                 let update_mode = get_update_mode(&w).await.unwrap();
                                 if let Err(e) = val
                                     .lock()
@@ -1483,7 +1483,7 @@ pub fn run() {
                         let windows = h.webview_windows();
                         let w = windows.values().next().unwrap();
                         tokio::time::sleep(Duration::from_millis(4000)).await;
-                        let val: State<'_, Mutex<YaakNotifier>> = w.state();
+                        let val: State<'_, Mutex<YakumoNotifier>> = w.state();
                         let mut n = val.lock().await;
                         if let Err(e) = n.maybe_check(&w).await {
                             warn!("Failed to check for notifications {}", e)
@@ -1502,7 +1502,7 @@ pub fn run() {
         });
 }
 
-async fn get_update_mode<R: Runtime>(window: &WebviewWindow<R>) -> YaakResult<UpdateMode> {
+async fn get_update_mode<R: Runtime>(window: &WebviewWindow<R>) -> YakumoResult<UpdateMode> {
     let settings = window.db().get_settings();
     Ok(UpdateMode::new(settings.update_channel.as_str()))
 }

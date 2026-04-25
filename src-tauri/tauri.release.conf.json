@@ -9,21 +9,21 @@
         {
           "identifier": "release",
           "windows": ["*"],
-          "permissions": ["yaak-license:default"]
+          "permissions": ["yakumo-license:default"]
         }
       ]
     }
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://update.yaak.app/check/{{target}}/{{arch}}/{{current_version}}"],
+      "endpoints": ["https://update.yakumo.local/check/{{target}}/{{arch}}/{{current_version}}"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVGRkFGMjQxRUNEOTQ3MzAKUldRd1I5bnNRZkw2NzRtMnRlWTN3R24xYUR3aGRsUjJzWGwvdHdEcGljb3ZJMUNlMjFsaHlqVU4K"
     }
   },
   "bundle": {
     "publisher": "Yakumo",
     "license": "MIT",
-    "copyright": "Yakumo API (based on Yaak)",
+    "copyright": "Yakumo API (based on Yakumo)",
     "homepage": "https://github.com/mountain-loop/yaak",
     "active": true,
     "category": "DeveloperTool",
@@ -38,7 +38,7 @@
       "frameworks": []
     },
     "windows": {
-      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a Yaak -c yaakapp %1"
+      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a Yakumo -c yaakapp %1"
     },
     "linux": {
       "deb": {

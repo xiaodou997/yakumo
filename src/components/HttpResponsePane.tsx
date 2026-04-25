@@ -1,4 +1,4 @@
-import type { HttpResponse, HttpResponseEvent } from "@yaakapp-internal/models";
+import type { HttpResponse, HttpResponseEvent } from "@yakumo-internal/models";
 import classNames from "classnames";
 import type { ComponentType, CSSProperties } from "react";
 import { lazy, Suspense, useMemo } from "react";

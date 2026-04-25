@@ -1,4 +1,4 @@
-import { settingsAtom } from "@yaakapp-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import {

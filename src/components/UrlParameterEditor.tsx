@@ -1,4 +1,4 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
 import { useCallback, useRef } from "react";
 import { useRequestEditor, useRequestEditorEvent } from "../hooks/useRequestEditor";
 import type { PairEditorHandle, PairEditorProps } from "./core/PairEditor";

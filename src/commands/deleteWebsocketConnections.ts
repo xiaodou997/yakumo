@@ -1,5 +1,5 @@
-import type { WebsocketRequest } from "@yaakapp-internal/models";
-import { deleteWebsocketConnections as cmdDeleteWebsocketConnections } from "@yaakapp-internal/ws";
+import type { WebsocketRequest } from "@yakumo-internal/models";
+import { deleteWebsocketConnections as cmdDeleteWebsocketConnections } from "@yakumo-internal/ws";
 import { createFastMutation } from "../hooks/useFastMutation";
 
 export const deleteWebsocketConnections = createFastMutation({

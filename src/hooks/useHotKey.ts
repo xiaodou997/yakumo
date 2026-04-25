@@ -1,6 +1,6 @@
 import { type } from "@tauri-apps/plugin-os";
-import { debounce } from "@yaakapp-internal/lib";
-import { settingsAtom } from "@yaakapp-internal/models";
+import { debounce } from "../lib/debounce";
+import { settingsAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { capitalize } from "../lib/capitalize";

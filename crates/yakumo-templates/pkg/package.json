@@ -1,0 +1,17 @@
+{
+  "name": "yakumo-templates",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "yakumo_templates_bg.wasm",
+    "yakumo_templates.js",
+    "yakumo_templates_bg.js",
+    "yakumo_templates.d.ts"
+  ],
+  "main": "yakumo_templates.js",
+  "types": "yakumo_templates.d.ts",
+  "sideEffects": [
+    "./yakumo_templates.js",
+    "./snippets/*"
+  ]
+}

@@ -2,7 +2,7 @@
 // All functionality is now built-in
 
 import { useAtomValue } from "jotai";
-import { pluginsAtom } from "@yaakapp-internal/models";
+import { pluginsAtom } from "@yakumo-internal/models";
 import { useDebouncedValue } from "./useDebouncedValue";
 
 export function usePluginsKey() {

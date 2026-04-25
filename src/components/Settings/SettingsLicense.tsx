@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useLicense } from "@yaakapp-internal/license";
+import { useLicense } from "@yakumo-internal/license";
 import { differenceInDays } from "date-fns";
 import { formatDate } from "date-fns/format";
 import { useState } from "react";
@@ -45,12 +45,12 @@ function SettingsLicenseCmp() {
               <strong>
                 {pluralizeCount("day", differenceInDays(check.data.data.end, new Date()))}
               </strong>{" "}
-              left to evaluate Yaak for commercial use.
+              left to evaluate Yakumo for commercial use.
               <br />
               <span className="opacity-50">Personal use is always free, forever.</span>
               <Separator className="my-2" />
               <div className="flex flex-wrap items-center gap-x-2 text-sm text-notice">
-                <Link noUnderline href={`https://yaak.app/pricing?s=learn&t=${check.data.status}`}>
+                <Link noUnderline href={`https://github.com/xiaodou997/yakumo`}>
                   Learn More
                 </Link>
               </div>
@@ -65,12 +65,12 @@ function SettingsLicenseCmp() {
               Your commercial-use trial has ended.
               <br />
               <span className="opacity-50">
-                You may continue using Yaak for personal use only.
+                You may continue using Yakumo for personal use only.
                 <br />A license is required for commercial use.
               </span>
               <Separator className="my-2" />
               <div className="flex flex-wrap items-center gap-x-2 text-sm text-notice">
-                <Link noUnderline href={`https://yaak.app/pricing?s=learn&t=${check.data.status}`}>
+                <Link noUnderline href={`https://github.com/xiaodou997/yakumo`}>
                   Learn More
                 </Link>
               </div>
@@ -81,7 +81,7 @@ function SettingsLicenseCmp() {
       case "inactive":
         return (
           <Banner color="danger">
-            Your license is invalid. Please <Link href="https://yaak.app/dashboard">Sign In</Link>{" "}
+            Your license is invalid. Please <Link href="https://github.com/xiaodou997/yakumo">Sign In</Link>{" "}
             for more details
           </Banner>
         );
@@ -91,7 +91,7 @@ function SettingsLicenseCmp() {
           <Banner color="notice">
             Your license expired{" "}
             <strong>{formatDate(check.data.data.periodEnd, "MMMM dd, yyyy")}</strong>. Please{" "}
-            <Link href="https://yaak.app/dashboard">Resubscribe</Link> to continue receiving
+            <Link href="https://github.com/xiaodou997/yakumo">Resubscribe</Link> to continue receiving
             updates.
             {check.data.data.changesUrl && (
               <>
@@ -136,7 +136,7 @@ function SettingsLicenseCmp() {
           <Button
             color="secondary"
             size="sm"
-            onClick={() => openUrl("https://yaak.app/dashboard?s=support&ref=app.yaak.desktop")}
+            onClick={() => openUrl("https://github.com/xiaodou997/yakumo/issues")}
             rightSlot={<Icon icon="external_link" />}
           >
             Direct Support
@@ -153,7 +153,7 @@ function SettingsLicenseCmp() {
             rightSlot={<Icon icon="external_link" />}
             onClick={() =>
               openUrl(
-                `https://yaak.app/pricing?s=purchase&ref=app.yaak.desktop&t=${check.data?.status ?? ""}`,
+                `https://github.com/xiaodou997/yakumo`,
               )
             }
           >

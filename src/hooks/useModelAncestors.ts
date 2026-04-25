@@ -1,5 +1,5 @@
-import type { AnyModel, Folder, Workspace } from "@yaakapp-internal/models";
-import { foldersAtom, workspacesAtom } from "@yaakapp-internal/models";
+import type { AnyModel, Folder, Workspace } from "@yakumo-internal/models";
+import { foldersAtom, workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 

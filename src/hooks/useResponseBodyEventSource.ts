@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import type { HttpResponse } from "@yaakapp-internal/models";
-import type { ServerSentEvent } from "@yaakapp-internal/sse";
+import type { HttpResponse } from "@yakumo-internal/models";
+import type { ServerSentEvent } from "@yakumo-internal/sse";
 import { getResponseBodyEventSource } from "../lib/responseBody";
 
 export function useResponseBodyEventSource(response: HttpResponse) {

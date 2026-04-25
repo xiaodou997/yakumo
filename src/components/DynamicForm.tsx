@@ -1,5 +1,5 @@
-import type { Folder, HttpRequest } from "@yaakapp-internal/models";
-import { foldersAtom, httpRequestsAtom } from "@yaakapp-internal/models";
+import type { Folder, HttpRequest } from "@yakumo-internal/models";
+import { foldersAtom, httpRequestsAtom } from "@yakumo-internal/models";
 import type {
   FormInput,
   FormInputCheckbox,

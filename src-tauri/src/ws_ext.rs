@@ -1,5 +1,5 @@
 //! WebSocket Tauri command wrappers
-//! These wrap the core yaak-ws functionality for Tauri IPC.
+//! These wrap the core yakumo-ws functionality for Tauri IPC.
 
 use crate::BuiltinTemplateCallback;
 use crate::error::Result;
@@ -12,19 +12,19 @@ use tauri::{AppHandle, Manager, Runtime, State, WebviewWindow, command};
 use tokio::sync::{Mutex, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;
-use yaak_crypto::manager::EncryptionManager;
-use yaak_features::auth;
-use yaak_http::cookies::CookieStore;
-use yaak_http::path_placeholders::apply_path_placeholders;
-use yaak_models::models::{
+use yakumo_crypto::manager::EncryptionManager;
+use yakumo_features::auth;
+use yakumo_http::cookies::CookieStore;
+use yakumo_http::path_placeholders::apply_path_placeholders;
+use yakumo_models::models::{
     HttpResponseHeader, WebsocketConnection, WebsocketConnectionState, WebsocketEvent,
     WebsocketEventType, WebsocketRequest,
 };
-use yaak_models::util::UpdateSource;
-use yaak_templates::strip_json_comments::maybe_strip_json_comments;
-use yaak_templates::{RenderErrorBehavior, RenderOptions};
-use yaak_tls::find_client_certificate;
-use yaak_ws::{WebsocketManager, render_websocket_request};
+use yakumo_models::util::UpdateSource;
+use yakumo_templates::strip_json_comments::maybe_strip_json_comments;
+use yakumo_templates::{RenderErrorBehavior, RenderOptions};
+use yakumo_tls::find_client_certificate;
+use yakumo_ws::{WebsocketManager, render_websocket_request};
 
 #[command]
 pub async fn cmd_ws_delete_connections<R: Runtime>(

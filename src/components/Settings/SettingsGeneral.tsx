@@ -1,5 +1,5 @@
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { patchModel, settingsAtom } from "@yaakapp-internal/models";
+import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { useCheckForUpdates } from "../../hooks/useCheckForUpdates";

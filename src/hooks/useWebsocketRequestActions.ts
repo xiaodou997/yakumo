@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { WebsocketRequest } from "@yaakapp-internal/models";
+import type { WebsocketRequest } from "@yakumo-internal/models";
 import type {
   CallWebsocketRequestActionRequest,
   GetWebsocketRequestActionsResponse,

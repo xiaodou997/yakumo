@@ -1,4 +1,4 @@
-import type { HttpRequest } from "@yaakapp-internal/models";
+import type { HttpRequest } from "@yakumo-internal/models";
 
 import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";

@@ -1,4 +1,4 @@
-import type { UncommittedChangesStrategy } from "@yaakapp-internal/git";
+import type { UncommittedChangesStrategy } from "@yakumo-internal/git";
 import { showConfirm } from "../../lib/confirm";
 
 export async function promptUncommittedChangesStrategy(): Promise<UncommittedChangesStrategy> {

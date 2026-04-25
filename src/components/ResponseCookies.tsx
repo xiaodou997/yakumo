@@ -1,4 +1,4 @@
-import type { HttpResponse } from "@yaakapp-internal/models";
+import type { HttpResponse } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useMemo } from "react";
 import type { JSX } from "react/jsx-runtime";

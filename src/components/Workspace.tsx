@@ -1,4 +1,4 @@
-import { workspacesAtom } from "@yaakapp-internal/models";
+import { workspacesAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import * as m from "motion/react-m";

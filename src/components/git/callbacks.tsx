@@ -1,4 +1,4 @@
-import type { GitCallbacks } from "@yaakapp-internal/git";
+import type { GitCallbacks } from "@yakumo-internal/git";
 import { sync } from "../../init/sync";
 import { promptCredentials } from "./credentials";
 import { promptDivergedStrategy } from "./diverged";

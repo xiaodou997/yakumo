@@ -1,5 +1,5 @@
-import type { GitRemote } from "@yaakapp-internal/git";
-import { gitMutations } from "@yaakapp-internal/git";
+import type { GitRemote } from "@yakumo-internal/git";
+import { gitMutations } from "@yakumo-internal/git";
 import { showPromptForm } from "../../lib/prompt-form";
 import { gitCallbacks } from "./callbacks";
 

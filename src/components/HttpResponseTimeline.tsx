@@ -2,7 +2,7 @@ import type {
   HttpResponse,
   HttpResponseEvent,
   HttpResponseEventData,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { type ReactNode, useMemo, useState } from "react";
 import { useHttpResponseEvents } from "../hooks/useHttpResponseEvents";
 import { Editor } from "./core/Editor/LazyEditor";

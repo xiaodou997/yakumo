@@ -2,7 +2,7 @@ import {
   grpcConnectionsAtom,
   httpResponsesAtom,
   websocketConnectionsAtom,
-} from "@yaakapp-internal/models";
+} from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { showAlert } from "../lib/alert";
 import { showConfirmDelete } from "../lib/confirm";

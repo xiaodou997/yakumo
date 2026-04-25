@@ -1,5 +1,5 @@
-import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yaakapp-internal/models";
-import { settingsAtom } from "@yaakapp-internal/models";
+import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
