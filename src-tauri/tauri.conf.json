@@ -1,6 +1,6 @@
 {
   "productName": "Yakumo API",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "identifier": "app.yakumo.api",
   "build": {
     "beforeBuildCommand": "bun run build && bun run vendor:protoc",
