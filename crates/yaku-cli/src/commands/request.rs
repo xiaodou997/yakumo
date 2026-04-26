@@ -14,7 +14,9 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::sync::mpsc;
-use yakumo_http::sender::{HttpResponseEvent as SenderHttpResponseEvent, HttpSender, ReqwestSender};
+use yakumo_http::sender::{
+    HttpResponseEvent as SenderHttpResponseEvent, HttpSender, ReqwestSender,
+};
 use yakumo_http::types::{SendableHttpRequest, SendableHttpRequestOptions};
 use yakumo_models::models::{
     GrpcRequest, HttpRequest, HttpResponse, HttpResponseEvent, HttpResponseHeader,

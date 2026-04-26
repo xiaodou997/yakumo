@@ -100,9 +100,6 @@ jobs:
       - name: Install dependencies
         run: node scripts/ci-bun-install.mjs
 
-      - name: Vendor protoc
-        run: bun run vendor:protoc
-
       - name: Check workspace
         run: cargo check --locked --workspace --all-targets
 

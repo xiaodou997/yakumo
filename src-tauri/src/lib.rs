@@ -19,7 +19,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 use std::{fs, panic};
-use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, RunEvent, State, WebviewWindow, is_dev};
 use tauri::{Listener, Runtime};
 use tauri::{Manager, WindowEvent};
@@ -33,7 +32,7 @@ use tokio::time;
 use yakumo_common::command::new_checked_command;
 use yakumo_crypto::manager::EncryptionManager;
 use yakumo_features::events::{Color, RenderPurpose, ShowToastRequest};
-use yakumo_grpc::manager::{GrpcConfig, GrpcHandle};
+use yakumo_grpc::manager::GrpcHandle;
 use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
 use yakumo_mac_window::AppHandleMacWindowExt;
 use yakumo_models::models::{
@@ -52,6 +51,7 @@ use yakumo_tls::find_client_certificate;
 mod commands;
 mod encoding;
 mod error;
+mod formatting;
 mod git_ext;
 mod grpc;
 mod history;
@@ -98,18 +98,18 @@ impl TemplateCallback for BuiltinTemplateCallback {
         // Dispatch to appropriate template function
         match fn_name {
             // UUID functions
-            "uuid.v4" => {
-                uuid::UuidV4.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
-            }
-            "uuid.v7" => {
-                uuid::UuidV7.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
-            }
-            "uuid.v3" => {
-                uuid::UuidV3.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
-            }
-            "uuid.v5" => {
-                uuid::UuidV5.render(&args).map_err(|e| yakumo_templates::error::Error::RenderError(e))
-            }
+            "uuid.v4" => uuid::UuidV4
+                .render(&args)
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
+            "uuid.v7" => uuid::UuidV7
+                .render(&args)
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
+            "uuid.v3" => uuid::UuidV3
+                .render(&args)
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
+            "uuid.v5" => uuid::UuidV5
+                .render(&args)
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             // Timestamp functions
             "timestamp.unix" => timestamp::TimestampUnix
                 .render(&args)
@@ -941,6 +941,11 @@ async fn cmd_format_graphql(text: &str) -> YakumoResult<String> {
 }
 
 #[tauri::command]
+async fn cmd_format_xml(text: &str) -> YakumoResult<String> {
+    Ok(formatting::format_xml(text, "  "))
+}
+
+#[tauri::command]
 async fn cmd_http_request_body<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
@@ -1310,17 +1315,7 @@ pub fn run() {
             app.manage(Mutex::new(yakumo_notifier));
 
             // Add GRPC manager
-            let protoc_include_dir = app
-                .path()
-                .resolve("vendored/protoc/include", BaseDirectory::Resource)
-                .expect("failed to resolve protoc include directory");
-            let protoc_bin_name = if cfg!(windows) { "yakumoprotoc.exe" } else { "yakumoprotoc" };
-            let protoc_bin_path = app
-                .path()
-                .resolve(format!("vendored/protoc/{}", protoc_bin_name), BaseDirectory::Resource)
-                .expect("failed to resolve yakumoprotoc binary");
-            let grpc_config = GrpcConfig { protoc_include_dir, protoc_bin_path };
-            let grpc_handle = GrpcHandle::new(grpc_config);
+            let grpc_handle = GrpcHandle::new();
             app.manage(Mutex::new(grpc_handle));
 
             // Add WebSocket manager
@@ -1343,6 +1338,7 @@ pub fn run() {
             cmd_http_request_body,
             cmd_format_json,
             cmd_format_graphql,
+            cmd_format_xml,
             cmd_get_sse_events,
             cmd_get_http_response_events,
             cmd_get_workspace_meta,

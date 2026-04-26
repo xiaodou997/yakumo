@@ -2,52 +2,28 @@ use crate::any::collect_any_types;
 use crate::client::AutoReflectionClient;
 use crate::error::Error::GenericError;
 use crate::error::Result;
-use crate::manager::GrpcConfig;
 use anyhow::anyhow;
 use async_recursion::async_recursion;
 use log::{debug, info, warn};
 use prost::Message;
 use prost_reflect::{DescriptorPool, MethodDescriptor};
-use prost_types::{FileDescriptorProto, FileDescriptorSet};
+use prost_types::FileDescriptorProto;
 use std::collections::{BTreeMap, HashSet};
-use std::env::temp_dir;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::fs;
 use tokio::sync::RwLock;
 use tonic::codegen::http::uri::PathAndQuery;
 use tonic::transport::Uri;
 use tonic_reflection::pb::v1::server_reflection_request::MessageRequest;
 use tonic_reflection::pb::v1::server_reflection_response::MessageResponse;
-use yakumo_common::command::new_xplatform_command;
 use yakumo_tls::ClientCertificateConfig;
 
-pub async fn fill_pool_from_files(
-    config: &GrpcConfig,
-    paths: &Vec<PathBuf>,
-) -> Result<DescriptorPool> {
+pub async fn fill_pool_from_files(paths: &Vec<PathBuf>) -> Result<DescriptorPool> {
     let mut pool = DescriptorPool::new();
-    let random_file_name = format!("{}.desc", uuid::Uuid::new_v4());
-    let desc_path = temp_dir().join(random_file_name);
-
-    // HACK: Remove UNC prefix for Windows paths
-    let global_import_dir =
-        dunce::simplified(config.protoc_include_dir.as_path()).to_string_lossy().to_string();
-    let desc_path = dunce::simplified(desc_path.as_path());
-
-    let mut args = vec![
-        "--include_imports".to_string(),
-        "--include_source_info".to_string(),
-        "-I".to_string(),
-        global_import_dir,
-        "-o".to_string(),
-        desc_path.to_string_lossy().to_string(),
-    ];
-
-    let mut include_dirs = HashSet::new();
-    let mut include_protos = HashSet::new();
+    let mut include_dirs = HashSet::<PathBuf>::new();
+    let mut include_protos = HashSet::<PathBuf>::new();
 
     for p in paths {
         if !p.exists() {
@@ -56,7 +32,7 @@ pub async fn fill_pool_from_files(
 
         // Dirs are added as includes
         if p.is_dir() {
-            include_dirs.insert(p.to_string_lossy().to_string());
+            include_dirs.insert(p.clone());
             continue;
         }
 
@@ -65,51 +41,39 @@ pub async fn fill_pool_from_files(
             match find_parent_proto_dir(parent_path) {
                 None => {
                     // Add parent/grandparent as fallback
-                    include_dirs.insert(parent_path.to_string_lossy().to_string());
+                    include_dirs.insert(parent_path.to_path_buf());
                     if let Some(grandparent_path) = parent_path.parent() {
-                        include_dirs.insert(grandparent_path.to_string_lossy().to_string());
+                        include_dirs.insert(grandparent_path.to_path_buf());
                     }
                 }
                 Some(p) => {
-                    include_dirs.insert(p.to_string_lossy().to_string());
+                    include_dirs.insert(p);
                 }
             };
         } else {
             debug!("ignoring {:?} since it does not exist.", parent)
         }
 
-        include_protos.insert(p.to_string_lossy().to_string());
+        include_protos.insert(p.clone());
     }
 
-    for d in include_dirs.clone() {
-        args.push("-I".to_string());
-        args.push(d);
-    }
-    for p in include_protos.clone() {
-        args.push(p);
+    if include_protos.is_empty() {
+        return Err(GenericError("No proto files selected".into()));
     }
 
-    info!("Invoking protoc with {}", args.join(" "));
+    info!(
+        "Compiling proto files with protox: {}",
+        include_protos.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")
+    );
 
-    let mut cmd = new_xplatform_command(&config.protoc_bin_path);
-    cmd.args(&args);
-
-    let out =
-        cmd.output().await.map_err(|e| GenericError(format!("Failed to run protoc: {}", e)))?;
-
-    if !out.status.success() {
-        return Err(GenericError(format!(
-            "protoc failed with status {}: {}",
-            out.status.code().unwrap_or(-1),
-            String::from_utf8_lossy(out.stderr.as_slice())
-        )));
-    }
-
-    let bytes = fs::read(desc_path).await?;
-    let fdp = FileDescriptorSet::decode(bytes.deref())?;
-    pool.add_file_descriptor_set(fdp)?;
-
-    fs::remove_file(desc_path).await?;
+    let file_descriptor_set = protox::Compiler::new(include_dirs)
+        .map_err(|e| GenericError(format!("Failed to initialize proto compiler: {e}")))?
+        .include_imports(true)
+        .include_source_info(true)
+        .open_files(include_protos)
+        .map_err(|e| GenericError(format!("Failed to compile proto files: {e}")))?
+        .file_descriptor_set();
+    pool.add_file_descriptor_set(file_descriptor_set)?;
 
     Ok(pool)
 }
@@ -429,6 +393,62 @@ mod topology {
             }
             assert_eq!(iter.next(), None);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fill_pool_from_files;
+    use std::fs;
+
+    #[tokio::test]
+    async fn compiles_local_proto_files_with_imports_and_well_known_types() {
+        let dir = tempfile::tempdir().unwrap();
+        let dep_path = dir.path().join("dep.proto");
+        let root_path = dir.path().join("root.proto");
+
+        fs::write(
+            &dep_path,
+            r#"
+                syntax = "proto3";
+                package yakumo;
+
+                message Dep {
+                  string value = 1;
+                }
+            "#,
+        )
+        .unwrap();
+        fs::write(
+            &root_path,
+            r#"
+                syntax = "proto3";
+                package yakumo;
+
+                import "dep.proto";
+                import "google/protobuf/timestamp.proto";
+
+                service SampleService {
+                  rpc GetSample (SampleRequest) returns (SampleResponse);
+                }
+
+                message SampleRequest {
+                  Dep dep = 1;
+                  google.protobuf.Timestamp at = 2;
+                }
+
+                message SampleResponse {
+                  string ok = 1;
+                }
+            "#,
+        )
+        .unwrap();
+
+        let pool = fill_pool_from_files(&vec![root_path]).await.unwrap();
+
+        assert!(pool.get_service_by_name("yakumo.SampleService").is_some());
+        assert!(pool.get_message_by_name("yakumo.Dep").is_some());
+        assert!(pool.get_message_by_name("google.protobuf.Timestamp").is_some());
     }
 }
 

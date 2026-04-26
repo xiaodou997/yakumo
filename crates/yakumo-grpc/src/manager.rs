@@ -23,7 +23,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::metadata::{MetadataKey, MetadataValue};
 use tonic::transport::Uri;
 use tonic::{IntoRequest, IntoStreamingRequest, Request, Response, Status, Streaming};
@@ -32,7 +32,7 @@ use yakumo_tls::ClientCertificateConfig;
 #[derive(Clone)]
 pub struct GrpcConnection {
     pool: Arc<RwLock<DescriptorPool>>,
-    conn: Client<HttpsConnector<HttpConnector>, BoxBody>,
+    conn: Client<HttpsConnector<HttpConnector>, Body>,
     pub uri: Uri,
     use_reflection: bool,
 }
@@ -276,24 +276,14 @@ impl GrpcConnection {
     }
 }
 
-/// Configuration for GrpcHandle to compile proto files
-#[derive(Clone)]
-pub struct GrpcConfig {
-    /// Path to the protoc include directory (vendored/protoc/include)
-    pub protoc_include_dir: PathBuf,
-    /// Path to the yakumoprotoc sidecar binary
-    pub protoc_bin_path: PathBuf,
-}
-
 pub struct GrpcHandle {
-    config: GrpcConfig,
     pools: BTreeMap<String, DescriptorPool>,
 }
 
 impl GrpcHandle {
-    pub fn new(config: GrpcConfig) -> Self {
+    pub fn new() -> Self {
         let pools = BTreeMap::new();
-        Self { pools, config }
+        Self { pools }
     }
 }
 
@@ -325,7 +315,7 @@ impl GrpcHandle {
             let full_uri = uri_from_str(uri)?;
             fill_pool_from_reflection(&full_uri, metadata, validate_certificates, client_cert).await
         } else {
-            fill_pool_from_files(&self.config, proto_files).await
+            fill_pool_from_files(proto_files).await
         }?;
 
         self.pools.insert(key, pool.clone());

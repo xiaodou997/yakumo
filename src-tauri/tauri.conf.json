@@ -3,8 +3,8 @@
   "version": "0.0.2",
   "identifier": "app.yakumo.api",
   "build": {
-    "beforeBuildCommand": "bun run build && bun run vendor:protoc",
-    "beforeDevCommand": "node scripts/ensure-vendored.mjs && bun run --cwd src dev",
+    "beforeBuildCommand": "bun run build",
+    "beforeDevCommand": "bun run --cwd src dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
@@ -34,10 +34,6 @@
       "icons/release/icon.icns",
       "icons/release/icon.ico"
     ],
-    "resources": [
-      "static",
-      "vendored/protoc/include",
-      "vendored/protoc/yakumoprotoc*"
-    ]
+    "resources": ["static"]
   }
 }

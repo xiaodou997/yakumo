@@ -47,16 +47,6 @@ const args = [
   ...additionalArgs,
 ];
 
-// Invoke the tauri CLI JS entry point directly via node to avoid shell escaping issues on Windows
-const preflight = spawnSync(process.execPath, [path.join(rootDir, "scripts", "ensure-vendored.mjs")], {
-  stdio: "inherit",
-  env: process.env,
-});
-
-if (preflight.status !== 0) {
-  process.exit(preflight.status || 1);
-}
-
 const result = spawnSync("bun", ["run", "tauri", ...args], {
   cwd: rootDir,
   stdio: "inherit",

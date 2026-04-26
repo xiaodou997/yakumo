@@ -18,6 +18,7 @@ type TauriCmd =
   | "cmd_export_data"
   | "cmd_format_graphql"
   | "cmd_format_json"
+  | "cmd_format_xml"
   | "cmd_get_http_authentication_config"
   | "cmd_get_http_authentication_summaries"
   | "cmd_get_http_response_events"
