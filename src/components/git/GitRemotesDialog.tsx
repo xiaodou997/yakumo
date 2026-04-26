@@ -7,12 +7,12 @@ import { gitCallbacks } from "./callbacks";
 import { addGitRemote } from "./showAddRemoteDialog";
 
 interface Props {
-  dir: string;
+  workspaceId: string;
   onDone: () => void;
 }
 
-export function GitRemotesDialog({ dir }: Props) {
-  const [{ remotes }, { rmRemote }] = useGit(dir, gitCallbacks(dir));
+export function GitRemotesDialog({ workspaceId }: Props) {
+  const [{ remotes }, { rmRemote }] = useGit(workspaceId, gitCallbacks(workspaceId));
 
   return (
     <Table scrollable>
@@ -27,7 +27,7 @@ export function GitRemotesDialog({ dir }: Props) {
               color="primary"
               title="Add remote"
               variant="border"
-              onClick={() => addGitRemote(dir)}
+              onClick={() => addGitRemote(workspaceId)}
             >
               Add Remote
             </Button>
@@ -55,11 +55,11 @@ export function GitRemotesDialog({ dir }: Props) {
   );
 }
 
-GitRemotesDialog.show = (dir: string) => {
+GitRemotesDialog.show = (workspaceId: string) => {
   showDialog({
     id: "git-remotes",
     title: "Manage Remotes",
     size: "md",
-    render: ({ hide }) => <GitRemotesDialog onDone={hide} dir={dir} />,
+    render: ({ hide }) => <GitRemotesDialog onDone={hide} workspaceId={workspaceId} />,
   });
 };

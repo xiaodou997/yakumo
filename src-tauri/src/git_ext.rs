@@ -2,10 +2,12 @@
 //!
 //! This module provides the Tauri commands for git functionality.
 
+use crate::error::Error::GenericError;
 use crate::error::Result;
+use crate::models_ext::QueryManagerExt;
 use crate::path_guard;
 use std::path::{Path, PathBuf};
-use tauri::command;
+use tauri::{AppHandle, Runtime, command};
 use yakumo_git::{
     BranchDeleteResult, CloneResult, GitCommit, GitRemote, GitStatusSummary, PullResult,
     PushResult, git_add, git_add_credential, git_add_remote, git_checkout_branch, git_clone,
@@ -17,61 +19,94 @@ use yakumo_git::{
 // NOTE: All of these commands are async to prevent blocking work from locking up the UI
 
 #[command]
-pub async fn cmd_git_checkout(dir: &Path, branch: &str, force: bool) -> Result<String> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_checkout_branch(dir, branch, force).await?)
+pub async fn cmd_git_workspace_checkout<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    branch: &str,
+    force: bool,
+) -> Result<String> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_checkout_branch(&dir, branch, force).await?)
 }
 
 #[command]
-pub async fn cmd_git_branch(dir: &Path, branch: &str, base: Option<&str>) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_create_branch(dir, branch, base).await?)
+pub async fn cmd_git_workspace_branch<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    branch: &str,
+    base: Option<&str>,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_create_branch(&dir, branch, base).await?)
 }
 
 #[command]
-pub async fn cmd_git_delete_branch(
-    dir: &Path,
+pub async fn cmd_git_workspace_delete_branch<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
     branch: &str,
     force: Option<bool>,
 ) -> Result<BranchDeleteResult> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_delete_branch(dir, branch, force.unwrap_or(false)).await?)
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_delete_branch(&dir, branch, force.unwrap_or(false)).await?)
 }
 
 #[command]
-pub async fn cmd_git_delete_remote_branch(dir: &Path, branch: &str) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_delete_remote_branch(dir, branch).await?)
+pub async fn cmd_git_workspace_delete_remote_branch<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    branch: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_delete_remote_branch(&dir, branch).await?)
 }
 
 #[command]
-pub async fn cmd_git_merge_branch(dir: &Path, branch: &str) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_merge_branch(dir, branch).await?)
+pub async fn cmd_git_workspace_merge_branch<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    branch: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_merge_branch(&dir, branch).await?)
 }
 
 #[command]
-pub async fn cmd_git_rename_branch(dir: &Path, old_name: &str, new_name: &str) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_rename_branch(dir, old_name, new_name).await?)
+pub async fn cmd_git_workspace_rename_branch<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    old_name: &str,
+    new_name: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_rename_branch(&dir, old_name, new_name).await?)
 }
 
 #[command]
-pub async fn cmd_git_status(dir: &Path) -> Result<GitStatusSummary> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_status(dir)?)
+pub async fn cmd_git_workspace_status<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<GitStatusSummary> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_status(&dir)?)
 }
 
 #[command]
-pub async fn cmd_git_log(dir: &Path) -> Result<Vec<GitCommit>> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_log(dir)?)
+pub async fn cmd_git_workspace_log<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<Vec<GitCommit>> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_log(&dir)?)
 }
 
 #[command]
-pub async fn cmd_git_initialize(dir: &Path) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_init(dir)?)
+pub async fn cmd_git_workspace_initialize<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_init(&dir)?)
 }
 
 #[command]
@@ -81,69 +116,99 @@ pub async fn cmd_git_clone(url: &str, dir: &Path) -> Result<CloneResult> {
 }
 
 #[command]
-pub async fn cmd_git_commit(dir: &Path, message: &str) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_commit(dir, message).await?)
+pub async fn cmd_git_workspace_commit<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    message: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_commit(&dir, message).await?)
 }
 
 #[command]
-pub async fn cmd_git_fetch_all(dir: &Path) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_fetch_all(dir).await?)
+pub async fn cmd_git_workspace_fetch_all<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_fetch_all(&dir).await?)
 }
 
 #[command]
-pub async fn cmd_git_push(dir: &Path) -> Result<PushResult> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_push(dir).await?)
+pub async fn cmd_git_workspace_push<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<PushResult> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_push(&dir).await?)
 }
 
 #[command]
-pub async fn cmd_git_pull(dir: &Path) -> Result<PullResult> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_pull(dir).await?)
+pub async fn cmd_git_workspace_pull<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<PullResult> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_pull(&dir).await?)
 }
 
 #[command]
-pub async fn cmd_git_pull_force_reset(
-    dir: &Path,
+pub async fn cmd_git_workspace_pull_force_reset<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
     remote: &str,
     branch: &str,
 ) -> Result<PullResult> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_pull_force_reset(dir, remote, branch).await?)
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_pull_force_reset(&dir, remote, branch).await?)
 }
 
 #[command]
-pub async fn cmd_git_pull_merge(dir: &Path, remote: &str, branch: &str) -> Result<PullResult> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_pull_merge(dir, remote, branch).await?)
+pub async fn cmd_git_workspace_pull_merge<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    remote: &str,
+    branch: &str,
+) -> Result<PullResult> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_pull_merge(&dir, remote, branch).await?)
 }
 
 #[command]
-pub async fn cmd_git_add(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
+pub async fn cmd_git_workspace_add<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    rela_paths: Vec<PathBuf>,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
     for path in rela_paths {
         path_guard::safe_relative_path(&path, "Git add path")?;
-        git_add(dir, &path)?;
+        git_add(&dir, &path)?;
     }
     Ok(())
 }
 
 #[command]
-pub async fn cmd_git_unstage(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
+pub async fn cmd_git_workspace_unstage<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    rela_paths: Vec<PathBuf>,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
     for path in rela_paths {
         path_guard::safe_relative_path(&path, "Git unstage path")?;
-        git_unstage(dir, &path)?;
+        git_unstage(&dir, &path)?;
     }
     Ok(())
 }
 
 #[command]
-pub async fn cmd_git_reset_changes(dir: &Path) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_reset_changes(dir).await?)
+pub async fn cmd_git_workspace_reset_changes<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_reset_changes(&dir).await?)
 }
 
 #[command]
@@ -156,19 +221,43 @@ pub async fn cmd_git_add_credential(
 }
 
 #[command]
-pub async fn cmd_git_remotes(dir: &Path) -> Result<Vec<GitRemote>> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_remotes(dir)?)
+pub async fn cmd_git_workspace_remotes<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+) -> Result<Vec<GitRemote>> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_remotes(&dir)?)
 }
 
 #[command]
-pub async fn cmd_git_add_remote(dir: &Path, name: &str, url: &str) -> Result<GitRemote> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_add_remote(dir, name, url)?)
+pub async fn cmd_git_workspace_add_remote<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    name: &str,
+    url: &str,
+) -> Result<GitRemote> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_add_remote(&dir, name, url)?)
 }
 
 #[command]
-pub async fn cmd_git_rm_remote(dir: &Path, name: &str) -> Result<()> {
-    path_guard::existing_dir(dir, "Git directory")?;
-    Ok(git_rm_remote(dir, name)?)
+pub async fn cmd_git_workspace_rm_remote<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: &str,
+    name: &str,
+) -> Result<()> {
+    let dir = workspace_git_dir(&app_handle, workspace_id)?;
+    Ok(git_rm_remote(&dir, name)?)
+}
+
+fn workspace_git_dir<R: Runtime>(app_handle: &AppHandle<R>, workspace_id: &str) -> Result<PathBuf> {
+    let db = app_handle.db();
+    let workspace = db.get_workspace(workspace_id)?;
+    let workspace_meta = db.get_or_create_workspace_meta(&workspace.id)?;
+    let dir = workspace_meta.setting_sync_dir.ok_or_else(|| {
+        GenericError(format!("Workspace {workspace_id} does not have a sync directory configured"))
+    })?;
+    let dir = PathBuf::from(dir);
+    path_guard::existing_dir(&dir, "Git directory")?;
+    Ok(dir)
 }

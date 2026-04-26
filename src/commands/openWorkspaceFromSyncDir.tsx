@@ -1,4 +1,4 @@
-import { applySync, calculateSyncFsOnly } from "@yakumo-internal/sync";
+import { applySyncFromDir, calculateSyncFsOnly } from "@yakumo-internal/sync";
 import { createFastMutation } from "../hooks/useFastMutation";
 import { showSimpleAlert } from "../lib/alert";
 import { router } from "../lib/router";
@@ -17,7 +17,7 @@ export const openWorkspaceFromSyncDir = createFastMutation<void, void, string>({
       return;
     }
 
-    await applySync(workspace.id, dir, ops);
+    await applySyncFromDir(workspace.id, dir, ops);
 
     await router.navigate({
       to: "/workspaces/$workspaceId",

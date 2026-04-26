@@ -48,7 +48,7 @@ export function CreateWorkspaceDialog({ hide }: Props) {
         });
 
         if (syncConfig.initGit && syncConfig.filePath) {
-          gitMutations(syncConfig.filePath, gitCallbacks(syncConfig.filePath))
+          gitMutations(workspaceId, gitCallbacks(workspaceId))
             .init.mutateAsync()
             .catch((err) => {
               showErrorToast({

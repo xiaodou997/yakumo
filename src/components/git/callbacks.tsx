@@ -5,10 +5,10 @@ import { promptDivergedStrategy } from "./diverged";
 import { addGitRemote } from "./showAddRemoteDialog";
 import { promptUncommittedChangesStrategy } from "./uncommitted";
 
-export function gitCallbacks(dir: string): GitCallbacks {
+export function gitCallbacks(workspaceId: string): GitCallbacks {
   return {
     addRemote: async () => {
-      return addGitRemote(dir, "origin");
+      return addGitRemote(workspaceId, "origin");
     },
     promptCredentials: async ({ url, error }) => {
       const creds = await promptCredentials({ url, error });

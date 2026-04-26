@@ -20,7 +20,6 @@ export async function sync({ force }: { force?: boolean } = {}) {
 
   await syncWorkspace.mutateAsync({
     workspaceId: workspaceMeta.workspaceId,
-    syncDir: workspaceMeta.settingSyncDir,
     force,
   });
 }
@@ -51,11 +50,7 @@ function initFileChangeListeners() {
     const workspaceMeta = jotaiStore.get(activeWorkspaceMetaAtom);
     if (workspaceMeta == null || workspaceMeta.settingSyncDir == null) return;
     debouncedSync(); // Perform an initial sync when switching workspace
-    unsub = watchWorkspaceFiles(
-      workspaceMeta.workspaceId,
-      workspaceMeta.settingSyncDir,
-      debouncedSync,
-    );
+    unsub = watchWorkspaceFiles(workspaceMeta.workspaceId, debouncedSync);
   });
 }
 

@@ -55,21 +55,21 @@ export const createFolder = createFastMutation<
 export const syncWorkspace = createFastMutation<
   void,
   void,
-  { workspaceId: string; syncDir: string; force?: boolean }
+  { workspaceId: string; force?: boolean }
 >({
   mutationKey: [],
-  mutationFn: async ({ workspaceId, syncDir, force }) => {
-    const ops = (await calculateSync(workspaceId, syncDir)) ?? [];
+  mutationFn: async ({ workspaceId, force }) => {
+    const ops = (await calculateSync(workspaceId)) ?? [];
     if (ops.length === 0) {
-      console.log("Nothing to sync", workspaceId, syncDir);
+      console.log("Nothing to sync", workspaceId);
       return;
     }
-    console.log("Syncing workspace", workspaceId, syncDir, ops);
+    console.log("Syncing workspace", workspaceId, ops);
 
     const dbOps = ops.filter((o) => o.type.startsWith("db"));
 
     if (dbOps.length === 0) {
-      await applySync(workspaceId, syncDir, ops);
+      await applySync(workspaceId, ops);
       return;
     }
 
@@ -80,7 +80,7 @@ export const syncWorkspace = createFastMutation<
     console.log("Directory changes detected", { dbOps, ops });
 
     if (force) {
-      await applySync(workspaceId, syncDir, ops);
+      await applySync(workspaceId, ops);
       return;
     }
 
@@ -93,7 +93,7 @@ export const syncWorkspace = createFastMutation<
           className="h-full grid grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            await applySync(workspaceId, syncDir, ops);
+            await applySync(workspaceId, ops);
             hide();
           }}
         >

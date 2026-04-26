@@ -29,7 +29,7 @@ import { gitCallbacks } from "./callbacks";
 import { handlePushResult } from "./git-util";
 
 interface Props {
-  syncDir: string;
+  workspaceId: string;
   onDone: () => void;
   workspace: Workspace;
 }
@@ -41,10 +41,10 @@ interface CommitTreeNode {
   ancestors: CommitTreeNode[];
 }
 
-export function GitCommitDialog({ syncDir, onDone, workspace }: Props) {
+export function GitCommitDialog({ workspaceId, onDone, workspace }: Props) {
   const [{ status }, { commit, commitAndPush, add, unstage }] = useGit(
-    syncDir,
-    gitCallbacks(syncDir),
+    workspaceId,
+    gitCallbacks(workspaceId),
   );
   const [isPushing, setIsPushing] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);

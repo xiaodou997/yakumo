@@ -3,7 +3,7 @@ import { gitMutations } from "@yakumo-internal/git";
 import { showPromptForm } from "../../lib/prompt-form";
 import { gitCallbacks } from "./callbacks";
 
-export async function addGitRemote(dir: string, defaultName?: string): Promise<GitRemote> {
+export async function addGitRemote(workspaceId: string, defaultName?: string): Promise<GitRemote> {
   const r = await showPromptForm({
     id: "add-remote",
     title: "Add Remote",
@@ -16,5 +16,5 @@ export async function addGitRemote(dir: string, defaultName?: string): Promise<G
 
   const name = String(r.name ?? "");
   const url = String(r.url ?? "");
-  return gitMutations(dir, gitCallbacks(dir)).addRemote.mutateAsync({ name, url });
+  return gitMutations(workspaceId, gitCallbacks(workspaceId)).addRemote.mutateAsync({ name, url });
 }

@@ -33,10 +33,10 @@ export function GitDropdown() {
     return <SetupSyncDropdown workspaceMeta={workspaceMeta} />;
   }
 
-  return <SyncDropdownWithSyncDir syncDir={workspaceMeta.settingSyncDir} />;
+  return <SyncDropdownWithSyncDir workspaceId={workspaceMeta.workspaceId} />;
 }
 
-function SyncDropdownWithSyncDir({ syncDir }: { syncDir: string }) {
+function SyncDropdownWithSyncDir({ workspaceId }: { workspaceId: string }) {
   const workspace = useAtomValue(activeWorkspaceAtom);
   const [refreshKey, regenerateKey] = useRandomKey();
   const [
@@ -53,7 +53,7 @@ function SyncDropdownWithSyncDir({ syncDir }: { syncDir: string }) {
       resetChanges,
       init,
     },
-  ] = useGit(syncDir, gitCallbacks(syncDir), refreshKey);
+  ] = useGit(workspaceId, gitCallbacks(workspaceId), refreshKey);
 
   const localBranches = status.data?.localBranches ?? [];
   const remoteBranches = status.data?.remoteBranches ?? [];
@@ -141,7 +141,7 @@ function SyncDropdownWithSyncDir({ syncDir }: { syncDir: string }) {
     {
       label: "Manage Remotes...",
       leftSlot: <Icon icon="hard_drive_download" />,
-      onSelect: () => GitRemotesDialog.show(syncDir),
+      onSelect: () => GitRemotesDialog.show(workspaceId),
     },
     { type: "separator" },
     {
@@ -219,7 +219,7 @@ function SyncDropdownWithSyncDir({ syncDir }: { syncDir: string }) {
           size: "full",
           noPadding: true,
           render: ({ hide }) => (
-            <GitCommitDialog syncDir={syncDir} onDone={hide} workspace={workspace} />
+            <GitCommitDialog workspaceId={workspaceId} onDone={hide} workspace={workspace} />
           ),
         });
       },

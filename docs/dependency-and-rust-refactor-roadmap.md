@@ -29,6 +29,9 @@ Completed in this round:
 - Replaced frontend fs reads with narrower Rust commands for response bodies and sync-directory empty checks; response body commands now resolve paths from database `responseId` instead of trusting frontend paths.
 - Added a shared Tauri path guard for import/export/save/sync/git commands and rejected absolute or parent-traversing Git relative paths.
 - Split file and response-body commands out of `src-tauri/src/lib.rs` into `src-tauri/src/file_commands.rs`.
+- Bound normal sync calculate/apply/watch commands to `WorkspaceMeta.settingSyncDir` via `workspaceId`; only the user-selected "open workspace from directory" bootstrap path still passes an explicit directory.
+- Bound normal Git operations to `WorkspaceMeta.settingSyncDir` via `workspaceId` and removed the old direct-directory Git commands from the Tauri invoke surface. Only clone and credential setup still use explicit user-selected inputs.
+- Deleted the unregistered direct-directory Git command functions so the Rust command module matches the tightened invoke surface.
 
 Validation completed in this round:
 
@@ -116,7 +119,7 @@ Do not move these to Rust:
 ## Recommended next implementation order
 
 1. Continue splitting large Tauri commands out of `src-tauri/src/lib.rs` into domain command modules.
-2. Bind git and sync commands to persisted workspace metadata where possible instead of accepting directory strings from frontend state.
+2. Split the remaining large Tauri command groups out of `src-tauri/src/lib.rs`, starting with settings/template/render commands.
 3. Upgrade Tauri Rust and JS plugin manifests explicitly to the versions already proven by the lockfile update.
 4. Upgrade TanStack Router family and regenerate routes.
 5. Plan Tailwind 4 as a dedicated UI/build migration.

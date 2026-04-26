@@ -6,10 +6,9 @@ import { WatchEvent } from "./bindings/gen_watch";
 
 export * from "./bindings/gen_models";
 
-export async function calculateSync(workspaceId: string, syncDir: string) {
+export async function calculateSync(workspaceId: string) {
   return invoke<SyncOp[]>("cmd_sync_calculate", {
     workspaceId,
-    syncDir,
   });
 }
 
@@ -17,8 +16,15 @@ export async function calculateSyncFsOnly(dir: string) {
   return invoke<SyncOp[]>("cmd_sync_calculate_fs", { dir });
 }
 
-export async function applySync(workspaceId: string, syncDir: string, syncOps: SyncOp[]) {
+export async function applySync(workspaceId: string, syncOps: SyncOp[]) {
   return invoke<void>("cmd_sync_apply", {
+    workspaceId,
+    syncOps: syncOps,
+  });
+}
+
+export async function applySyncFromDir(workspaceId: string, syncDir: string, syncOps: SyncOp[]) {
+  return invoke<void>("cmd_sync_apply_fs", {
     workspaceId,
     syncDir,
     syncOps: syncOps,
@@ -27,15 +33,13 @@ export async function applySync(workspaceId: string, syncDir: string, syncOps: S
 
 export function watchWorkspaceFiles(
   workspaceId: string,
-  syncDir: string,
   callback: (e: WatchEvent) => void,
 ) {
-  console.log("Watching workspace files", workspaceId, syncDir);
+  console.log("Watching workspace files", workspaceId);
   const channel = new Channel<WatchEvent>();
   channel.onmessage = callback;
   const unlistenPromise = invoke<WatchResult>("cmd_sync_watch", {
     workspaceId,
-    syncDir,
     channel,
   });
 
@@ -46,7 +50,7 @@ export function watchWorkspaceFiles(
   return () =>
     unlistenPromise
       .then(async ({ unlistenEvent }) => {
-        console.log("Unwatching workspace files", workspaceId, syncDir);
+        console.log("Unwatching workspace files", workspaceId);
         unlistenToWatcher(unlistenEvent);
       })
       .catch(console.error);
