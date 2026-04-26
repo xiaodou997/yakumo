@@ -429,9 +429,30 @@ fn builtin_template_functions() -> Vec<Value> {
                 { "type": "text", "name": "namespace", "label": "Namespace UUID", "defaultValue": "6ba7b810-9dad-11d1-80b4-00c04fd430c8" }
             ]
         }),
-        json!({ "name": "timestamp.unix", "description": "Generate the current Unix timestamp.", "previewType": "live", "args": [] }),
-        json!({ "name": "timestamp.unixMillis", "description": "Generate the current Unix timestamp in milliseconds.", "previewType": "live", "args": [] }),
-        json!({ "name": "timestamp.iso8601", "description": "Generate the current ISO-8601 timestamp.", "previewType": "live", "args": [] }),
+        json!({
+            "name": "timestamp.unix",
+            "description": "Generate a Unix timestamp in seconds for now or a provided date.",
+            "previewType": "live",
+            "args": [
+                { "type": "text", "name": "date", "label": "Date", "optional": true, "placeholder": "2026-01-01T12:00:00Z" }
+            ]
+        }),
+        json!({
+            "name": "timestamp.unixMillis",
+            "description": "Generate a Unix timestamp in milliseconds for now or a provided date.",
+            "previewType": "live",
+            "args": [
+                { "type": "text", "name": "date", "label": "Date", "optional": true, "placeholder": "2026-01-01T12:00:00Z" }
+            ]
+        }),
+        json!({
+            "name": "timestamp.iso8601",
+            "description": "Generate an ISO-8601 timestamp for now or a provided date.",
+            "previewType": "live",
+            "args": [
+                { "type": "text", "name": "date", "label": "Date", "optional": true, "placeholder": "2026-01-01T12:00:00Z" }
+            ]
+        }),
         json!({
             "name": "timestamp.format",
             "description": "Format a timestamp or date with a custom pattern.",
@@ -497,6 +518,70 @@ fn builtin_template_functions() -> Vec<Value> {
             ]
         }),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        builtin_http_authentication_configs, builtin_http_authentication_summaries,
+        builtin_template_functions,
+    };
+    use serde_json::Value;
+
+    fn by_name<'a>(items: &'a [Value], name: &str) -> &'a Value {
+        items.iter()
+            .find(|item| item.get("name").and_then(Value::as_str) == Some(name))
+            .unwrap_or_else(|| panic!("missing config for {name}"))
+    }
+
+    #[test]
+    fn template_metadata_exposes_timestamp_date_arg() {
+        let functions = builtin_template_functions();
+        let unix = by_name(&functions, "timestamp.unix");
+        let args = unix.get("args").and_then(Value::as_array).unwrap();
+        assert_eq!(args.len(), 1);
+        assert_eq!(args[0].get("name").and_then(Value::as_str), Some("date"));
+        assert_eq!(args[0].get("optional").and_then(Value::as_bool), Some(true));
+    }
+
+    #[test]
+    fn template_metadata_uses_text_arg_for_regex_match() {
+        let functions = builtin_template_functions();
+        let regex = by_name(&functions, "regex.match");
+        let args = regex.get("args").and_then(Value::as_array).unwrap();
+        assert_eq!(args[0].get("name").and_then(Value::as_str), Some("text"));
+        assert_eq!(args[1].get("name").and_then(Value::as_str), Some("pattern"));
+    }
+
+    #[test]
+    fn auth_summaries_include_short_labels() {
+        let summaries = builtin_http_authentication_summaries();
+        let oauth2 = by_name(&summaries, "oauth2");
+        assert_eq!(oauth2.get("shortLabel").and_then(Value::as_str), Some("OAuth2"));
+    }
+
+    #[test]
+    fn auth_config_keeps_expected_defaults() {
+        let configs = builtin_http_authentication_configs();
+        let jwt = by_name(&configs, "jwt");
+        let args = jwt.get("args").and_then(Value::as_array).unwrap();
+        let algorithm = args
+            .iter()
+            .find(|arg| arg.get("name").and_then(Value::as_str) == Some("algorithm"))
+            .unwrap();
+        assert_eq!(
+            algorithm.get("defaultValue").and_then(Value::as_str),
+            Some("HS256")
+        );
+
+        let oauth2 = by_name(&configs, "oauth2");
+        let oauth2_args = oauth2.get("args").and_then(Value::as_array).unwrap();
+        let access_token = oauth2_args
+            .iter()
+            .find(|arg| arg.get("name").and_then(Value::as_str) == Some("accessToken"))
+            .unwrap();
+        assert_eq!(access_token.get("password").and_then(Value::as_bool), Some(true));
+    }
 }
 
 fn builtin_http_authentication_summaries() -> Vec<Value> {
