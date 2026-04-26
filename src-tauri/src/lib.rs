@@ -186,15 +186,6 @@ impl TemplateCallback for BuiltinTemplateCallback {
 }
 
 #[tauri::command]
-async fn cmd_dismiss_notification<R: Runtime>(
-    window: WebviewWindow<R>,
-    notification_id: &str,
-    yakumo_notifier: State<'_, Mutex<YakumoNotifier>>,
-) -> YakumoResult<()> {
-    Ok(yakumo_notifier.lock().await.seen(&window, notification_id).await?)
-}
-
-#[tauri::command]
 async fn cmd_grpc_reflect<R: Runtime>(
     request_id: &str,
     environment_id: Option<&str>,
@@ -928,7 +919,7 @@ pub fn run() {
             history::cmd_delete_all_grpc_connections,
             history::cmd_delete_all_http_responses,
             history::cmd_delete_send_history,
-            cmd_dismiss_notification,
+            notifications::cmd_dismiss_notification,
             file_commands::cmd_export_data,
             http_request::cmd_http_request_body,
             file_commands::cmd_http_response_body_bytes,

@@ -38,6 +38,7 @@ Completed in this round:
 - Moved HTTP send and request-body Tauri commands into `http_request.rs`, keeping `src-tauri/src/lib.rs` focused on setup and registration.
 - Moved JSON/GraphQL/XML/HTML formatting commands into `formatting.rs`.
 - Moved send-history deletion commands into `history.rs` and workspace meta lookup into `models_ext.rs`.
+- Moved notification dismissal command into `notifications.rs`.
 
 Validation completed in this round:
 

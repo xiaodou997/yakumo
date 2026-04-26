@@ -6,7 +6,8 @@ use log::{debug, info};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewWindow};
+use tokio::sync::Mutex;
 use ts_rs::TS;
 use yakumo_api::{ApiClientKind, yakumo_api_client};
 use yakumo_common::platform::get_os_str;
@@ -133,6 +134,15 @@ impl YakumoNotifier {
 
         Ok(())
     }
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_dismiss_notification<R: Runtime>(
+    window: WebviewWindow<R>,
+    notification_id: &str,
+    yakumo_notifier: State<'_, Mutex<YakumoNotifier>>,
+) -> Result<()> {
+    Ok(yakumo_notifier.lock().await.seen(&window, notification_id).await?)
 }
 
 async fn get_kv<R: Runtime>(app_handle: &AppHandle<R>) -> Result<Vec<String>> {
