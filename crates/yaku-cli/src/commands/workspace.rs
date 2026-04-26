@@ -4,6 +4,7 @@ use crate::utils::confirm::confirm_delete;
 use crate::utils::json::{
     apply_merge_patch, parse_optional_json, parse_required_json, require_id, validate_create_id,
 };
+use crate::utils::output::{print_json, print_json_pretty};
 use crate::utils::schema::append_agent_hints;
 use schemars::schema_for;
 use yakumo_models::models::Workspace;
@@ -45,14 +46,7 @@ fn schema(pretty: bool) -> CommandResult {
 fn list(ctx: &CliContext) -> CommandResult {
     let workspaces =
         ctx.db().list_workspaces().map_err(|e| format!("Failed to list workspaces: {e}"))?;
-    if workspaces.is_empty() {
-        println!("No workspaces found");
-    } else {
-        for workspace in workspaces {
-            println!("{} - {}", workspace.id, workspace.name);
-        }
-    }
-    Ok(())
+    print_json(&workspaces, "workspace list output")
 }
 
 fn show(ctx: &CliContext, workspace_id: &str) -> CommandResult {
@@ -60,10 +54,7 @@ fn show(ctx: &CliContext, workspace_id: &str) -> CommandResult {
         .db()
         .get_workspace(workspace_id)
         .map_err(|e| format!("Failed to get workspace: {e}"))?;
-    let output = serde_json::to_string_pretty(&workspace)
-        .map_err(|e| format!("Failed to serialize workspace: {e}"))?;
-    println!("{output}");
-    Ok(())
+    print_json_pretty(&workspace, "workspace")
 }
 
 fn create(
@@ -87,8 +78,7 @@ fn create(
             .db()
             .upsert_workspace(&workspace, &UpdateSource::Sync)
             .map_err(|e| format!("Failed to create workspace: {e}"))?;
-        println!("Created workspace: {}", created.id);
-        return Ok(());
+        return print_json(&created, "created workspace");
     }
 
     let name = name.ok_or_else(|| {
@@ -100,8 +90,7 @@ fn create(
         .db()
         .upsert_workspace(&workspace, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to create workspace: {e}"))?;
-    println!("Created workspace: {}", created.id);
-    Ok(())
+    print_json(&created, "created workspace")
 }
 
 fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) -> CommandResult {
@@ -119,8 +108,7 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
         .upsert_workspace(&updated, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to update workspace: {e}"))?;
 
-    println!("Updated workspace: {}", saved.id);
-    Ok(())
+    print_json(&saved, "updated workspace")
 }
 
 fn delete(ctx: &CliContext, workspace_id: &str, yes: bool) -> CommandResult {
@@ -133,6 +121,5 @@ fn delete(ctx: &CliContext, workspace_id: &str, yes: bool) -> CommandResult {
         .db()
         .delete_workspace_by_id(workspace_id, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to delete workspace: {e}"))?;
-    println!("Deleted workspace: {}", deleted.id);
-    Ok(())
+    print_json(&deleted, "deleted workspace")
 }

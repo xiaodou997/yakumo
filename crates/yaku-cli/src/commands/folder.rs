@@ -5,15 +5,36 @@ use crate::utils::json::{
     apply_merge_patch, is_json_shorthand, merge_workspace_id_arg, parse_optional_json,
     parse_required_json, require_id, validate_create_id,
 };
+use crate::utils::output::{print_json, print_json_pretty};
+use crate::utils::schema::append_agent_hints;
 use crate::utils::workspace::resolve_workspace_id;
+use schemars::{JsonSchema, schema_for};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use yakumo_models::models::Folder;
+use yakumo_models::models::HttpRequestHeader;
 use yakumo_models::util::UpdateSource;
 
 type CommandResult<T = ()> = std::result::Result<T, String>;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct FolderPayloadSchema {
+    id: String,
+    workspace_id: String,
+    folder_id: Option<String>,
+    authentication: BTreeMap<String, serde_json::Value>,
+    authentication_type: Option<String>,
+    description: String,
+    headers: Vec<HttpRequestHeader>,
+    name: String,
+    sort_priority: f64,
+}
+
 pub fn run(ctx: &CliContext, args: FolderArgs) -> i32 {
     let result = match args.command {
         FolderCommands::List { workspace_id } => list(ctx, workspace_id.as_deref()),
+        FolderCommands::Schema { pretty } => schema(pretty),
         FolderCommands::Show { folder_id } => show(ctx, &folder_id),
         FolderCommands::Create { workspace_id, name, json } => {
             create(ctx, workspace_id, name, json)
@@ -31,27 +52,29 @@ pub fn run(ctx: &CliContext, args: FolderArgs) -> i32 {
     }
 }
 
+fn schema(pretty: bool) -> CommandResult {
+    let mut schema = serde_json::to_value(schema_for!(FolderPayloadSchema))
+        .map_err(|e| format!("Failed to serialize folder schema: {e}"))?;
+    append_agent_hints(&mut schema);
+
+    let output =
+        if pretty { serde_json::to_string_pretty(&schema) } else { serde_json::to_string(&schema) }
+            .map_err(|e| format!("Failed to format folder schema JSON: {e}"))?;
+    println!("{output}");
+    Ok(())
+}
+
 fn list(ctx: &CliContext, workspace_id: Option<&str>) -> CommandResult {
     let workspace_id = resolve_workspace_id(ctx, workspace_id, "folder list")?;
     let folders =
         ctx.db().list_folders(&workspace_id).map_err(|e| format!("Failed to list folders: {e}"))?;
-    if folders.is_empty() {
-        println!("No folders found in workspace {}", workspace_id);
-    } else {
-        for folder in folders {
-            println!("{} - {}", folder.id, folder.name);
-        }
-    }
-    Ok(())
+    print_json(&folders, "folder list output")
 }
 
 fn show(ctx: &CliContext, folder_id: &str) -> CommandResult {
     let folder =
         ctx.db().get_folder(folder_id).map_err(|e| format!("Failed to get folder: {e}"))?;
-    let output = serde_json::to_string_pretty(&folder)
-        .map_err(|e| format!("Failed to serialize folder: {e}"))?;
-    println!("{output}");
-    Ok(())
+    print_json_pretty(&folder, "folder")
 }
 
 fn create(
@@ -91,8 +114,7 @@ fn create(
             .upsert_folder(&folder, &UpdateSource::Sync)
             .map_err(|e| format!("Failed to create folder: {e}"))?;
 
-        println!("Created folder: {}", created.id);
-        return Ok(());
+        return print_json(&created, "created folder");
     }
 
     let workspace_id = resolve_workspace_id(ctx, workspace_id_arg.as_deref(), "folder create")?;
@@ -107,8 +129,7 @@ fn create(
         .upsert_folder(&folder, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to create folder: {e}"))?;
 
-    println!("Created folder: {}", created.id);
-    Ok(())
+    print_json(&created, "created folder")
 }
 
 fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) -> CommandResult {
@@ -124,8 +145,7 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
         .upsert_folder(&updated, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to update folder: {e}"))?;
 
-    println!("Updated folder: {}", saved.id);
-    Ok(())
+    print_json(&saved, "updated folder")
 }
 
 fn delete(ctx: &CliContext, folder_id: &str, yes: bool) -> CommandResult {
@@ -139,6 +159,5 @@ fn delete(ctx: &CliContext, folder_id: &str, yes: bool) -> CommandResult {
         .delete_folder_by_id(folder_id, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to delete folder: {e}"))?;
 
-    println!("Deleted folder: {}", deleted.id);
-    Ok(())
+    print_json(&deleted, "deleted folder")
 }

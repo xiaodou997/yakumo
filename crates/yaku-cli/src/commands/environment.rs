@@ -5,6 +5,7 @@ use crate::utils::json::{
     apply_merge_patch, is_json_shorthand, merge_workspace_id_arg, parse_optional_json,
     parse_required_json, require_id, validate_create_id,
 };
+use crate::utils::output::{print_json, print_json_pretty};
 use crate::utils::schema::append_agent_hints;
 use crate::utils::workspace::resolve_workspace_id;
 use schemars::schema_for;
@@ -53,14 +54,7 @@ fn list(ctx: &CliContext, workspace_id: Option<&str>) -> CommandResult {
         .list_environments_ensure_base(&workspace_id)
         .map_err(|e| format!("Failed to list environments: {e}"))?;
 
-    if environments.is_empty() {
-        println!("No environments found in workspace {}", workspace_id);
-    } else {
-        for environment in environments {
-            println!("{} - {} ({})", environment.id, environment.name, environment.parent_model);
-        }
-    }
-    Ok(())
+    print_json(&environments, "environment list output")
 }
 
 fn show(ctx: &CliContext, environment_id: &str) -> CommandResult {
@@ -68,10 +62,7 @@ fn show(ctx: &CliContext, environment_id: &str) -> CommandResult {
         .db()
         .get_environment(environment_id)
         .map_err(|e| format!("Failed to get environment: {e}"))?;
-    let output = serde_json::to_string_pretty(&environment)
-        .map_err(|e| format!("Failed to serialize environment: {e}"))?;
-    println!("{output}");
-    Ok(())
+    print_json_pretty(&environment, "environment")
 }
 
 fn create(
@@ -115,8 +106,7 @@ fn create(
             .upsert_environment(&environment, &UpdateSource::Sync)
             .map_err(|e| format!("Failed to create environment: {e}"))?;
 
-        println!("Created environment: {}", created.id);
-        return Ok(());
+        return print_json(&created, "created environment");
     }
 
     let workspace_id =
@@ -137,8 +127,7 @@ fn create(
         .upsert_environment(&environment, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to create environment: {e}"))?;
 
-    println!("Created environment: {}", created.id);
-    Ok(())
+    print_json(&created, "created environment")
 }
 
 fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) -> CommandResult {
@@ -156,8 +145,7 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
         .upsert_environment(&updated, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to update environment: {e}"))?;
 
-    println!("Updated environment: {}", saved.id);
-    Ok(())
+    print_json(&saved, "updated environment")
 }
 
 fn delete(ctx: &CliContext, environment_id: &str, yes: bool) -> CommandResult {
@@ -171,6 +159,5 @@ fn delete(ctx: &CliContext, environment_id: &str, yes: bool) -> CommandResult {
         .delete_environment_by_id(environment_id, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to delete environment: {e}"))?;
 
-    println!("Deleted environment: {}", deleted.id);
-    Ok(())
+    print_json(&deleted, "deleted environment")
 }

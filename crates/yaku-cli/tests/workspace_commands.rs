@@ -24,7 +24,7 @@ fn create_show_delete_round_trip() {
         .args(["workspace", "delete", &workspace_id, "--yes"])
         .assert()
         .success()
-        .stdout(contains(format!("Deleted workspace: {workspace_id}")));
+        .stdout(contains(format!(r#""id":"{workspace_id}""#)));
 
     assert!(query_manager(data_dir).connect().get_workspace(&workspace_id).is_err());
 }
@@ -48,7 +48,7 @@ fn json_create_and_update_merge_patch_round_trip() {
         ])
         .assert()
         .success()
-        .stdout(contains(format!("Updated workspace: {workspace_id}")));
+        .stdout(contains(format!(r#""id":"{workspace_id}""#)));
 
     cli_cmd(data_dir)
         .args(["workspace", "show", &workspace_id])

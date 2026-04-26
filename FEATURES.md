@@ -63,7 +63,7 @@
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | `yaku` binary | 已实现 | 源码构建，本阶段不发布 npm 包。 |
-| schema/list/show/create/update/delete | 待修复 | 已覆盖主要模型，需继续补 AI 友好输出一致性。 |
+| schema/list/show/create/update/delete | 已实现 | workspace/folder/environment/request 主路径已统一为稳定 JSON 输出，folder schema 也已补齐。 |
 | HTTP send | 已实现 | 当前 CLI send 只支持 HTTP。 |
 | gRPC / WebSocket send | 待实现 | 第一阶段明确 HTTP-only。 |
 

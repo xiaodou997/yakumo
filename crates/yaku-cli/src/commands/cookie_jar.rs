@@ -1,5 +1,6 @@
 use crate::cli::{CookieJarArgs, CookieJarCommands};
 use crate::context::CliContext;
+use crate::utils::output::print_json;
 use crate::utils::workspace::resolve_workspace_id;
 
 type CommandResult<T = ()> = std::result::Result<T, String>;
@@ -25,18 +26,5 @@ fn list(ctx: &CliContext, workspace_id: Option<&str>) -> CommandResult {
         .list_cookie_jars(&workspace_id)
         .map_err(|e| format!("Failed to list cookie jars: {e}"))?;
 
-    if cookie_jars.is_empty() {
-        println!("No cookie jars found in workspace {}", workspace_id);
-    } else {
-        for cookie_jar in cookie_jars {
-            println!(
-                "{} - {} ({} cookies)",
-                cookie_jar.id,
-                cookie_jar.name,
-                cookie_jar.cookies.len()
-            );
-        }
-    }
-
-    Ok(())
+    print_json(&cookie_jars, "cookie jar list output")
 }

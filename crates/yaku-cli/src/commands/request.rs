@@ -5,6 +5,7 @@ use crate::utils::json::{
     apply_merge_patch, is_json_shorthand, merge_workspace_id_arg, parse_optional_json,
     parse_required_json, require_id, validate_create_id,
 };
+use crate::utils::output::{print_json, print_json_pretty};
 use crate::utils::schema::append_agent_hints;
 use crate::utils::workspace::resolve_workspace_id;
 use schemars::schema_for;
@@ -79,14 +80,7 @@ fn list(ctx: &CliContext, workspace_id: Option<&str>) -> CommandResult {
         .db()
         .list_http_requests(&workspace_id)
         .map_err(|e| format!("Failed to list requests: {e}"))?;
-    if requests.is_empty() {
-        println!("No requests found in workspace {}", workspace_id);
-    } else {
-        for request in requests {
-            println!("{} - {} {}", request.id, request.method, request.name);
-        }
-    }
-    Ok(())
+    print_json(&requests, "request list output")
 }
 
 async fn schema(ctx: &CliContext, request_type: RequestSchemaType, pretty: bool) -> CommandResult {
@@ -180,8 +174,7 @@ fn create(
             .upsert_http_request(&request, &UpdateSource::Sync)
             .map_err(|e| format!("Failed to create request: {e}"))?;
 
-        println!("Created request: {}", created.id);
-        return Ok(());
+        return print_json(&created, "created request");
     }
 
     let workspace_id = resolve_workspace_id(ctx, workspace_id_arg.as_deref(), "request create")?;
@@ -202,8 +195,7 @@ fn create(
         .upsert_http_request(&request, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to create request: {e}"))?;
 
-    println!("Created request: {}", created.id);
-    Ok(())
+    print_json(&created, "created request")
 }
 
 fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) -> CommandResult {
@@ -221,17 +213,13 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
         .upsert_http_request(&updated, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to update request: {e}"))?;
 
-    println!("Updated request: {}", saved.id);
-    Ok(())
+    print_json(&saved, "updated request")
 }
 
 fn show(ctx: &CliContext, request_id: &str) -> CommandResult {
     let request =
         ctx.db().get_http_request(request_id).map_err(|e| format!("Failed to get request: {e}"))?;
-    let output = serde_json::to_string_pretty(&request)
-        .map_err(|e| format!("Failed to serialize request: {e}"))?;
-    println!("{output}");
-    Ok(())
+    print_json_pretty(&request, "request")
 }
 
 fn delete(ctx: &CliContext, request_id: &str, yes: bool) -> CommandResult {
@@ -244,8 +232,7 @@ fn delete(ctx: &CliContext, request_id: &str, yes: bool) -> CommandResult {
         .db()
         .delete_http_request_by_id(request_id, &UpdateSource::Sync)
         .map_err(|e| format!("Failed to delete request: {e}"))?;
-    println!("Deleted request: {}", deleted.id);
-    Ok(())
+    print_json(&deleted, "deleted request")
 }
 
 /// Send a request by ID and print response in the same format as legacy `send`.
@@ -263,10 +250,12 @@ pub async fn send_request_by_id(
             send_http_request_by_id(ctx, &http_request, environment, cookie_jar_id, verbose).await
         }
         AnyRequest::GrpcRequest(_) => {
-            Err("gRPC request send is not implemented yet in yaku-cli".to_string())
+            Err("CLI send currently supports HTTP only; use the desktop app for gRPC requests"
+                .to_string())
         }
         AnyRequest::WebsocketRequest(_) => {
-            Err("WebSocket request send is not implemented yet in yaku-cli".to_string())
+            Err("CLI send currently supports HTTP only; use the desktop app for WebSocket requests"
+                .to_string())
         }
     }
 }

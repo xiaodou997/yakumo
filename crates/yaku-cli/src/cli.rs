@@ -10,6 +10,7 @@ use std::path::PathBuf;
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
   - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
+  - Desktop app supports HTTP, GraphQL, gRPC, and WebSocket workflows; CLI send currently supports HTTP only
   - Deletion requires confirmation (--yes for non-interactive environments)
   "#)]
 pub struct Cli {
@@ -272,6 +273,13 @@ pub enum FolderCommands {
     List {
         /// Workspace ID (optional when exactly one workspace exists)
         workspace_id: Option<String>,
+    },
+
+    /// Output JSON schema for folder create/update payloads
+    Schema {
+        /// Pretty-print schema JSON output
+        #[arg(long)]
+        pretty: bool,
     },
 
     /// Show a folder as JSON

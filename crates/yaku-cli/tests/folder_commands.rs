@@ -34,7 +34,7 @@ fn create_list_show_delete_round_trip() {
         .args(["folder", "delete", &folder_id, "--yes"])
         .assert()
         .success()
-        .stdout(contains(format!("Deleted folder: {folder_id}")));
+        .stdout(contains(format!(r#""id":"{folder_id}""#)));
 
     assert!(query_manager(data_dir).connect().get_folder(&folder_id).is_err());
 }
@@ -63,7 +63,7 @@ fn json_create_and_update_merge_patch_round_trip() {
         ])
         .assert()
         .success()
-        .stdout(contains(format!("Updated folder: {folder_id}")));
+        .stdout(contains(format!(r#""id":"{folder_id}""#)));
 
     cli_cmd(data_dir)
         .args(["folder", "show", &folder_id])
@@ -119,4 +119,22 @@ fn create_rejects_conflicting_workspace_ids_between_arg_and_json() {
         .stderr(contains(
             "folder create got conflicting workspace_id values between positional arg and JSON payload",
         ));
+}
+
+#[test]
+fn folder_schema_outputs_json_schema() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+
+    cli_cmd(data_dir)
+        .args(["folder", "schema"])
+        .assert()
+        .success()
+        .stdout(contains("\"type\":\"object\""))
+        .stdout(contains("\"x-yakumo-agent-hints\""))
+        .stdout(contains("\"templateVariableSyntax\":\"${[ my_var ]}\""))
+        .stdout(contains(
+            "\"templateFunctionSyntax\":\"${[ namespace.my_func(a='aaa',b='bbb') ]}\"",
+        ))
+        .stdout(contains("\"workspaceId\""));
 }

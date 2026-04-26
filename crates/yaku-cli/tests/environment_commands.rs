@@ -40,7 +40,7 @@ fn create_list_show_delete_round_trip() {
         .args(["environment", "delete", &environment_id, "--yes"])
         .assert()
         .success()
-        .stdout(contains(format!("Deleted environment: {environment_id}")));
+        .stdout(contains(format!(r#""id":"{environment_id}""#)));
 
     assert!(query_manager(data_dir).connect().get_environment(&environment_id).is_err());
 }
@@ -69,7 +69,7 @@ fn json_create_and_update_merge_patch_round_trip() {
         ])
         .assert()
         .success()
-        .stdout(contains(format!("Updated environment: {environment_id}")));
+        .stdout(contains(format!(r#""id":"{environment_id}""#)));
 
     cli_cmd(data_dir)
         .args(["environment", "show", &environment_id])

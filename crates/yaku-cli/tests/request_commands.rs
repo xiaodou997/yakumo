@@ -41,7 +41,7 @@ fn show_and_delete_yes_round_trip() {
         .args(["request", "delete", &request_id, "--yes"])
         .assert()
         .success()
-        .stdout(contains(format!("Deleted request: {request_id}")));
+        .stdout(contains(format!(r#""id":"{request_id}""#)));
 
     assert!(query_manager(data_dir).connect().get_http_request(&request_id).is_err());
 }
@@ -89,7 +89,7 @@ fn json_create_and_update_merge_patch_round_trip() {
         ])
         .assert()
         .success()
-        .stdout(contains(format!("Updated request: {request_id}")));
+        .stdout(contains(format!(r#""id":"{request_id}""#)));
 
     cli_cmd(data_dir)
         .args(["request", "show", &request_id])
@@ -267,12 +267,9 @@ fn request_send_grpc_returns_explicit_nyi_error() {
     seed_workspace(data_dir, "wk_test");
     seed_grpc_request(data_dir, "wk_test", "gr_seed_nyi");
 
-    cli_cmd(data_dir)
-        .args(["request", "send", "gr_seed_nyi"])
-        .assert()
-        .failure()
-        .code(1)
-        .stderr(contains("gRPC request send is not implemented yet in yaku-cli"));
+    cli_cmd(data_dir).args(["request", "send", "gr_seed_nyi"]).assert().failure().code(1).stderr(
+        contains("CLI send currently supports HTTP only; use the desktop app for gRPC requests"),
+    );
 }
 
 #[test]
@@ -282,10 +279,9 @@ fn request_send_websocket_returns_explicit_nyi_error() {
     seed_workspace(data_dir, "wk_test");
     seed_websocket_request(data_dir, "wk_test", "wr_seed_nyi");
 
-    cli_cmd(data_dir)
-        .args(["request", "send", "wr_seed_nyi"])
-        .assert()
-        .failure()
-        .code(1)
-        .stderr(contains("WebSocket request send is not implemented yet in yaku-cli"));
+    cli_cmd(data_dir).args(["request", "send", "wr_seed_nyi"]).assert().failure().code(1).stderr(
+        contains(
+            "CLI send currently supports HTTP only; use the desktop app for WebSocket requests",
+        ),
+    );
 }

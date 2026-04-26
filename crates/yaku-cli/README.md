@@ -14,8 +14,11 @@ The `yaku` CLI is primarily meant to be used by AI agents, and has the following
 
 - `schema` subcommands to get the JSON Schema for any model (eg. `yaku request schema http`)
 - `--json '{...}'` input format to create and update data
+- JSON output for `list/show/create/update/delete` workflows
 - `--verbose` mode for extracting debug info while sending requests
 - HTTP send automation for local workflows
+
+The desktop app supports HTTP, GraphQL, gRPC, and WebSocket workflows. The CLI `send` path currently supports HTTP only.
 
 ### Example Prompts
 

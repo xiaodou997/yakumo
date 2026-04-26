@@ -5,7 +5,9 @@ pub mod http_server;
 use assert_cmd::Command;
 use assert_cmd::cargo::cargo_bin_cmd;
 use std::path::Path;
-use yakumo_models::models::{Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace};
+use yakumo_models::models::{
+    CookieJar, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,
+};
 use yakumo_models::query_manager::QueryManager;
 use yakumo_models::util::UpdateSource;
 
@@ -16,10 +18,12 @@ pub fn cli_cmd(data_dir: &Path) -> Command {
 }
 
 pub fn parse_created_id(stdout: &[u8], label: &str) -> String {
-    String::from_utf8_lossy(stdout)
-        .trim()
-        .split_once(": ")
-        .map(|(_, id)| id.to_string())
+    let value: serde_json::Value = serde_json::from_slice(stdout)
+        .unwrap_or_else(|_| panic!("Expected JSON object in '{label}' output"));
+    value
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
         .unwrap_or_else(|| panic!("Expected id in '{label}' output"))
 }
 
@@ -103,4 +107,18 @@ pub fn seed_websocket_request(data_dir: &Path, workspace_id: &str, request_id: &
         .connect()
         .upsert_websocket_request(&request, &UpdateSource::Sync)
         .expect("Failed to seed WebSocket request");
+}
+
+pub fn seed_cookie_jar(data_dir: &Path, workspace_id: &str, cookie_jar_id: &str) {
+    let cookie_jar = CookieJar {
+        id: cookie_jar_id.to_string(),
+        workspace_id: workspace_id.to_string(),
+        name: "Seed Cookie Jar".to_string(),
+        ..Default::default()
+    };
+
+    query_manager(data_dir)
+        .connect()
+        .upsert_cookie_jar(&cookie_jar, &UpdateSource::Sync)
+        .expect("Failed to seed cookie jar");
 }
