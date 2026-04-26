@@ -21,12 +21,17 @@ Completed in this round:
 - Upgraded the first batch of frontend dependencies, including Tauri JS APIs/plugins, React 19 types, TanStack Query/Router, CodeMirror, Motion, Nano ID, and Vite-related tooling.
 - Refreshed `bun.lock` with the current Bun workspace constraints and pinned CodeMirror core packages through root overrides to avoid duplicate private types.
 - Moved XML formatting from frontend `vkbeautify` into Rust command `cmd_format_xml`, then removed the frontend runtime dependency.
+- Added a separate Rust `cmd_format_html` command boundary so HTML formatting no longer depends on the XML command name in frontend code.
+- Unified Yakumo's direct HTTP client dependency on `reqwest 0.13.2`; the workspace no longer carries both `reqwest 0.12` and `reqwest 0.13`.
+- Removed frontend plugin refresh hooks from built-in action/template-function query keys and deleted unused plugin-management hooks.
 
 Validation completed in this round:
 
 - `cargo check --locked --workspace --all-targets`
 - `cargo test --locked -p yakumo-grpc`
 - `cargo test --locked -p yakumo-app formatting`
+- `cargo test --locked -p yakumo-http`
+- `cargo test --locked -p yaku-cli request`
 - `bun install --frozen-lockfile`
 - `bun run typecheck`
 - `bun run lint`
@@ -38,7 +43,7 @@ Known non-blocking warnings:
 
 - `bun run build` reports large frontend chunks, especially editor extensions. This should be handled by route-level or editor-language code splitting.
 - `bun run build` reports a PostCSS plugin warning about a missing `from` option. This is currently non-fatal and likely tied to the existing Tailwind/PostCSS stack.
-- `tauri-plugin-updater 2.10.1` currently pulls `reqwest 0.13.2` transitively while Yakumo crates still use `reqwest 0.12.28`. Unifying on `reqwest 0.13` should be a focused HTTP-layer migration.
+- `reqwest 0.13` uses the renamed `rustls-no-provider` feature, replacing the old `rustls-tls-manual-roots-no-provider` feature.
 
 ## Upgrade policy
 
@@ -64,7 +69,6 @@ Quality gate:
 
 These were reported as newer major versions but should be migrated separately:
 
-- `reqwest 0.13`: high impact because HTTP, SSE, GraphQL introspection, and CLI request sending share it.
 - `rusqlite 0.39` / `r2d2_sqlite 0.33`: high impact because it touches the database layer and model store.
 - `schemars 1.x`: medium impact because CLI schemas and generated agent hints depend on schema shape stability.
 - `ts-rs 12.x`: medium impact because it affects generated TypeScript bindings.
@@ -97,7 +101,7 @@ Move these out of the frontend first:
 - Response body filtering and large-body reads: keep and expand Rust ownership to avoid loading large responses through frontend memory.
 - Importers: keep expanding `yakumo-features` importers for Postman, Insomnia, OpenAPI 3, and Swagger 2 so dialogs only display real Rust-backed formats.
 - Auth config refresh keys: remove frontend `js-md5` hashing by exposing a Rust-backed auth state revision or response-close counter.
-- Remaining plugin-named hooks: remove `usePluginsKey`, `useInstallPlugin`, and plugin language from request/workspace/folder action hooks.
+- Remaining plugin-named backend/data compatibility: `Plugin` and `PluginKeyValue` still exist in model/migration code and should either be renamed to `LegacyPlugin*` or removed in a database baseline reset.
 
 Do not move these to Rust:
 
@@ -107,7 +111,7 @@ Do not move these to Rust:
 ## Recommended next implementation order
 
 1. Add Rust HTML formatting command and wire it into response/request formatting.
-2. Remove frontend plugin hook remnants from action hooks.
+2. Remove or rename backend `Plugin` / `PluginKeyValue` compatibility models.
 3. Upgrade Tauri Rust and JS plugin manifests explicitly to the versions already proven by the lockfile update.
 4. Upgrade TanStack Router family and regenerate routes.
 5. Plan Tailwind 4 as a dedicated UI/build migration.

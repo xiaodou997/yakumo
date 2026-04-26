@@ -5,7 +5,6 @@ import {
   type GrpcRequest,
   type HttpRequest,
   httpResponsesAtom,
-  pluginsAtom,
   type WebsocketRequest,
   type Workspace,
 } from "@yakumo-internal/models";
@@ -21,7 +20,6 @@ export function useTemplateFunctionConfig(
   values: Record<string, JsonPrimitive>,
   model: HttpRequest | GrpcRequest | WebsocketRequest | Folder | Workspace,
 ) {
-  const pluginsKey = useAtomValue(pluginsAtom);
   const workspaceId = useAtomValue(activeWorkspaceIdAtom);
   const environmentId = useAtomValue(activeEnvironmentIdAtom);
   const responses = useAtomValue(httpResponsesAtom);
@@ -47,7 +45,6 @@ export function useTemplateFunctionConfig(
       environmentId, // Refresh when the active environment changes
       environmentsKey, // Refresh when environments change
       responseKey, // Refresh when responses change
-      pluginsKey, // Refresh when plugins reload
     ],
     placeholderData: (prev) => prev, // Keep previous data on refetch
     queryFn: async () => {

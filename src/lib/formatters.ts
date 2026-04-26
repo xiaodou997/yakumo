@@ -42,3 +42,15 @@ export async function tryFormatXml(text: string): Promise<string> {
 
   return text;
 }
+
+export async function tryFormatHtml(text: string): Promise<string> {
+  if (text === "") return text;
+
+  try {
+    return await invokeCmd<string>("cmd_format_html", { text });
+  } catch (err) {
+    console.warn("Failed to format HTML", err);
+  }
+
+  return text;
+}

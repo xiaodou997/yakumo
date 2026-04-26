@@ -946,6 +946,11 @@ async fn cmd_format_xml(text: &str) -> YakumoResult<String> {
 }
 
 #[tauri::command]
+async fn cmd_format_html(text: &str) -> YakumoResult<String> {
+    Ok(formatting::format_xml(text, "  "))
+}
+
+#[tauri::command]
 async fn cmd_http_request_body<R: Runtime>(
     app_handle: AppHandle<R>,
     response_id: &str,
@@ -1339,6 +1344,7 @@ pub fn run() {
             cmd_format_json,
             cmd_format_graphql,
             cmd_format_xml,
+            cmd_format_html,
             cmd_get_sse_events,
             cmd_get_http_response_events,
             cmd_get_workspace_meta,

@@ -7,17 +7,14 @@ import type {
 } from "@yakumo/features";
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
-import { usePluginsKey } from "./usePlugins";
 
 export type CallableWorkspaceAction = Pick<WorkspaceAction, "label" | "icon"> & {
   call: (workspace: Workspace) => Promise<void>;
 };
 
 export function useWorkspaceActions() {
-  const pluginsKey = usePluginsKey();
-
   const actionsResult = useQuery<CallableWorkspaceAction[]>({
-    queryKey: ["workspace_actions", pluginsKey],
+    queryKey: ["workspace_actions"],
     queryFn: () => getWorkspaceActions(),
   });
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { EditorProps } from "../components/core/Editor/Editor";
-import { tryFormatJson, tryFormatXml } from "../lib/formatters";
+import { tryFormatHtml, tryFormatJson, tryFormatXml } from "../lib/formatters";
 
 export function useFormatText({
   text,
@@ -21,7 +21,10 @@ export function useFormatText({
       if (language === "json") {
         return tryFormatJson(text);
       }
-      if (language === "xml" || language === "html") {
+      if (language === "html") {
+        return tryFormatHtml(text);
+      }
+      if (language === "xml") {
         return tryFormatXml(text);
       }
       return text;

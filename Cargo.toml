@@ -10,7 +10,7 @@ chrono = "0.4.44"
 hex = "0.4.3"
 keyring = "3.6.3"
 log = "0.4.29"
-reqwest = "0.12.28"
+reqwest = "0.13.2"
 rustls = { version = "0.23.39", default-features = false }
 rustls-platform-verifier = "0.6.2"
 schemars = { version = "0.8.22", features = ["chrono"] }

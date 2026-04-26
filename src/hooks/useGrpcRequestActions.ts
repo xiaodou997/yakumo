@@ -8,17 +8,14 @@ import type {
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 import { getGrpcProtoFiles } from "./useGrpcProtoFiles";
-import { usePluginsKey } from "./usePlugins";
 
 export type CallableGrpcRequestAction = Pick<GrpcRequestAction, "label" | "icon"> & {
   call: (grpcRequest: GrpcRequest) => Promise<void>;
 };
 
 export function useGrpcRequestActions() {
-  const pluginsKey = usePluginsKey();
-
   const actionsResult = useQuery<CallableGrpcRequestAction[]>({
-    queryKey: ["grpc_request_actions", pluginsKey],
+    queryKey: ["grpc_request_actions"],
     queryFn: async () => {
       return getGrpcRequestActions();
     },

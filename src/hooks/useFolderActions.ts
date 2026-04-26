@@ -7,17 +7,14 @@ import type {
 } from "@yakumo/features";
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
-import { usePluginsKey } from "./usePlugins";
 
 export type CallableFolderAction = Pick<FolderAction, "label" | "icon"> & {
   call: (folder: Folder) => Promise<void>;
 };
 
 export function useFolderActions() {
-  const pluginsKey = usePluginsKey();
-
   const actionsResult = useQuery<CallableFolderAction[]>({
-    queryKey: ["folder_actions", pluginsKey],
+    queryKey: ["folder_actions"],
     queryFn: () => getFolderActions(),
   });
 

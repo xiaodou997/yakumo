@@ -7,17 +7,14 @@ import type {
 } from "@yakumo/features";
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
-import { usePluginsKey } from "./usePlugins";
 
 export type CallableWebSocketRequestAction = Pick<WebsocketRequestAction, "label" | "icon"> & {
   call: (request: WebsocketRequest) => Promise<void>;
 };
 
 export function useWebsocketRequestActions() {
-  const pluginsKey = usePluginsKey();
-
   const actionsResult = useQuery<CallableWebSocketRequestAction[]>({
-    queryKey: ["websocket_request_actions", pluginsKey],
+    queryKey: ["websocket_request_actions"],
     queryFn: () => getWebsocketRequestActions(),
   });
 

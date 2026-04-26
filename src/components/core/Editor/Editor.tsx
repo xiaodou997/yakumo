@@ -33,7 +33,7 @@ import { eventMatchesHotkey } from "../../../hooks/useHotKey";
 import { useRequestEditor } from "../../../hooks/useRequestEditor";
 import { useTemplateFunctionCompletionOptions } from "../../../hooks/useTemplateFunctions";
 import { editEnvironment } from "../../../lib/editEnvironment";
-import { tryFormatJson, tryFormatXml } from "../../../lib/formatters";
+import { tryFormatHtml, tryFormatJson, tryFormatXml } from "../../../lib/formatters";
 import { jotaiStore } from "../../../lib/jotai";
 import { withEncryptionEnabled } from "../../../lib/setupOrConfigureEncryption";
 import { TemplateFunctionDialog } from "../../TemplateFunctionDialog";
@@ -174,7 +174,9 @@ function EditorInner({
     format =
       language === "json"
         ? tryFormatJson
-        : language === "xml" || language === "html"
+        : language === "html"
+          ? tryFormatHtml
+          : language === "xml"
           ? tryFormatXml
           : undefined;
   }

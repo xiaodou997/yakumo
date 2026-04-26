@@ -7,17 +7,14 @@ import type {
 } from "@yakumo/features";
 import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
-import { usePluginsKey } from "./usePlugins";
 
 export type CallableHttpRequestAction = Pick<HttpRequestAction, "label" | "icon"> & {
   call: (httpRequest: HttpRequest) => Promise<void>;
 };
 
 export function useHttpRequestActions() {
-  const pluginsKey = usePluginsKey();
-
   const actionsResult = useQuery<CallableHttpRequestAction[]>({
-    queryKey: ["http_request_actions", pluginsKey],
+    queryKey: ["http_request_actions"],
     queryFn: () => getHttpRequestActions(),
   });
 
