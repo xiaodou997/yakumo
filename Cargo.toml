@@ -49,4 +49,7 @@ yakumo-mac-window = { path = "crates/yakumo-mac-window" }
 yakumo-tauri-utils = { path = "crates/yakumo-tauri-utils" }
 
 [profile.release]
-strip = false
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = true

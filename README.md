@@ -11,6 +11,10 @@ This project is derived from the open-source Yaak project and keeps the original
 - npm CLI packages, plugin API npm publishing, Flatpak, sponsors, and old Yaak release flows have been removed from this codebase.
 - The JavaScript plugin system is removed from the product surface. Core capabilities are implemented as built-in Yakumo features.
 
+## macOS Test Builds
+
+Current macOS release artifacts are temporary unsigned test builds. If macOS reports that the app is damaged or cannot verify the developer, see [`docs/macos-damaged-app.md`](docs/macos-damaged-app.md).
+
 ## Capabilities
 
 - Create and send HTTP, GraphQL, gRPC, WebSocket, and SSE requests.

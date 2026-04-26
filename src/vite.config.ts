@@ -38,7 +38,7 @@ export default defineConfig({
     }),
   ],
   build: {
-    sourcemap: true,
+    sourcemap: process.env.YAKUMO_BUILD_SOURCEMAP === "true",
     outDir: "../dist",
     emptyOutDir: true,
     rollupOptions: {
