@@ -32,6 +32,7 @@ Completed in this round:
 - Bound normal sync calculate/apply/watch commands to `WorkspaceMeta.settingSyncDir` via `workspaceId`; only the user-selected "open workspace from directory" bootstrap path still passes an explicit directory.
 - Bound normal Git operations to `WorkspaceMeta.settingSyncDir` via `workspaceId` and removed the old direct-directory Git commands from the Tauri invoke surface. Only clone and credential setup still use explicit user-selected inputs.
 - Deleted the unregistered direct-directory Git command functions so the Rust command module matches the tightened invoke surface.
+- Split app metadata commands and template rendering commands out of `src-tauri/src/lib.rs` into focused Tauri command modules.
 
 Validation completed in this round:
 
@@ -119,7 +120,7 @@ Do not move these to Rust:
 ## Recommended next implementation order
 
 1. Continue splitting large Tauri commands out of `src-tauri/src/lib.rs` into domain command modules.
-2. Split the remaining large Tauri command groups out of `src-tauri/src/lib.rs`, starting with settings/template/render commands.
+2. Split the remaining large Tauri command groups out of `src-tauri/src/lib.rs`, starting with gRPC send/reflection and HTTP send commands.
 3. Upgrade Tauri Rust and JS plugin manifests explicitly to the versions already proven by the lockfile update.
 4. Upgrade TanStack Router family and regenerate routes.
 5. Plan Tailwind 4 as a dedicated UI/build migration.

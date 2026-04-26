@@ -26,9 +26,8 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 use tokio::sync::Mutex;
 use tokio::task::block_in_place;
 use tokio::time;
-use yakumo_common::command::new_checked_command;
 use yakumo_crypto::manager::EncryptionManager;
-use yakumo_features::events::{Color, RenderPurpose, ShowToastRequest};
+use yakumo_features::events::{Color, ShowToastRequest};
 use yakumo_grpc::manager::GrpcHandle;
 use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
 use yakumo_mac_window::AppHandleMacWindowExt;
@@ -39,9 +38,7 @@ use yakumo_models::models::{
 use yakumo_models::util::UpdateSource;
 use yakumo_templates::format_json::format_json;
 use yakumo_templates::strip_json_comments::strip_json_comments;
-use yakumo_templates::{
-    RenderErrorBehavior, RenderOptions, TemplateCallback, Tokens, transform_args,
-};
+use yakumo_templates::{RenderErrorBehavior, RenderOptions, TemplateCallback};
 use yakumo_tls::find_client_certificate;
 
 mod commands;
@@ -54,11 +51,13 @@ mod grpc;
 mod history;
 mod http_request;
 mod import;
+mod metadata_commands;
 mod models_ext;
 mod notifications;
 mod path_guard;
 mod render;
 mod sync_ext;
+mod template_commands;
 mod updates;
 mod uri_scheme;
 mod window;
@@ -187,99 +186,6 @@ impl TemplateCallback for BuiltinTemplateCallback {
     ) -> yakumo_templates::error::Result<String> {
         Ok(arg_value.to_string())
     }
-}
-
-#[derive(serde::Serialize)]
-#[serde(default, rename_all = "camelCase")]
-struct AppMetaData {
-    is_dev: bool,
-    version: String,
-    cli_version: Option<String>,
-    name: String,
-    app_data_dir: String,
-    app_log_dir: String,
-    default_project_dir: String,
-    feature_updater: bool,
-    feature_license: bool,
-}
-
-#[tauri::command]
-async fn cmd_metadata(app_handle: AppHandle) -> YakumoResult<AppMetaData> {
-    let app_data_dir = app_handle.path().app_data_dir()?;
-    let app_log_dir = app_handle.path().app_log_dir()?;
-    let default_project_dir = app_handle.path().home_dir()?.join("YakumoProjects");
-    let cli_version = detect_cli_version().await;
-    Ok(AppMetaData {
-        is_dev: is_dev(),
-        version: app_handle.package_info().version.to_string(),
-        cli_version,
-        name: app_handle.package_info().name.to_string(),
-        app_data_dir: app_data_dir.to_string_lossy().to_string(),
-        app_log_dir: app_log_dir.to_string_lossy().to_string(),
-        default_project_dir: default_project_dir.to_string_lossy().to_string(),
-        feature_license: cfg!(feature = "license"),
-        feature_updater: cfg!(feature = "updater"),
-    })
-}
-
-async fn detect_cli_version() -> Option<String> {
-    detect_cli_version_for_binary("yaku").await
-}
-
-async fn detect_cli_version_for_binary(program: &str) -> Option<String> {
-    let mut cmd = new_checked_command(program, "--version").await.ok()?;
-    let out = cmd.arg("--version").output().await.ok()?;
-    if !out.status.success() {
-        return None;
-    }
-
-    let line = String::from_utf8(out.stdout).ok()?;
-    let line = line.lines().find(|l| !l.trim().is_empty())?.trim();
-    let mut parts = line.split_whitespace();
-    let _name = parts.next();
-    Some(parts.next().unwrap_or(line).to_string())
-}
-
-#[tauri::command]
-async fn cmd_template_tokens_to_string<R: Runtime>(
-    _window: WebviewWindow<R>,
-    _app_handle: AppHandle<R>,
-    tokens: Tokens,
-) -> YakumoResult<String> {
-    let cb = BuiltinTemplateCallback::default();
-    let new_tokens = transform_args(tokens, &cb)?;
-    Ok(new_tokens.to_string())
-}
-
-#[tauri::command]
-async fn cmd_render_template<R: Runtime>(
-    _window: WebviewWindow<R>,
-    app_handle: AppHandle<R>,
-    template: &str,
-    workspace_id: &str,
-    environment_id: Option<&str>,
-    _purpose: Option<RenderPurpose>,
-    ignore_error: Option<bool>,
-) -> YakumoResult<String> {
-    let environment_chain =
-        app_handle.db().resolve_environments(workspace_id, None, environment_id)?;
-    let cb = BuiltinTemplateCallback::for_workspace(
-        app_handle.state::<EncryptionManager>().inner().clone(),
-        workspace_id,
-    );
-    let result = render_template(
-        template,
-        environment_chain,
-        &cb,
-        &RenderOptions {
-            error_behavior: match ignore_error {
-                Some(true) => RenderErrorBehavior::ReturnEmpty,
-                _ => RenderErrorBehavior::Throw,
-            },
-        },
-    )
-    .await?;
-    Ok(result)
 }
 
 #[tauri::command]
@@ -1269,15 +1175,15 @@ pub fn run() {
             cmd_grpc_go,
             cmd_grpc_reflect,
             file_commands::cmd_import_data,
-            cmd_metadata,
+            metadata_commands::cmd_metadata,
             cmd_new_child_window,
             cmd_new_main_window,
-            cmd_render_template,
+            template_commands::cmd_render_template,
             cmd_restart,
             file_commands::cmd_save_response,
             cmd_send_ephemeral_request,
             cmd_send_http_request,
-            cmd_template_tokens_to_string,
+            template_commands::cmd_template_tokens_to_string,
             //
             //
             // Migrated commands
