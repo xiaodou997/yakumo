@@ -9217,6 +9217,7 @@ dependencies = [
  "log 0.4.29",
  "md-5",
  "path-slash",
+ "quick-xml 0.39.2",
  "rand 0.9.4",
  "regex 1.12.3",
  "reqwest",

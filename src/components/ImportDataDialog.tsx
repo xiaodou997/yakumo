@@ -21,6 +21,7 @@ export function ImportDataDialog({ importData }: Props) {
     <VStack space={5} className="pb-4">
       <VStack space={1}>
         <ul className="list-disc pl-5">
+          <li>Yakumo native JSON export</li>
           <li>OpenAPI 3.0, 3.1</li>
           <li>Postman Collection v2, v2.1</li>
           <li>Insomnia v4+</li>

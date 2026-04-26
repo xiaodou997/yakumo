@@ -1,7 +1,7 @@
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use crate::window_menu::app_menu;
-use log::info;
+use log::{info, warn};
 use rand::random;
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalSize, Runtime, WebviewUrl, WebviewWindow,
@@ -40,7 +40,7 @@ pub(crate) fn create_window<R: Runtime>(
 
     // This causes the window to not be clickable (in AppImage), so disable on Linux
     #[cfg(not(target_os = "linux"))]
-    handle.set_menu(menu).expect("Failed to set app menu");
+    handle.set_menu(menu)?;
 
     info!("Create new window label={}", config.label);
 
@@ -89,7 +89,9 @@ pub(crate) fn create_window<R: Runtime>(
             let url = url.to_string();
             let tx = tx.clone();
             tauri::async_runtime::block_on(async move {
-                tx.send(url).await.unwrap();
+                if let Err(err) = tx.send(url).await {
+                    warn!("Failed to forward window navigation event: {err}");
+                }
             });
             true
         });
@@ -121,7 +123,9 @@ pub(crate) fn create_window<R: Runtime>(
             WindowEvent::CloseRequested { .. } => {
                 let tx = tx.clone();
                 tauri::async_runtime::spawn(async move {
-                    tx.send(()).await.unwrap();
+                    if let Err(err) = tx.send(()).await {
+                        warn!("Failed to forward window close event: {err}");
+                    }
                 });
             }
             _ => {}
@@ -130,7 +134,14 @@ pub(crate) fn create_window<R: Runtime>(
 
     let webview_window = win.clone();
     win.on_menu_event(move |w, event| {
-        if !w.is_focused().unwrap() {
+        let is_focused = match w.is_focused() {
+            Ok(v) => v,
+            Err(err) => {
+                warn!("Failed to read window focus state for {}: {err}", w.label());
+                false
+            }
+        };
+        if !is_focused {
             return;
         }
 
@@ -144,29 +155,73 @@ pub(crate) fn create_window<R: Runtime>(
                     let _ = w.close();
                 });
             }
-            "close" => w.close().unwrap(),
-            "zoom_reset" => w.emit("zoom_reset", true).unwrap(),
-            "zoom_in" => w.emit("zoom_in", true).unwrap(),
-            "zoom_out" => w.emit("zoom_out", true).unwrap(),
-            "settings" => w.emit("settings", true).unwrap(),
+            "close" => {
+                if let Err(err) = w.close() {
+                    warn!("Failed to close window {}: {err}", w.label());
+                }
+            }
+            "zoom_reset" => {
+                if let Err(err) = w.emit("zoom_reset", true) {
+                    warn!("Failed to emit zoom_reset for {}: {err}", w.label());
+                }
+            }
+            "zoom_in" => {
+                if let Err(err) = w.emit("zoom_in", true) {
+                    warn!("Failed to emit zoom_in for {}: {err}", w.label());
+                }
+            }
+            "zoom_out" => {
+                if let Err(err) = w.emit("zoom_out", true) {
+                    warn!("Failed to emit zoom_out for {}: {err}", w.label());
+                }
+            }
+            "settings" => {
+                if let Err(err) = w.emit("settings", true) {
+                    warn!("Failed to emit settings for {}: {err}", w.label());
+                }
+            }
 
             // Commands for development
-            "dev.reset_size" => webview_window
-                .set_size(LogicalSize::new(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT))
-                .unwrap(),
-            "dev.reset_size_16x9" => {
-                let width = webview_window.outer_size().unwrap().width;
-                let height = width * 9 / 16;
-                webview_window.set_size(PhysicalSize::new(width, height)).unwrap()
+            "dev.reset_size" => {
+                if let Err(err) = webview_window
+                    .set_size(LogicalSize::new(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT))
+                {
+                    warn!("Failed to reset window size for {}: {err}", webview_window.label());
+                }
             }
-            "dev.reset_size_16x10" => {
-                let width = webview_window.outer_size().unwrap().width;
-                let height = width * 10 / 16;
-                webview_window.set_size(PhysicalSize::new(width, height)).unwrap()
+            "dev.reset_size_16x9" => match webview_window.outer_size() {
+                Ok(size) => {
+                    let height = size.width * 9 / 16;
+                    if let Err(err) = webview_window.set_size(PhysicalSize::new(size.width, height))
+                    {
+                        warn!("Failed to resize window {} to 16:9: {err}", webview_window.label());
+                    }
+                }
+                Err(err) => {
+                    warn!("Failed to read outer size for {}: {err}", webview_window.label())
+                }
+            },
+            "dev.reset_size_16x10" => match webview_window.outer_size() {
+                Ok(size) => {
+                    let height = size.width * 10 / 16;
+                    if let Err(err) = webview_window.set_size(PhysicalSize::new(size.width, height))
+                    {
+                        warn!("Failed to resize window {} to 16:10: {err}", webview_window.label());
+                    }
+                }
+                Err(err) => {
+                    warn!("Failed to read outer size for {}: {err}", webview_window.label())
+                }
+            },
+            "dev.refresh" => {
+                if let Err(err) = webview_window.eval("location.reload()") {
+                    warn!("Failed to refresh {}: {err}", webview_window.label());
+                }
             }
-            "dev.refresh" => webview_window.eval("location.reload()").unwrap(),
             "dev.generate_theme_css" => {
-                w.emit("generate_theme_css", true).unwrap();
+                if let Err(err) = w.emit("generate_theme_css", true) {
+                    warn!("Failed to emit generate_theme_css for {}: {err}", w.label());
+                }
             }
             "dev.toggle_devtools" => {
                 if webview_window.is_devtools_open() {
@@ -187,11 +242,10 @@ pub(crate) fn create_main_window(handle: &AppHandle, url: &str) -> Result<Webvie
     let label = loop {
         let label = format!("{MAIN_WINDOW_PREFIX}{counter}");
         match handle.webview_windows().get(label.as_str()) {
-            None => break Some(label),
+            None => break label,
             Some(_) => counter += 1,
         }
-    }
-    .expect("Failed to generate label for new window");
+    };
 
     let config = CreateWindowConfig {
         url,
@@ -252,7 +306,9 @@ pub(crate) fn create_child_window(
             // When the new window is destroyed, bring the other up behind it
             WindowEvent::Destroyed => {
                 if let Some(w) = parent_window.get_webview_window(child_window.label()) {
-                    w.set_focus().unwrap();
+                    if let Err(err) = w.set_focus() {
+                        warn!("Failed to focus parent window {}: {err}", w.label());
+                    }
                 }
             }
             _ => {}
@@ -264,12 +320,18 @@ pub(crate) fn create_child_window(
         let child_window = child_window.clone();
         parent_window.clone().on_window_event(move |e| match e {
             // When the parent window is closed, close the child
-            WindowEvent::CloseRequested { .. } => child_window.close().unwrap(),
+            WindowEvent::CloseRequested { .. } => {
+                if let Err(err) = child_window.close() {
+                    warn!("Failed to close child window {}: {err}", child_window.label());
+                }
+            }
             // When the parent window is focused, bring the child above
             WindowEvent::Focused(focus) => {
                 if *focus {
                     if let Some(w) = parent_window.get_webview_window(child_window.label()) {
-                        w.set_focus().unwrap();
+                        if let Err(err) = w.set_focus() {
+                            warn!("Failed to focus child window {}: {err}", w.label());
+                        }
                     };
                 }
             }

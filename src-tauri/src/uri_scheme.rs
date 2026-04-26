@@ -17,7 +17,11 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
 
     let query_map: HashMap<String, String> = url.query_pairs().into_owned().collect();
     let windows = app_handle.webview_windows();
-    let (_, window) = windows.iter().next().unwrap();
+    let Some((_, window)) = windows.iter().next() else {
+        return Err(crate::error::Error::GenericError(
+            "Cannot handle deep link before a window is available".to_string(),
+        ));
+    };
 
     match command {
         "import-data" => {

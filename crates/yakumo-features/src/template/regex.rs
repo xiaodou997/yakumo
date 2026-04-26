@@ -24,7 +24,11 @@ impl TemplateFunc for RegexMatch {
     }
 
     fn render(&self, args: &HashMap<String, serde_json::Value>) -> Result<String, String> {
-        let text = args.get("text").and_then(|v| v.as_str()).unwrap_or_default();
+        let text = args
+            .get("text")
+            .or_else(|| args.get("input"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
         let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or_default();
 
         let re = Regex::new(pattern).map_err(|e| format!("Invalid regex pattern: {}", e))?;
@@ -50,7 +54,11 @@ impl TemplateFunc for RegexExtract {
     }
 
     fn render(&self, args: &HashMap<String, serde_json::Value>) -> Result<String, String> {
-        let text = args.get("text").and_then(|v| v.as_str()).unwrap_or_default();
+        let text = args
+            .get("text")
+            .or_else(|| args.get("input"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
         let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or_default();
         let group_index = args.get("group").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
 
@@ -90,7 +98,11 @@ impl TemplateFunc for RegexReplace {
     }
 
     fn render(&self, args: &HashMap<String, serde_json::Value>) -> Result<String, String> {
-        let text = args.get("text").and_then(|v| v.as_str()).unwrap_or_default();
+        let text = args
+            .get("text")
+            .or_else(|| args.get("input"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
         let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or_default();
         let replacement = args.get("replacement").and_then(|v| v.as_str()).unwrap_or_default();
 

@@ -2,6 +2,7 @@
 //! These wrap the core yakumo-ws functionality for Tauri IPC.
 
 use crate::BuiltinTemplateCallback;
+use crate::error::Error;
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
 use http::HeaderMap;
@@ -25,6 +26,14 @@ use yakumo_templates::strip_json_comments::maybe_strip_json_comments;
 use yakumo_templates::{RenderErrorBehavior, RenderOptions};
 use yakumo_tls::find_client_certificate;
 use yakumo_ws::{WebsocketManager, render_websocket_request};
+
+fn parse_header(name: &str, value: &str) -> Result<(http::HeaderName, HeaderValue)> {
+    let name = http::HeaderName::from_str(name)
+        .map_err(|e| Error::GenericError(format!("Invalid header name '{name}': {e}")))?;
+    let value = HeaderValue::from_str(value)
+        .map_err(|e| Error::GenericError(format!("Invalid header value for '{name}': {e}")))?;
+    Ok((name, value))
+}
 
 #[command]
 pub async fn cmd_ws_delete_connections<R: Runtime>(
@@ -185,10 +194,8 @@ pub async fn cmd_ws_connect<R: Runtime>(
             continue;
         }
 
-        headers.insert(
-            http::HeaderName::from_str(&h.name).unwrap(),
-            HeaderValue::from_str(&h.value).unwrap(),
-        );
+        let (name, value) = parse_header(&h.name, &h.value)?;
+        headers.insert(name, value);
     }
 
     // Handle built-in authentication
@@ -232,10 +239,12 @@ pub async fn cmd_ws_connect<R: Runtime>(
         let http_url = convert_ws_url_to_http(&url);
         if let Some(cookie_header_value) = store.get_cookie_header(&http_url) {
             debug!("Inserting cookies into WS upgrade to {}: {}", url, cookie_header_value);
-            headers.insert(
-                http::HeaderName::from_static("cookie"),
-                HeaderValue::from_str(&cookie_header_value).unwrap(),
-            );
+            let cookie_value = HeaderValue::from_str(&cookie_header_value).map_err(|e| {
+                Error::GenericError(format!(
+                    "Invalid cookie header value for WebSocket upgrade: {e}"
+                ))
+            })?;
+            headers.insert(http::HeaderName::from_static("cookie"), cookie_value);
         }
     }
 
@@ -299,7 +308,10 @@ pub async fn cmd_ws_connect<R: Runtime>(
         .into_iter()
         .map(|(name, value)| HttpResponseHeader {
             name: name.to_string(),
-            value: value.to_str().unwrap().to_string(),
+            value: value
+                .to_str()
+                .map(str::to_owned)
+                .unwrap_or_else(|_| String::from_utf8_lossy(value.as_bytes()).into_owned()),
         })
         .collect::<Vec<HttpResponseHeader>>();
 
@@ -327,59 +339,56 @@ pub async fn cmd_ws_connect<R: Runtime>(
                     has_written_close = true;
                 }
 
-                app_handle
-                    .db()
-                    .upsert_websocket_event(
-                        &WebsocketEvent {
-                            connection_id: connection_id.clone(),
-                            request_id: request_id.clone(),
-                            workspace_id: workspace_id.clone(),
-                            is_server: true,
-                            message_type: match message {
-                                Message::Text(_) => WebsocketEventType::Text,
-                                Message::Binary(_) => WebsocketEventType::Binary,
-                                Message::Ping(_) => WebsocketEventType::Ping,
-                                Message::Pong(_) => WebsocketEventType::Pong,
-                                Message::Close(_) => WebsocketEventType::Close,
-                                // Raw frame will never happen during a read
-                                Message::Frame(_) => WebsocketEventType::Frame,
-                            },
-                            message: message.into_data().into(),
-                            ..Default::default()
+                if let Err(err) = app_handle.db().upsert_websocket_event(
+                    &WebsocketEvent {
+                        connection_id: connection_id.clone(),
+                        request_id: request_id.clone(),
+                        workspace_id: workspace_id.clone(),
+                        is_server: true,
+                        message_type: match message {
+                            Message::Text(_) => WebsocketEventType::Text,
+                            Message::Binary(_) => WebsocketEventType::Binary,
+                            Message::Ping(_) => WebsocketEventType::Ping,
+                            Message::Pong(_) => WebsocketEventType::Pong,
+                            Message::Close(_) => WebsocketEventType::Close,
+                            // Raw frame will never happen during a read
+                            Message::Frame(_) => WebsocketEventType::Frame,
                         },
-                        &UpdateSource::from_window_label(&window_label),
-                    )
-                    .unwrap();
+                        message: message.into_data().into(),
+                        ..Default::default()
+                    },
+                    &UpdateSource::from_window_label(&window_label),
+                ) {
+                    warn!("Failed to persist websocket event for {connection_id}: {err}");
+                }
             }
             info!("Websocket connection closed");
             if !has_written_close {
-                app_handle
-                    .db()
-                    .upsert_websocket_event(
-                        &WebsocketEvent {
-                            connection_id: connection_id.clone(),
-                            request_id: request_id.clone(),
-                            workspace_id: workspace_id.clone(),
-                            is_server: true,
-                            message_type: WebsocketEventType::Close,
-                            ..Default::default()
-                        },
-                        &UpdateSource::from_window_label(&window_label),
-                    )
-                    .unwrap();
-            }
-            app_handle
-                .db()
-                .upsert_websocket_connection(
-                    &WebsocketConnection {
-                        workspace_id: request.workspace_id.clone(),
-                        request_id: request_id.to_string(),
-                        state: WebsocketConnectionState::Closed,
-                        ..connection
+                if let Err(err) = app_handle.db().upsert_websocket_event(
+                    &WebsocketEvent {
+                        connection_id: connection_id.clone(),
+                        request_id: request_id.clone(),
+                        workspace_id: workspace_id.clone(),
+                        is_server: true,
+                        message_type: WebsocketEventType::Close,
+                        ..Default::default()
                     },
                     &UpdateSource::from_window_label(&window_label),
-                )
-                .unwrap();
+                ) {
+                    warn!("Failed to persist websocket close event for {connection_id}: {err}");
+                }
+            }
+            if let Err(err) = app_handle.db().upsert_websocket_connection(
+                &WebsocketConnection {
+                    workspace_id: request.workspace_id.clone(),
+                    request_id: request_id.to_string(),
+                    state: WebsocketConnectionState::Closed,
+                    ..connection
+                },
+                &UpdateSource::from_window_label(&window_label),
+            ) {
+                warn!("Failed to persist websocket connection close for {connection_id}: {err}");
+            }
         });
     }
 
@@ -411,10 +420,14 @@ fn convert_ws_url_to_http(ws_url: &Url) -> Url {
 
     match ws_url.scheme() {
         "ws" => {
-            http_url.set_scheme("http").expect("Failed to set http scheme");
+            if http_url.set_scheme("http").is_err() {
+                warn!("Failed to convert WebSocket URL scheme from ws to http: {}", ws_url);
+            }
         }
         "wss" => {
-            http_url.set_scheme("https").expect("Failed to set https scheme");
+            if http_url.set_scheme("https").is_err() {
+                warn!("Failed to convert WebSocket URL scheme from wss to https: {}", ws_url);
+            }
         }
         _ => {
             // Already HTTP/HTTPS, no conversion needed

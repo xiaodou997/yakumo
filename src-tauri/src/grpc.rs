@@ -12,7 +12,12 @@ pub(crate) fn metadata_to_map(metadata: MetadataMap) -> BTreeMap<String, String>
     let mut entries = BTreeMap::new();
     for r in metadata.iter() {
         match r {
-            Ascii(k, v) => entries.insert(k.to_string(), v.to_str().unwrap().to_string()),
+            Ascii(k, v) => entries.insert(
+                k.to_string(),
+                v.to_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|_| String::from_utf8_lossy(v.as_bytes()).into_owned()),
+            ),
             Binary(k, v) => entries.insert(k.to_string(), format!("{:?}", v)),
         };
     }

@@ -44,7 +44,7 @@
 |------|------|------|
 | Curl 导入 | 已实现 | `cmd_curl_to_request` 和文件导入路径均使用内置 curl importer。 |
 | Yakumo native JSON | 待修复 | 内置 importer 存在，需样例回归。 |
-| Postman / Insomnia / OpenAPI 3 / Swagger 2 | 待实现 | 第一阶段目标能力，仍需迁移。 |
+| Postman / Insomnia / OpenAPI 3 / Swagger 2 | 已实现 | 内置 importer 已支持主要 JSON 导入路径，并补了基础样例测试。 |
 | 导出 JSON | 已实现 | 桌面导出命令保留。 |
 
 ## Actions 与响应处理
@@ -53,9 +53,9 @@
 |------|------|------|
 | Copy as curl | 已实现 | 内置 HTTP request action 写入剪贴板。 |
 | Copy as grpcurl | 已实现 | 内置 gRPC request action 写入剪贴板。 |
-| Workspace / Folder / WebSocket actions | 待实现 | 命令已注册，当前返回空 actions。 |
+| Workspace / Folder / WebSocket actions | 已实现 | 内置 actions 已返回真实列表；Folder 支持 `Send All`（HTTP）与复制 ID。 |
 | 响应 body 读取 | 已实现 | `cmd_http_response_body` 已注册。 |
-| JSONPath / XPath 响应过滤 | 待实现 | 当前返回明确未实现错误。 |
+| JSONPath / XPath 响应过滤 | 已实现 | 内置 JSONPath / XPath 过滤已接入响应体读取路径。 |
 | JSON / GraphQL 格式化 | 已实现 | Tauri 格式化命令保留。 |
 
 ## CLI

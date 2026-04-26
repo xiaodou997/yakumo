@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use tauri::{Runtime, WebviewWindow};
 use yakumo_core::WorkspaceContext;
-use yakumo_features::importer::{curl, yakumo};
+use yakumo_features::importer;
 use yakumo_models::models::{
     Environment, Folder, GrpcRequest, HttpRequest, WebsocketRequest, Workspace,
 };
@@ -138,22 +138,9 @@ pub(crate) async fn import_data<R: Runtime>(
 
 /// Import data using built-in importer
 fn import_with_builtin_importer(content: &str) -> Result<yakumo_features::events::ImportResponse> {
-    // Try curl importer first
-    if content.trim().starts_with("curl ") {
-        let result =
-            curl::import_curl(content).map_err(|e| crate::error::Error::GenericError(e))?;
-        return Ok(result.unwrap_or_else(|| yakumo_features::events::ImportResponse {
-            resources: None,
-            error: Some("No curl command found".to_string()),
-        }));
-    }
-
-    // Try yakumo/JSON importer
-    let result =
-        yakumo::import_yakumo(content).map_err(|e| crate::error::Error::GenericError(e))?;
-
+    let result = importer::import(content).map_err(crate::error::Error::GenericError)?;
     Ok(result.unwrap_or_else(|| yakumo_features::events::ImportResponse {
         resources: None,
-        error: Some("No valid import data found".to_string()),
+        error: Some("No supported import data found".to_string()),
     }))
 }
