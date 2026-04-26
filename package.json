@@ -15,7 +15,7 @@
     "build": "node scripts/install-wasm-pack.cjs && bun run --cwd crates/yakumo-templates build && bun run --cwd src build",
     "typecheck": "tsc --noEmit && bun run --cwd src typecheck",
     "lint": "biome lint . && bun run --cwd src lint",
-    "test": "bun test src",
+    "test": "vitest run",
     "format": "biome format --write .",
     "tauri": "tauri"
   },

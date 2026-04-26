@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import type { SettingsTab } from "../../../components/Settings/Settings";
-import Settings from "../../../components/Settings/Settings";
+
+const Settings = lazy(() => import("../../../components/Settings/Settings"));
 
 interface SettingsSearchSchema {
   tab?: SettingsTab;
@@ -14,5 +16,9 @@ export const Route = createFileRoute("/workspaces/$workspaceId/settings")({
 });
 
 function RouteComponent() {
-  return <Settings />;
+  return (
+    <Suspense fallback={<div className="h-full flex items-center justify-center">Loading...</div>}>
+      <Settings />
+    </Suspense>
+  );
 }

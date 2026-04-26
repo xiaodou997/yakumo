@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Workspace } from "../../../components/Workspace";
+import { lazy, Suspense } from "react";
+
+const Workspace = lazy(() =>
+  import("../../../components/Workspace").then((m) => ({ default: m.Workspace })),
+);
 
 type WorkspaceSearchSchema = {
   environment_id?: string | null;
@@ -36,5 +40,9 @@ export const Route = createFileRoute("/workspaces/$workspaceId/")({
 });
 
 function RouteComponent() {
-  return <Workspace />;
+  return (
+    <Suspense fallback={<div className="h-full flex items-center justify-center">Loading...</div>}>
+      <Workspace />
+    </Suspense>
+  );
 }

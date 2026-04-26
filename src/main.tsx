@@ -1,9 +1,10 @@
 import "./main.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { type } from "@tauri-apps/plugin-os";
-import { changeModelStoreWorkspace, initModelStore } from "@yakumo-internal/models";
+import { initModelStore } from "@yakumo-internal/models";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { StartupGate } from "./components/StartupGate";
 import { initSync } from "./init/sync";
 import { initGlobalListeners } from "./lib/initGlobalListeners";
 import { jotaiStore } from "./lib/jotai";
@@ -33,11 +34,12 @@ window.addEventListener("keydown", (e) => {
 initSync();
 initModelStore(jotaiStore);
 initGlobalListeners();
-await changeModelStoreWorkspace(null); // Load global models
 
 console.log("Creating React root");
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <StartupGate>
+      <RouterProvider router={router} />
+    </StartupGate>
   </StrictMode>,
 );

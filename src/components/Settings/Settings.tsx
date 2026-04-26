@@ -5,7 +5,7 @@ import { useLicense } from "@yakumo-internal/license";
 import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import { appInfo } from "../../lib/appInfo";
 import { useTranslate } from "../../lib/i18n";
@@ -15,12 +15,6 @@ import { Icon } from "../core/Icon";
 import { HStack } from "../core/Stacks";
 import { TabContent, type TabItem, Tabs } from "../core/Tabs/Tabs";
 import { HeaderSize } from "../HeaderSize";
-import { SettingsCertificates } from "./SettingsCertificates";
-import { SettingsGeneral } from "./SettingsGeneral";
-import { SettingsHotkeys } from "./SettingsHotkeys";
-import { SettingsInterface } from "./SettingsInterface";
-import { SettingsLicense } from "./SettingsLicense";
-import { SettingsProxy } from "./SettingsProxy";
 
 interface Props {
   hide?: () => void;
@@ -41,6 +35,25 @@ const tabs = [
   TAB_LICENSE,
 ] as const;
 export type SettingsTab = (typeof tabs)[number];
+
+const SettingsGeneral = lazy(() =>
+  import("./SettingsGeneral").then((m) => ({ default: m.SettingsGeneral })),
+);
+const SettingsInterface = lazy(() =>
+  import("./SettingsInterface").then((m) => ({ default: m.SettingsInterface })),
+);
+const SettingsHotkeys = lazy(() =>
+  import("./SettingsHotkeys").then((m) => ({ default: m.SettingsHotkeys })),
+);
+const SettingsCertificates = lazy(() =>
+  import("./SettingsCertificates").then((m) => ({ default: m.SettingsCertificates })),
+);
+const SettingsProxy = lazy(() =>
+  import("./SettingsProxy").then((m) => ({ default: m.SettingsProxy })),
+);
+const SettingsLicense = lazy(() =>
+  import("./SettingsLicense").then((m) => ({ default: m.SettingsLicense })),
+);
 
 const tabLabels: Record<SettingsTab, MessageKey> = {
   [TAB_GENERAL]: "settings.general",
@@ -160,22 +173,24 @@ export default function Settings({ hide }: Props) {
   );
 }
 
-function SettingsTabContent({ value }: { value: SettingsTab }) {
+export function SettingsTabContent({ value }: { value: SettingsTab }) {
   return (
     <TabContent value={value} className="overflow-y-auto h-full px-6 !py-4">
-      {value === TAB_GENERAL ? (
-        <SettingsGeneral />
-      ) : value === TAB_INTERFACE ? (
-        <SettingsInterface />
-      ) : value === TAB_SHORTCUTS ? (
-        <SettingsHotkeys />
-      ) : value === TAB_CERTIFICATES ? (
-        <SettingsCertificates />
-      ) : value === TAB_PROXY ? (
-        <SettingsProxy />
-      ) : (
-        <SettingsLicense />
-      )}
+      <Suspense fallback={<div className="text-text-subtle">Loading...</div>}>
+        {value === TAB_GENERAL ? (
+          <SettingsGeneral />
+        ) : value === TAB_INTERFACE ? (
+          <SettingsInterface />
+        ) : value === TAB_SHORTCUTS ? (
+          <SettingsHotkeys />
+        ) : value === TAB_CERTIFICATES ? (
+          <SettingsCertificates />
+        ) : value === TAB_PROXY ? (
+          <SettingsProxy />
+        ) : (
+          <SettingsLicense />
+        )}
+      </Suspense>
     </TabContent>
   );
 }
