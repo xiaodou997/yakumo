@@ -5,7 +5,7 @@ use crate::models_ext::BlobManagerExt;
 use crate::models_ext::QueryManagerExt;
 use log::warn;
 use std::time::Instant;
-use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
+use tauri::{AppHandle, Listener, Manager, Runtime, WebviewWindow};
 use tokio::sync::watch::Receiver;
 use yakumo_crypto::manager::EncryptionManager;
 use yakumo_http::cookies::CookieStore;
@@ -16,6 +16,123 @@ use yakumo_models::blob_manager::BodyChunk;
 use yakumo_models::models::{CookieJar, Environment, HttpRequest, HttpResponse, HttpResponseState};
 use yakumo_models::util::UpdateSource;
 use yakumo_templates::{RenderErrorBehavior, RenderOptions};
+
+#[tauri::command]
+pub(crate) async fn cmd_send_ephemeral_request<R: Runtime>(
+    mut request: HttpRequest,
+    environment_id: Option<&str>,
+    cookie_jar_id: Option<&str>,
+    window: WebviewWindow<R>,
+    app_handle: AppHandle<R>,
+) -> Result<HttpResponse> {
+    let response = HttpResponse::default();
+    request.id = "".to_string();
+    let environment = match environment_id {
+        Some(id) => Some(app_handle.db().get_environment(id)?),
+        None => None,
+    };
+    let cookie_jar = match cookie_jar_id {
+        Some(id) => Some(app_handle.db().get_cookie_jar(id)?),
+        None => None,
+    };
+
+    let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+    window.listen_any(format!("cancel_http_response_{}", response.id), move |_event| {
+        if let Err(e) = cancel_tx.send(true) {
+            warn!("Failed to send cancel event for ephemeral request {e:?}");
+        }
+    });
+
+    send_http_request(&window, &request, &response, environment, cookie_jar, &mut cancel_rx).await
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_http_request_body<R: Runtime>(
+    app_handle: AppHandle<R>,
+    response_id: &str,
+) -> Result<Option<Vec<u8>>> {
+    let body_id = format!("{}.request", response_id);
+    let chunks = app_handle.blobs().get_chunks(&body_id)?;
+
+    if chunks.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(chunks.into_iter().flat_map(|c| c.data).collect()))
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_send_http_request<R: Runtime>(
+    app_handle: AppHandle<R>,
+    window: WebviewWindow<R>,
+    environment_id: Option<&str>,
+    cookie_jar_id: Option<&str>,
+    // NOTE: We receive the entire request because to account for the race
+    //   condition where the user may have just edited a field before sending
+    //   that has not yet been saved in the DB.
+    request: HttpRequest,
+) -> Result<HttpResponse> {
+    let blobs = app_handle.blob_manager();
+    let response = app_handle.db().upsert_http_response(
+        &HttpResponse {
+            request_id: request.id.clone(),
+            workspace_id: request.workspace_id.clone(),
+            ..Default::default()
+        },
+        &UpdateSource::from_window_label(window.label()),
+        &blobs,
+    )?;
+
+    let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+    app_handle.listen_any(format!("cancel_http_response_{}", response.id), move |_event| {
+        if let Err(e) = cancel_tx.send(true) {
+            warn!("Failed to send cancel event for request {e:?}");
+        }
+    });
+
+    let environment = match environment_id {
+        Some(id) => match app_handle.db().get_environment(id) {
+            Ok(env) => Some(env),
+            Err(e) => {
+                warn!("Failed to find environment by id {id} {}", e);
+                None
+            }
+        },
+        None => None,
+    };
+
+    let cookie_jar = match cookie_jar_id {
+        Some(id) => Some(app_handle.db().get_cookie_jar(id)?),
+        None => None,
+    };
+
+    let r = match send_http_request(
+        &window,
+        &request,
+        &response,
+        environment,
+        cookie_jar,
+        &mut cancel_rx,
+    )
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            let resp = app_handle.db().get_http_response(&response.id)?;
+            app_handle.db().upsert_http_response(
+                &HttpResponse {
+                    state: HttpResponseState::Closed,
+                    error: Some(e.to_string()),
+                    ..resp
+                },
+                &UpdateSource::from_window_label(window.label()),
+                &blobs,
+            )?
+        }
+    };
+
+    Ok(r)
+}
 
 /// Context for managing response state during HTTP transactions.
 /// Handles both persisted responses (stored in DB) and ephemeral responses (in-memory only).

@@ -1,3 +1,29 @@
+use crate::error::Result as YakumoResult;
+use yakumo_templates::format_json;
+
+#[tauri::command]
+pub(crate) async fn cmd_format_json(text: &str) -> YakumoResult<String> {
+    Ok(format_json::format_json(text, "  "))
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_format_graphql(text: &str) -> YakumoResult<String> {
+    match pretty_graphql::format_text(text, &Default::default()) {
+        Ok(formatted) => Ok(formatted),
+        Err(_) => Ok(text.to_string()),
+    }
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_format_xml(text: &str) -> YakumoResult<String> {
+    Ok(format_xml(text, "  "))
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_format_html(text: &str) -> YakumoResult<String> {
+    Ok(format_xml(text, "  "))
+}
+
 pub fn format_xml(text: &str, indent: &str) -> String {
     let input = text.trim();
     if input.is_empty() {

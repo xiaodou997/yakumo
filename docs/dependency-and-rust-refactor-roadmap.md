@@ -35,6 +35,8 @@ Completed in this round:
 - Split app metadata commands and template rendering commands out of `src-tauri/src/lib.rs` into focused Tauri command modules.
 - Split app/window lifecycle commands out of `src-tauri/src/lib.rs` into `window_commands.rs`.
 - Split updater command/helper entry points out of `src-tauri/src/lib.rs` into `update_commands.rs`.
+- Moved HTTP send and request-body Tauri commands into `http_request.rs`, keeping `src-tauri/src/lib.rs` focused on setup and registration.
+- Moved JSON/GraphQL/XML/HTML formatting commands into `formatting.rs`.
 
 Validation completed in this round:
 

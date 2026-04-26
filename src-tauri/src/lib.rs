@@ -1,8 +1,7 @@
 extern crate core;
 use crate::error::Error::GenericError;
 use crate::grpc::{build_metadata, metadata_to_map, resolve_grpc_request};
-use crate::http_request::send_http_request;
-use crate::models_ext::{BlobManagerExt, QueryManagerExt};
+use crate::models_ext::QueryManagerExt;
 use crate::notifications::YakumoNotifier;
 use crate::render::{render_grpc_request, render_template};
 use crate::updates::YakumoUpdater;
@@ -32,11 +31,9 @@ use yakumo_grpc::manager::GrpcHandle;
 use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
 use yakumo_mac_window::AppHandleMacWindowExt;
 use yakumo_models::models::{
-    GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, HttpRequest, HttpResponse,
-    HttpResponseState, WorkspaceMeta,
+    GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, WorkspaceMeta,
 };
 use yakumo_models::util::UpdateSource;
-use yakumo_templates::format_json::format_json;
 use yakumo_templates::strip_json_comments::strip_json_comments;
 use yakumo_templates::{RenderErrorBehavior, RenderOptions, TemplateCallback};
 use yakumo_tls::find_client_certificate;
@@ -799,148 +796,6 @@ async fn cmd_grpc_go<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_send_ephemeral_request<R: Runtime>(
-    mut request: HttpRequest,
-    environment_id: Option<&str>,
-    cookie_jar_id: Option<&str>,
-    window: WebviewWindow,
-    app_handle: AppHandle<R>,
-) -> YakumoResult<HttpResponse> {
-    let response = HttpResponse::default();
-    request.id = "".to_string();
-    let environment = match environment_id {
-        Some(id) => Some(app_handle.db().get_environment(id)?),
-        None => None,
-    };
-    let cookie_jar = match cookie_jar_id {
-        Some(id) => Some(app_handle.db().get_cookie_jar(id)?),
-        None => None,
-    };
-
-    let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
-    window.listen_any(format!("cancel_http_response_{}", response.id), move |_event| {
-        if let Err(e) = cancel_tx.send(true) {
-            warn!("Failed to send cancel event for ephemeral request {e:?}");
-        }
-    });
-
-    send_http_request(&window, &request, &response, environment, cookie_jar, &mut cancel_rx).await
-}
-
-#[tauri::command]
-async fn cmd_format_json(text: &str) -> YakumoResult<String> {
-    Ok(format_json(text, "  "))
-}
-
-#[tauri::command]
-async fn cmd_format_graphql(text: &str) -> YakumoResult<String> {
-    match pretty_graphql::format_text(text, &Default::default()) {
-        Ok(formatted) => Ok(formatted),
-        Err(_) => Ok(text.to_string()),
-    }
-}
-
-#[tauri::command]
-async fn cmd_format_xml(text: &str) -> YakumoResult<String> {
-    Ok(formatting::format_xml(text, "  "))
-}
-
-#[tauri::command]
-async fn cmd_format_html(text: &str) -> YakumoResult<String> {
-    Ok(formatting::format_xml(text, "  "))
-}
-
-#[tauri::command]
-async fn cmd_http_request_body<R: Runtime>(
-    app_handle: AppHandle<R>,
-    response_id: &str,
-) -> YakumoResult<Option<Vec<u8>>> {
-    let body_id = format!("{}.request", response_id);
-    let chunks = app_handle.blobs().get_chunks(&body_id)?;
-
-    if chunks.is_empty() {
-        return Ok(None);
-    }
-
-    // Concatenate all chunks
-    let body: Vec<u8> = chunks.into_iter().flat_map(|c| c.data).collect();
-    Ok(Some(body))
-}
-
-#[tauri::command]
-async fn cmd_send_http_request<R: Runtime>(
-    app_handle: AppHandle<R>,
-    window: WebviewWindow<R>,
-    environment_id: Option<&str>,
-    cookie_jar_id: Option<&str>,
-    // NOTE: We receive the entire request because to account for the race
-    //   condition where the user may have just edited a field before sending
-    //   that has not yet been saved in the DB.
-    request: HttpRequest,
-) -> YakumoResult<HttpResponse> {
-    let blobs = app_handle.blob_manager();
-    let response = app_handle.db().upsert_http_response(
-        &HttpResponse {
-            request_id: request.id.clone(),
-            workspace_id: request.workspace_id.clone(),
-            ..Default::default()
-        },
-        &UpdateSource::from_window_label(window.label()),
-        &blobs,
-    )?;
-
-    let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
-    app_handle.listen_any(format!("cancel_http_response_{}", response.id), move |_event| {
-        if let Err(e) = cancel_tx.send(true) {
-            warn!("Failed to send cancel event for request {e:?}");
-        }
-    });
-
-    let environment = match environment_id {
-        Some(id) => match app_handle.db().get_environment(id) {
-            Ok(env) => Some(env),
-            Err(e) => {
-                warn!("Failed to find environment by id {id} {}", e);
-                None
-            }
-        },
-        None => None,
-    };
-
-    let cookie_jar = match cookie_jar_id {
-        Some(id) => Some(app_handle.db().get_cookie_jar(id)?),
-        None => None,
-    };
-
-    let r = match send_http_request(
-        &window,
-        &request,
-        &response,
-        environment,
-        cookie_jar,
-        &mut cancel_rx,
-    )
-    .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            let resp = app_handle.db().get_http_response(&response.id)?;
-            app_handle.db().upsert_http_response(
-                &HttpResponse {
-                    state: HttpResponseState::Closed,
-                    error: Some(e.to_string()),
-                    ..resp
-                },
-                &UpdateSource::from_window_label(window.label()),
-                &blobs,
-            )?
-        }
-    };
-
-    Ok(r)
-}
-
-#[tauri::command]
 async fn cmd_delete_all_grpc_connections<R: Runtime>(
     request_id: &str,
     app_handle: AppHandle<R>,
@@ -1126,13 +981,13 @@ pub fn run() {
             cmd_delete_send_history,
             cmd_dismiss_notification,
             file_commands::cmd_export_data,
-            cmd_http_request_body,
+            http_request::cmd_http_request_body,
             file_commands::cmd_http_response_body_bytes,
             file_commands::cmd_directory_is_empty,
-            cmd_format_json,
-            cmd_format_graphql,
-            cmd_format_xml,
-            cmd_format_html,
+            formatting::cmd_format_json,
+            formatting::cmd_format_graphql,
+            formatting::cmd_format_xml,
+            formatting::cmd_format_html,
             file_commands::cmd_get_sse_events,
             file_commands::cmd_get_http_response_events,
             cmd_get_workspace_meta,
@@ -1145,8 +1000,8 @@ pub fn run() {
             template_commands::cmd_render_template,
             window_commands::cmd_restart,
             file_commands::cmd_save_response,
-            cmd_send_ephemeral_request,
-            cmd_send_http_request,
+            http_request::cmd_send_ephemeral_request,
+            http_request::cmd_send_http_request,
             template_commands::cmd_template_tokens_to_string,
             //
             //
