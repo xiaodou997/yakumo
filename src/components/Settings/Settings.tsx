@@ -5,6 +5,7 @@ import { useLicense } from "@yakumo-internal/license";
 import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import { appInfo } from "../../lib/appInfo";
 import { useTranslate } from "../../lib/i18n";
@@ -50,14 +51,27 @@ const tabLabels: Record<SettingsTab, MessageKey> = {
   [TAB_LICENSE]: "settings.license",
 };
 
+function isSettingsTab(value: string | undefined): value is SettingsTab {
+  return tabs.includes(value as SettingsTab);
+}
+
 export default function Settings({ hide }: Props) {
   const t = useTranslate();
   const { tab: tabFromQuery } = useSearch({
     from: "/workspaces/$workspaceId/settings",
   });
   const mainTab = tabFromQuery?.split(":")[0];
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    isSettingsTab(mainTab) ? mainTab : TAB_GENERAL,
+  );
   const settings = useAtomValue(settingsAtom);
   const licenseCheck = useLicense();
+
+  useEffect(() => {
+    if (isSettingsTab(mainTab)) {
+      setActiveTab(mainTab);
+    }
+  }, [mainTab]);
 
   // Close settings window on escape
   // TODO: Could this be put in a better place? Eg. in Rust key listener when creating the window
@@ -100,7 +114,12 @@ export default function Settings({ hide }: Props) {
       )}
       <Tabs
         layout="horizontal"
-        defaultValue={mainTab || tabFromQuery}
+        defaultValue={activeTab}
+        onChangeValue={(value) => {
+          if (isSettingsTab(value)) {
+            setActiveTab(value);
+          }
+        }}
         addBorders
         tabListClassName="min-w-[10rem] bg-surface x-theme-sidebar border-r border-border pl-3"
         label={t("common.settings")}
@@ -135,43 +154,28 @@ export default function Settings({ hide }: Props) {
           }),
         )}
       >
-        <TabContent
-          value={TAB_GENERAL}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsGeneral />
-        </TabContent>
-        <TabContent
-          value={TAB_INTERFACE}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsInterface />
-        </TabContent>
-        <TabContent
-          value={TAB_SHORTCUTS}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsHotkeys />
-        </TabContent>
-        <TabContent
-          value={TAB_CERTIFICATES}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsCertificates />
-        </TabContent>
-        <TabContent
-          value={TAB_PROXY}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsProxy />
-        </TabContent>
-        <TabContent
-          value={TAB_LICENSE}
-          className="overflow-y-auto h-full px-6 !py-4"
-        >
-          <SettingsLicense />
-        </TabContent>
+        <SettingsTabContent value={activeTab} />
       </Tabs>
     </div>
+  );
+}
+
+function SettingsTabContent({ value }: { value: SettingsTab }) {
+  return (
+    <TabContent value={value} className="overflow-y-auto h-full px-6 !py-4">
+      {value === TAB_GENERAL ? (
+        <SettingsGeneral />
+      ) : value === TAB_INTERFACE ? (
+        <SettingsInterface />
+      ) : value === TAB_SHORTCUTS ? (
+        <SettingsHotkeys />
+      ) : value === TAB_CERTIFICATES ? (
+        <SettingsCertificates />
+      ) : value === TAB_PROXY ? (
+        <SettingsProxy />
+      ) : (
+        <SettingsLicense />
+      )}
+    </TabContent>
   );
 }

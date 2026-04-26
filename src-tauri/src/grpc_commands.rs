@@ -27,6 +27,19 @@ fn write_grpc_event<R: Runtime>(app_handle: &AppHandle<R>, event: &GrpcEvent, wi
     }
 }
 
+fn selected_grpc_method(
+    request: &yakumo_models::models::GrpcRequest,
+) -> YakumoResult<(String, String)> {
+    match (request.service.clone(), request.method.clone()) {
+        (Some(service), Some(method))
+            if !service.trim().is_empty() && !method.trim().is_empty() =>
+        {
+            Ok((service, method))
+        }
+        _ => Err(GenericError("Service and method are required".to_string())),
+    }
+}
+
 #[tauri::command]
 pub(crate) async fn cmd_grpc_reflect<R: Runtime>(
     request_id: &str,
@@ -114,6 +127,7 @@ pub(crate) async fn cmd_grpc_go<R: Runtime>(
     let metadata = build_metadata(&window, &request, &auth_context_id).await?;
     let settings = app_handle.db().get_settings();
     let client_cert = find_client_certificate(&request.url, &settings.client_certificates);
+    let (service, method) = selected_grpc_method(&request)?;
 
     let conn = app_handle.db().upsert_grpc_connection(
         &GrpcConnection {
@@ -143,11 +157,6 @@ pub(crate) async fn cmd_grpc_go<R: Runtime>(
     let uri = safe_uri(&request.url);
     let in_msg_stream = tokio_stream::wrappers::ReceiverStream::new(in_msg_rx);
     let proto_files: Vec<PathBuf> = proto_files.iter().map(PathBuf::from).collect();
-
-    let (service, method) = match (request.service.clone(), request.method.clone()) {
-        (Some(service), Some(method)) => (service, method),
-        _ => return Err(GenericError("Service and method are required".to_string())),
-    };
 
     let start = std::time::Instant::now();
     let connection = grpc_handle
@@ -649,4 +658,34 @@ pub(crate) async fn cmd_grpc_go<R: Runtime>(
     };
 
     Ok(conn.id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::selected_grpc_method;
+    use yakumo_models::models::GrpcRequest;
+
+    #[test]
+    fn selected_grpc_method_requires_service_and_method_before_connection_is_created() {
+        let request = GrpcRequest {
+            service: Some("example.UserService".to_string()),
+            method: Some("GetUser".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(
+            selected_grpc_method(&request).expect("method selection should be valid"),
+            ("example.UserService".to_string(), "GetUser".to_string())
+        );
+
+        let missing_method =
+            GrpcRequest { service: Some("example.UserService".to_string()), ..Default::default() };
+        assert!(selected_grpc_method(&missing_method).is_err());
+
+        let empty_service = GrpcRequest {
+            service: Some(" ".to_string()),
+            method: Some("GetUser".to_string()),
+            ..Default::default()
+        };
+        assert!(selected_grpc_method(&empty_service).is_err());
+    }
 }

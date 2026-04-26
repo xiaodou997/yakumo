@@ -50,6 +50,9 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    "process.version": JSON.stringify("v20.0.0"),
+  },
   clearScreen: false,
   server: {
     port: parseInt(process.env.YAKUMO_DEV_PORT ?? "1420", 10),

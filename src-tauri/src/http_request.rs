@@ -8,14 +8,20 @@ use std::time::Instant;
 use tauri::{AppHandle, Listener, Manager, Runtime, WebviewWindow};
 use tokio::sync::watch::Receiver;
 use yakumo_crypto::manager::EncryptionManager;
+use yakumo_http::client::{
+    HttpConnectionOptions, HttpConnectionProxySetting, HttpConnectionProxySettingAuth,
+};
 use yakumo_http::cookies::CookieStore;
 use yakumo_http::sender::ReqwestSender;
 use yakumo_http::transaction::HttpTransaction;
 use yakumo_http::types::SendableHttpRequestOptions;
 use yakumo_models::blob_manager::BodyChunk;
-use yakumo_models::models::{CookieJar, Environment, HttpRequest, HttpResponse, HttpResponseState};
+use yakumo_models::models::{
+    CookieJar, Environment, HttpRequest, HttpResponse, HttpResponseState, ProxySetting,
+};
 use yakumo_models::util::UpdateSource;
 use yakumo_templates::{RenderErrorBehavior, RenderOptions};
+use yakumo_tls::find_client_certificate;
 
 #[tauri::command]
 pub(crate) async fn cmd_send_ephemeral_request<R: Runtime>(
@@ -249,8 +255,22 @@ async fn send_http_request_inner<R: Runtime>(
             .await
             .map_err(|e| GenericError(e.to_string()))?;
 
+    let workspace = app_handle.db().get_workspace(&unrendered_request.workspace_id)?;
+    let settings = app_handle.db().get_settings();
+    let client_certificate =
+        find_client_certificate(&sendable_request.url, &settings.client_certificates);
+    let client_options = HttpConnectionOptions {
+        id: unrendered_request.id.clone(),
+        validate_certificates: workspace.setting_validate_certificates,
+        proxy: http_proxy_setting(settings.proxy),
+        client_certificate,
+        dns_overrides: workspace.setting_dns_overrides.clone(),
+    };
+    let (client, _resolver) =
+        client_options.build_client().map_err(|e| GenericError(e.to_string()))?;
+
     // Create HTTP sender and transaction
-    let sender = ReqwestSender::new().map_err(|e| GenericError(e.to_string()))?;
+    let sender = ReqwestSender::with_client(client);
 
     // Create cookie store if we have a cookie jar
     let transaction = if let Some(jar) = &cookie_jar {
@@ -327,5 +347,27 @@ async fn send_http_request_inner<R: Runtime>(
             });
             Ok(response_ctx.response().clone())
         }
+    }
+}
+
+fn http_proxy_setting(proxy: Option<ProxySetting>) -> HttpConnectionProxySetting {
+    match proxy {
+        Some(ProxySetting::Disabled) => HttpConnectionProxySetting::Disabled,
+        Some(ProxySetting::Enabled { http, https, auth, bypass, disabled }) => {
+            if disabled {
+                HttpConnectionProxySetting::Disabled
+            } else {
+                HttpConnectionProxySetting::Enabled {
+                    http,
+                    https,
+                    auth: auth.map(|a| HttpConnectionProxySettingAuth {
+                        user: a.user,
+                        password: a.password,
+                    }),
+                    bypass,
+                }
+            }
+        }
+        None => HttpConnectionProxySetting::System,
     }
 }

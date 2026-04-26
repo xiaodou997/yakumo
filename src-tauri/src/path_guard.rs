@@ -27,11 +27,24 @@ pub(crate) fn safe_relative_path(path: &Path, label: &str) -> Result<()> {
         return Err(GenericError(format!("{label} must be a relative path")));
     }
 
-    let is_safe = path
-        .components()
-        .all(|component| matches!(component, Component::Normal(_) | Component::CurDir));
+    if path.as_os_str().is_empty() {
+        return Err(GenericError(format!("{label} must not be empty")));
+    }
+
+    let mut has_normal_component = false;
+    let is_safe = path.components().all(|component| match component {
+        Component::Normal(_) => {
+            has_normal_component = true;
+            true
+        }
+        Component::CurDir => true,
+        _ => false,
+    });
     if !is_safe {
         return Err(GenericError(format!("{label} must not escape the repository directory")));
+    }
+    if !has_normal_component {
+        return Err(GenericError(format!("{label} must include a file path")));
     }
 
     Ok(())
@@ -45,6 +58,7 @@ mod tests {
     #[test]
     fn relative_normal_paths_are_allowed() {
         assert!(safe_relative_path(Path::new("requests/example.yaml"), "path").is_ok());
+        assert!(safe_relative_path(Path::new("requests/./example.yaml"), "path").is_ok());
     }
 
     #[test]
@@ -56,5 +70,12 @@ mod tests {
     fn parent_traversal_is_rejected() {
         assert!(safe_relative_path(Path::new("../example.yaml"), "path").is_err());
         assert!(safe_relative_path(Path::new("requests/../../example.yaml"), "path").is_err());
+    }
+
+    #[test]
+    fn empty_or_current_directory_paths_are_rejected() {
+        assert!(safe_relative_path(Path::new(""), "path").is_err());
+        assert!(safe_relative_path(Path::new("."), "path").is_err());
+        assert!(safe_relative_path(Path::new("./"), "path").is_err());
     }
 }

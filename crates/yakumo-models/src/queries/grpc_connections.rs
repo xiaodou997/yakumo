@@ -92,3 +92,66 @@ impl<'a> DbContext<'a> {
         self.upsert(grpc_connection, source)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::init_in_memory;
+    use crate::models::{GrpcRequest, Workspace};
+
+    #[test]
+    fn cancel_pending_grpc_connections_closes_non_closed_connections() {
+        let (query_manager, _blob_manager, _rx) = init_in_memory().expect("Failed to init DB");
+        let db = query_manager.connect();
+        db.upsert_workspace(
+            &Workspace { id: "wk_test".to_string(), ..Default::default() },
+            &UpdateSource::Sync,
+        )
+        .expect("Failed to seed workspace");
+        db.upsert_grpc_request(
+            &GrpcRequest {
+                id: "rq_test".to_string(),
+                workspace_id: "wk_test".to_string(),
+                ..Default::default()
+            },
+            &UpdateSource::Sync,
+        )
+        .expect("Failed to seed gRPC request");
+
+        let initialized = db
+            .upsert_grpc_connection(
+                &GrpcConnection {
+                    id: "grc_initialized".to_string(),
+                    workspace_id: "wk_test".to_string(),
+                    request_id: "rq_test".to_string(),
+                    state: GrpcConnectionState::Initialized,
+                    ..Default::default()
+                },
+                &UpdateSource::Sync,
+            )
+            .expect("Failed to seed initialized gRPC connection");
+        let closed = db
+            .upsert_grpc_connection(
+                &GrpcConnection {
+                    id: "grc_closed".to_string(),
+                    workspace_id: "wk_test".to_string(),
+                    request_id: "rq_test".to_string(),
+                    state: GrpcConnectionState::Closed,
+                    ..Default::default()
+                },
+                &UpdateSource::Sync,
+            )
+            .expect("Failed to seed closed gRPC connection");
+
+        db.cancel_pending_grpc_connections().expect("Failed to cancel pending gRPC connections");
+
+        assert!(matches!(
+            db.get_grpc_connection(&initialized.id).unwrap().state,
+            GrpcConnectionState::Closed
+        ));
+        assert!(matches!(
+            db.get_grpc_connection(&closed.id).unwrap().state,
+            GrpcConnectionState::Closed
+        ));
+    }
+}

@@ -275,3 +275,41 @@ pub fn find_client_certificate(
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::find_client_certificate;
+    use yakumo_models::models::ClientCertificate;
+
+    fn cert(host: &str, port: Option<i32>, enabled: bool) -> ClientCertificate {
+        ClientCertificate {
+            host: host.to_string(),
+            port,
+            crt_file: Some("client.crt".to_string()),
+            key_file: Some("client.key".to_string()),
+            pfx_file: None,
+            passphrase: None,
+            enabled,
+        }
+    }
+
+    #[test]
+    fn matches_https_and_wss_default_tls_port() {
+        let certificates = vec![cert("api.example.com", None, true)];
+
+        assert!(find_client_certificate("https://api.example.com/graphql", &certificates).is_some());
+        assert!(find_client_certificate("wss://api.example.com/socket", &certificates).is_some());
+    }
+
+    #[test]
+    fn skips_disabled_and_port_mismatched_certificates() {
+        let certificates = vec![
+            cert("api.example.com", None, false),
+            cert("api.example.com", Some(8443), true),
+        ];
+
+        assert!(find_client_certificate("https://api.example.com/graphql", &certificates).is_none());
+        assert!(find_client_certificate("https://api.example.com:8443/graphql", &certificates)
+            .is_some());
+    }
+}

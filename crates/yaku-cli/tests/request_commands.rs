@@ -7,7 +7,8 @@ use common::{
 };
 use predicates::str::contains;
 use tempfile::TempDir;
-use yakumo_models::models::HttpResponseState;
+use yakumo_models::models::{Cookie, CookieDomain, CookieExpires, CookieJar, HttpResponseState};
+use yakumo_models::util::UpdateSource;
 
 #[test]
 fn show_and_delete_yes_round_trip() {
@@ -225,6 +226,68 @@ fn request_send_persists_response_body_and_events() {
     let events =
         db.list_http_response_events(&response.id).expect("Failed to load response events");
     assert!(!events.is_empty(), "expected at least one persisted response event");
+}
+
+#[test]
+fn request_send_uses_and_persists_cookie_jar() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+    seed_workspace(data_dir, "wk_test");
+
+    let server = TestHttpServer::spawn_with_headers(
+        "cookie response",
+        &["Set-Cookie: cli_cookie=stored; Path=/"],
+    );
+
+    let request = yakumo_models::models::HttpRequest {
+        id: "rq_cookie_send".to_string(),
+        workspace_id: "wk_test".to_string(),
+        name: "Cookie Send".to_string(),
+        method: "GET".to_string(),
+        url: server.url.clone(),
+        ..Default::default()
+    };
+    let cookie_jar = CookieJar {
+        id: "cj_cookie_send".to_string(),
+        workspace_id: "wk_test".to_string(),
+        name: "Cookie Send Jar".to_string(),
+        cookies: vec![Cookie {
+            raw_cookie: "session=fromjar".to_string(),
+            domain: CookieDomain::HostOnly("127.0.0.1".to_string()),
+            expires: CookieExpires::SessionEnd,
+            path: ("/".to_string(), false),
+        }],
+        ..Default::default()
+    };
+
+    let qm = query_manager(data_dir);
+    let db = qm.connect();
+    db.upsert_http_request(&request, &UpdateSource::Sync).expect("Failed to seed cookie request");
+    db.upsert_cookie_jar(&cookie_jar, &UpdateSource::Sync).expect("Failed to seed cookie jar");
+
+    cli_cmd(data_dir)
+        .args([
+            "--cookie-jar",
+            "cj_cookie_send",
+            "request",
+            "send",
+            "rq_cookie_send",
+        ])
+        .assert()
+        .success()
+        .stdout(contains("cookie response"));
+
+    assert!(
+        server.request_text().to_lowercase().contains("cookie: session=fromjar"),
+        "expected outbound request to include cookie jar cookie, got:\n{}",
+        server.request_text()
+    );
+
+    let updated = db.get_cookie_jar("cj_cookie_send").expect("Failed to load updated cookie jar");
+    assert!(
+        updated.cookies.iter().any(|cookie| cookie.raw_cookie == "cli_cookie=stored"),
+        "expected Set-Cookie response to be persisted in cookie jar"
+    );
 }
 
 #[test]

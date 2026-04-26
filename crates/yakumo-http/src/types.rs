@@ -226,7 +226,7 @@ async fn build_body(
 
     let (body, content_type) = match body_type.as_str() {
         "binary" => (build_binary_body(&body).await?, None),
-        "graphql" => (build_graphql_body(&method, &body), None),
+        "graphql" => (build_graphql_body(&method, &body), Some("application/json".to_string())),
         "application/x-www-form-urlencoded" => (build_form_body(&body), None),
         "multipart/form-data" => build_multipart_body(&body, &headers).await?,
         _ if body.contains_key("text") => (build_text_body(&body, body_type), None),
@@ -911,6 +911,47 @@ mod tests {
 
         let result = build_graphql_body("GET", &body);
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_graphql_sendable_request_sets_json_content_type() -> Result<()> {
+        let mut body = BTreeMap::new();
+        body.insert("query".to_string(), json!("query Users { users { name } }"));
+        body.insert("variables".to_string(), json!(r#"{"limit": 5}"#));
+
+        let request = HttpRequest {
+            method: "POST".to_string(),
+            url: "https://example.com/graphql".to_string(),
+            body_type: Some("graphql".to_string()),
+            body,
+            ..Default::default()
+        };
+
+        let sendable =
+            SendableHttpRequest::from_http_request(&request, SendableHttpRequestOptions::default())
+                .await?;
+
+        assert_eq!(sendable.url, "https://example.com/graphql");
+        assert_eq!(sendable.method, "POST");
+        assert_eq!(
+            sendable
+                .headers
+                .iter()
+                .find(|(name, _)| name.eq_ignore_ascii_case("content-type"))
+                .map(|(_, value)| value.as_str()),
+            Some("application/json")
+        );
+        match sendable.body {
+            Some(SendableBody::Bytes(bytes)) => assert_eq!(
+                bytes,
+                Bytes::from(
+                    r#"{"query":"query Users { users { name } }","variables":{"limit": 5}}"#
+                )
+            ),
+            _ => panic!("Expected GraphQL request body bytes"),
+        }
+
+        Ok(())
     }
 
     #[tokio::test]

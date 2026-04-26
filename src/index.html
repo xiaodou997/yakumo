@@ -20,11 +20,21 @@
           background-color: #1b1a29;
         }
       }
+
+      .app-boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #827e9f;
+        font: 500 13px ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.04em;
+      }
     </style>
   </head>
 
   <body class="text-base">
-    <div id="root"></div>
+    <div id="root"><div class="app-boot">Loading Yakumo...</div></div>
     <div id="cm-portal" class="cm-portal"></div>
     <div id="react-portal"></div>
     <div id="radix-portal" class="cm-portal"></div>

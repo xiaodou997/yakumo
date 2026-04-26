@@ -95,3 +95,67 @@ impl<'a> DbContext<'a> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::init_in_memory;
+    use crate::models::{WebsocketRequest, Workspace};
+
+    #[test]
+    fn cancel_pending_websocket_connections_closes_non_closed_connections() {
+        let (query_manager, _blob_manager, _rx) = init_in_memory().expect("Failed to init DB");
+        let db = query_manager.connect();
+        db.upsert_workspace(
+            &Workspace { id: "wk_test".to_string(), ..Default::default() },
+            &UpdateSource::Sync,
+        )
+        .expect("Failed to seed workspace");
+        db.upsert_websocket_request(
+            &WebsocketRequest {
+                id: "rq_test".to_string(),
+                workspace_id: "wk_test".to_string(),
+                ..Default::default()
+            },
+            &UpdateSource::Sync,
+        )
+        .expect("Failed to seed WebSocket request");
+
+        let connected = db
+            .upsert_websocket_connection(
+                &WebsocketConnection {
+                    id: "wsc_connected".to_string(),
+                    workspace_id: "wk_test".to_string(),
+                    request_id: "rq_test".to_string(),
+                    state: WebsocketConnectionState::Connected,
+                    ..Default::default()
+                },
+                &UpdateSource::Sync,
+            )
+            .expect("Failed to seed connected WebSocket connection");
+        let closed = db
+            .upsert_websocket_connection(
+                &WebsocketConnection {
+                    id: "wsc_closed".to_string(),
+                    workspace_id: "wk_test".to_string(),
+                    request_id: "rq_test".to_string(),
+                    state: WebsocketConnectionState::Closed,
+                    ..Default::default()
+                },
+                &UpdateSource::Sync,
+            )
+            .expect("Failed to seed closed WebSocket connection");
+
+        db.cancel_pending_websocket_connections()
+            .expect("Failed to cancel pending WebSocket connections");
+
+        assert!(matches!(
+            db.get_websocket_connection(&connected.id).unwrap().state,
+            WebsocketConnectionState::Closed
+        ));
+        assert!(matches!(
+            db.get_websocket_connection(&closed.id).unwrap().state,
+            WebsocketConnectionState::Closed
+        ));
+    }
+}

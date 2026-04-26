@@ -1,5 +1,6 @@
-use crate::encoding::read_response_body;
+use crate::encoding::decode_response_body;
 use crate::error::{Error, Result};
+use crate::file_commands::read_body_bytes;
 use crate::http_request;
 use crate::models_ext::QueryManagerExt;
 use base64::Engine;
@@ -146,7 +147,8 @@ pub(crate) async fn cmd_http_response_body(
         .find(|h| h.name.eq_ignore_ascii_case("content-type"))
         .map(|h| h.value.as_str())
         .unwrap_or_default();
-    let content = read_response_body(body_path, content_type).await.unwrap_or_default();
+    let body = read_body_bytes(&app_handle, &body_path)?;
+    let content = decode_response_body(&body, content_type);
 
     if let Some(filter) = filter.filter(|f| !f.trim().is_empty()) {
         let filtered = if content_type.contains("json") {
@@ -508,6 +510,15 @@ fn builtin_template_functions() -> Vec<Value> {
             ]
         }),
         json!({
+            "name": "regex.extract",
+            "description": "Extract the first regex match.",
+            "previewType": "live",
+            "args": [
+                { "type": "text", "name": "text", "label": "Text" },
+                { "type": "text", "name": "pattern", "label": "Pattern" }
+            ]
+        }),
+        json!({
             "name": "regex.replace",
             "description": "Replace regex matches.",
             "previewType": "live",
@@ -529,7 +540,8 @@ mod tests {
     use serde_json::Value;
 
     fn by_name<'a>(items: &'a [Value], name: &str) -> &'a Value {
-        items.iter()
+        items
+            .iter()
             .find(|item| item.get("name").and_then(Value::as_str) == Some(name))
             .unwrap_or_else(|| panic!("missing config for {name}"))
     }
@@ -554,6 +566,35 @@ mod tests {
     }
 
     #[test]
+    fn template_metadata_covers_registered_builtin_functions() {
+        let functions = builtin_template_functions();
+        for name in [
+            "secure",
+            "uuid.v4",
+            "uuid.v7",
+            "uuid.v3",
+            "uuid.v5",
+            "timestamp.unix",
+            "timestamp.unixMillis",
+            "timestamp.iso8601",
+            "timestamp.format",
+            "timestamp.offset",
+            "hash.sha256",
+            "base64.encode",
+            "random.string",
+            "jsonpath.query",
+            "regex.match",
+            "regex.extract",
+            "regex.replace",
+        ] {
+            let item = by_name(&functions, name);
+            let expected_preview = if name == "secure" { "click" } else { "live" };
+            assert_eq!(item.get("previewType").and_then(Value::as_str), Some(expected_preview));
+            assert!(item.get("args").and_then(Value::as_array).is_some());
+        }
+    }
+
+    #[test]
     fn auth_summaries_include_short_labels() {
         let summaries = builtin_http_authentication_summaries();
         let oauth2 = by_name(&summaries, "oauth2");
@@ -569,10 +610,7 @@ mod tests {
             .iter()
             .find(|arg| arg.get("name").and_then(Value::as_str) == Some("algorithm"))
             .unwrap();
-        assert_eq!(
-            algorithm.get("defaultValue").and_then(Value::as_str),
-            Some("HS256")
-        );
+        assert_eq!(algorithm.get("defaultValue").and_then(Value::as_str), Some("HS256"));
 
         let oauth2 = by_name(&configs, "oauth2");
         let oauth2_args = oauth2.get("args").and_then(Value::as_array).unwrap();

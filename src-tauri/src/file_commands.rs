@@ -1,6 +1,7 @@
 use crate::error::Error::GenericError;
 use crate::error::Result;
 use crate::import::import_data;
+use crate::models_ext::BlobManagerExt;
 use crate::models_ext::QueryManagerExt;
 use crate::path_guard;
 use eventsource_client::{EventParser, SSE};
@@ -22,7 +23,7 @@ pub(crate) async fn cmd_http_response_body_bytes<R: Runtime>(
         return Ok(None);
     };
 
-    Ok(Some(fs::read(body_path)?))
+    Ok(Some(read_body_bytes(&app_handle, &body_path)?))
 }
 
 #[command]
@@ -41,7 +42,11 @@ pub(crate) async fn cmd_get_sse_events<R: Runtime>(
     let Some(body_path) = response.body_path else {
         return Ok(Vec::new());
     };
-    let body = fs::read(body_path)?;
+    let body = read_body_bytes(&app_handle, &body_path)?;
+    parse_sse_events(body)
+}
+
+fn parse_sse_events(body: Vec<u8>) -> Result<Vec<ServerSentEvent>> {
     let mut event_parser = EventParser::new();
     event_parser.process_bytes(body.into())?;
 
@@ -116,8 +121,43 @@ pub(crate) async fn cmd_save_response<R: Runtime>(
 
     let body_path =
         response.body_path.ok_or(GenericError("Response does not have a body".to_string()))?;
-    fs::copy(body_path, filepath)
-        .map_err(|e| GenericError(format!("Failed to save response: {e}")))?;
+    let body = read_body_bytes(&app_handle, &body_path)?;
+    fs::write(filepath, body).map_err(|e| GenericError(format!("Failed to save response: {e}")))?;
 
     Ok(())
+}
+
+pub(crate) fn read_body_bytes<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    body_path: &str,
+) -> Result<Vec<u8>> {
+    if let Ok(body) = fs::read(body_path) {
+        return Ok(body);
+    }
+
+    let chunks = app_handle.blobs().get_chunks(body_path)?;
+    if chunks.is_empty() {
+        return Err(GenericError(format!("Response body not found: {body_path}")));
+    }
+
+    Ok(chunks.into_iter().flat_map(|chunk| chunk.data).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_sse_events;
+
+    #[test]
+    fn parses_server_sent_events_from_response_body() {
+        let events = parse_sse_events(
+            b"id: evt_1\nevent: message\ndata: {\"ok\":true}\nretry: 5000\n\n".to_vec(),
+        )
+        .expect("SSE response should parse");
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id.as_deref(), Some("evt_1"));
+        assert_eq!(events[0].event_type, "message");
+        assert_eq!(events[0].data, "{\"ok\":true}");
+        assert_eq!(events[0].retry, Some(5000));
+    }
 }

@@ -15,12 +15,12 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::sync::mpsc;
-use yakumo_http::sender::{
-    HttpResponseEvent as SenderHttpResponseEvent, HttpSender, ReqwestSender,
-};
+use yakumo_http::cookies::CookieStore;
+use yakumo_http::sender::{HttpResponseEvent as SenderHttpResponseEvent, ReqwestSender};
+use yakumo_http::transaction::HttpTransaction;
 use yakumo_http::types::{SendableHttpRequest, SendableHttpRequestOptions};
 use yakumo_models::models::{
-    GrpcRequest, HttpRequest, HttpResponse, HttpResponseEvent, HttpResponseHeader,
+    CookieJar, GrpcRequest, HttpRequest, HttpResponse, HttpResponseEvent, HttpResponseHeader,
     HttpResponseState, UpsertModelInfo, WebsocketRequest,
 };
 use yakumo_models::queries::any_request::AnyRequest;
@@ -267,7 +267,7 @@ async fn send_http_request_by_id(
     cookie_jar_id: Option<&str>,
     verbose: bool,
 ) -> Result<(), String> {
-    let _cookie_jar_id = resolve_cookie_jar_id(ctx, &http_request.workspace_id, cookie_jar_id)?;
+    let cookie_jar = load_cookie_jar(ctx, &http_request.workspace_id, cookie_jar_id)?;
     let _environment_id = environment;
     let started = Instant::now();
 
@@ -277,11 +277,15 @@ async fn send_http_request_by_id(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Create sender
+    // Create sender and transaction
     let sender = ReqwestSender::new().map_err(|e| e.to_string())?;
+    let cookie_store =
+        cookie_jar.as_ref().map(|jar| CookieStore::from_cookies(jar.cookies.clone()));
+    let transaction = HttpTransaction::with_options(sender, 10, cookie_store.clone());
 
     // Create event channel
     let (event_tx, mut event_rx) = mpsc::channel::<SenderHttpResponseEvent>(100);
+    let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
     let (body_chunk_tx, mut body_chunk_rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let events = Arc::new(Mutex::new(Vec::<SenderHttpResponseEvent>::new()));
     let captured_events = Arc::clone(&events);
@@ -310,7 +314,10 @@ async fn send_http_request_by_id(
     });
 
     // Send the request
-    let mut response = sender.send(sendable_request, event_tx).await.map_err(|e| e.to_string())?;
+    let mut response = transaction
+        .execute_with_cancellation(sendable_request, cancel_rx, event_tx)
+        .await
+        .map_err(|e| e.to_string())?;
     let response_id = <HttpResponse as UpsertModelInfo>::generate_id();
 
     // Read the body and send chunks
@@ -388,6 +395,13 @@ async fn send_http_request_by_id(
             .map_err(|e| format!("Failed to persist response event: {e}"))?;
     }
 
+    if let (Some(mut cookie_jar), Some(cookie_store)) = (cookie_jar, cookie_store) {
+        cookie_jar.cookies = cookie_store.get_all_cookies();
+        ctx.db()
+            .upsert_cookie_jar(&cookie_jar, &UpdateSource::Sync)
+            .map_err(|e| format!("Failed to persist cookie jar: {e}"))?;
+    }
+
     Ok(())
 }
 
@@ -425,6 +439,16 @@ pub(crate) fn resolve_cookie_jar_id(
     explicit_cookie_jar_id: Option<&str>,
 ) -> Result<Option<String>, String> {
     if let Some(cookie_jar_id) = explicit_cookie_jar_id {
+        let cookie_jar = ctx
+            .db()
+            .get_cookie_jar(cookie_jar_id)
+            .map_err(|e| format!("Failed to get cookie jar '{cookie_jar_id}': {e}"))?;
+        if cookie_jar.workspace_id != workspace_id {
+            return Err(format!(
+                "Cookie jar '{}' belongs to workspace '{}', not '{}'",
+                cookie_jar_id, cookie_jar.workspace_id, workspace_id
+            ));
+        }
         return Ok(Some(cookie_jar_id.to_string()));
     }
 
@@ -436,4 +460,20 @@ pub(crate) fn resolve_cookie_jar_id(
         .min_by_key(|jar| jar.created_at)
         .map(|jar| jar.id);
     Ok(default_cookie_jar)
+}
+
+fn load_cookie_jar(
+    ctx: &CliContext,
+    workspace_id: &str,
+    explicit_cookie_jar_id: Option<&str>,
+) -> Result<Option<CookieJar>, String> {
+    let Some(cookie_jar_id) = resolve_cookie_jar_id(ctx, workspace_id, explicit_cookie_jar_id)?
+    else {
+        return Ok(None);
+    };
+
+    ctx.db()
+        .get_cookie_jar(&cookie_jar_id)
+        .map(Some)
+        .map_err(|e| format!("Failed to get cookie jar '{cookie_jar_id}': {e}"))
 }

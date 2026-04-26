@@ -37,7 +37,7 @@ impl HttpConnectionOptions {
     /// Build a reqwest Client and return it along with the DNS resolver.
     /// The resolver is returned separately so it can be configured per-request
     /// to emit DNS timing events to the appropriate channel.
-    pub(crate) fn build_client(&self) -> Result<(Client, Arc<LocalhostResolver>)> {
+    pub fn build_client(&self) -> Result<(Client, Arc<LocalhostResolver>)> {
         let mut client = Client::builder()
             .connection_verbose(true)
             .redirect(redirect::Policy::none())

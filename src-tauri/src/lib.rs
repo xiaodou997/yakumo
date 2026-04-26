@@ -127,6 +127,9 @@ impl TemplateCallback for BuiltinTemplateCallback {
             "regex.match" => regex::RegexMatch
                 .render(&args)
                 .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
+            "regex.extract" => regex::RegexExtract
+                .render(&args)
+                .map_err(|e| yakumo_templates::error::Error::RenderError(e)),
             "regex.replace" => regex::RegexReplace
                 .render(&args)
                 .map_err(|e| yakumo_templates::error::Error::RenderError(e)),

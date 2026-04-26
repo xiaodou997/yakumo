@@ -117,6 +117,7 @@ export const hotkeysAtom = atom((get) => {
   }
   return merged;
 });
+const emptyHotkeysAtom = atom<Partial<Record<HotkeyAction, string[]>>>({});
 
 /** Helper function to get current hotkeys from the store */
 function getHotkeys(): Record<HotkeyAction, string[]> {
@@ -365,7 +366,7 @@ export function formatHotkeyString(trigger: string): string[] {
 }
 
 export function useFormattedHotkey(action: HotkeyAction | null): string[] | null {
-  const hotkeys = useAtomValue(hotkeysAtom);
+  const hotkeys = useAtomValue(action == null ? emptyHotkeysAtom : hotkeysAtom);
   const trigger = action != null ? (hotkeys[action]?.[0] ?? null) : null;
   if (trigger == null) {
     return null;
