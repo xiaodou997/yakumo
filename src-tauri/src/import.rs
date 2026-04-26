@@ -16,8 +16,9 @@ pub(crate) async fn import_data<R: Runtime>(
     window: &WebviewWindow<R>,
     file_path: &str,
 ) -> Result<BatchUpsertResult> {
-    let file =
-        read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file {}", file_path));
+    let file = read_to_string(file_path).map_err(|e| {
+        crate::error::Error::GenericError(format!("Unable to read import file: {e}"))
+    })?;
     let file_contents = file.as_str();
 
     // Use built-in importer

@@ -4,6 +4,7 @@
 
 use crate::error::Result;
 use crate::models_ext::QueryManagerExt;
+use crate::path_guard;
 use chrono::Utc;
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -25,9 +26,8 @@ pub(crate) async fn cmd_sync_calculate<R: Runtime>(
     workspace_id: &str,
     sync_dir: &Path,
 ) -> Result<Vec<SyncOp>> {
-    if !sync_dir.exists() {
-        return Err(InvalidSyncDirectory(sync_dir.to_string_lossy().to_string()).into());
-    }
+    path_guard::existing_dir(sync_dir, "Sync directory")
+        .map_err(|_| InvalidSyncDirectory(sync_dir.to_string_lossy().to_string()))?;
 
     let db = app_handle.db();
     let version = app_handle.package_info().version.to_string();
@@ -42,6 +42,7 @@ pub(crate) async fn cmd_sync_calculate<R: Runtime>(
 
 #[command]
 pub(crate) async fn cmd_sync_calculate_fs(dir: &Path) -> Result<Vec<SyncOp>> {
+    path_guard::existing_dir(dir, "Sync directory")?;
     let db_candidates = Vec::new();
     let fs_candidates = get_fs_candidates(dir)?;
     Ok(compute_sync_ops(db_candidates, fs_candidates))
@@ -54,6 +55,7 @@ pub(crate) async fn cmd_sync_apply<R: Runtime>(
     sync_dir: &Path,
     workspace_id: &str,
 ) -> Result<()> {
+    path_guard::existing_dir(sync_dir, "Sync directory")?;
     let db = app_handle.db();
     let sync_state_ops = apply_sync_ops(&db, workspace_id, sync_dir, sync_ops)?;
     apply_sync_state_ops(&db, workspace_id, sync_dir, sync_state_ops)?;
@@ -74,6 +76,7 @@ pub(crate) async fn cmd_sync_watch<R: Runtime>(
     workspace_id: &str,
     channel: Channel<WatchEvent>,
 ) -> Result<WatchResult> {
+    path_guard::existing_dir(sync_dir, "Sync directory")?;
     let (cancel_tx, cancel_rx) = watch::channel(());
 
     // Create a callback that forwards events to the Tauri channel

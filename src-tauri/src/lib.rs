@@ -2,7 +2,6 @@ extern crate core;
 use crate::error::Error::GenericError;
 use crate::grpc::{build_metadata, metadata_to_map, resolve_grpc_request};
 use crate::http_request::send_http_request;
-use crate::import::import_data;
 use crate::models_ext::{BlobManagerExt, QueryManagerExt};
 use crate::notifications::YakumoNotifier;
 use crate::render::{render_grpc_request, render_template};
@@ -11,14 +10,12 @@ use crate::uri_scheme::handle_deep_link;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use error::Result as YakumoResult;
-use eventsource_client::{EventParser, SSE};
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
-use std::fs::File;
+use std::panic;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-use std::{fs, panic};
 use tauri::{AppHandle, Emitter, RunEvent, State, WebviewWindow, is_dev};
 use tauri::{Listener, Runtime};
 use tauri::{Manager, WindowEvent};
@@ -37,10 +34,9 @@ use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
 use yakumo_mac_window::AppHandleMacWindowExt;
 use yakumo_models::models::{
     GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, HttpRequest, HttpResponse,
-    HttpResponseEvent, HttpResponseState, WorkspaceMeta,
+    HttpResponseState, WorkspaceMeta,
 };
-use yakumo_models::util::{BatchUpsertResult, UpdateSource, get_workspace_export_resources};
-use yakumo_sse::sse::ServerSentEvent;
+use yakumo_models::util::UpdateSource;
 use yakumo_templates::format_json::format_json;
 use yakumo_templates::strip_json_comments::strip_json_comments;
 use yakumo_templates::{
@@ -51,6 +47,7 @@ use yakumo_tls::find_client_certificate;
 mod commands;
 mod encoding;
 mod error;
+mod file_commands;
 mod formatting;
 mod git_ext;
 mod grpc;
@@ -59,6 +56,7 @@ mod http_request;
 mod import;
 mod models_ext;
 mod notifications;
+mod path_guard;
 mod render;
 mod sync_ext;
 mod updates;
@@ -968,111 +966,6 @@ async fn cmd_http_request_body<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_http_response_body_bytes<R: Runtime>(
-    app_handle: AppHandle<R>,
-    response_id: &str,
-) -> YakumoResult<Option<Vec<u8>>> {
-    let response = app_handle.db().get_http_response(response_id)?;
-    let Some(body_path) = response.body_path else {
-        return Ok(None);
-    };
-
-    Ok(Some(fs::read(body_path)?))
-}
-
-#[tauri::command]
-async fn cmd_directory_is_empty(path: &str) -> YakumoResult<bool> {
-    Ok(fs::read_dir(path)?.next().is_none())
-}
-
-#[tauri::command]
-async fn cmd_get_sse_events<R: Runtime>(
-    app_handle: AppHandle<R>,
-    response_id: &str,
-) -> YakumoResult<Vec<ServerSentEvent>> {
-    let response = app_handle.db().get_http_response(response_id)?;
-    let Some(body_path) = response.body_path else {
-        return Ok(Vec::new());
-    };
-    let body = fs::read(body_path)?;
-    let mut event_parser = EventParser::new();
-    event_parser.process_bytes(body.into())?;
-
-    let mut events = Vec::new();
-    while let Some(e) = event_parser.get_event() {
-        if let SSE::Event(e) = e {
-            events.push(ServerSentEvent {
-                event_type: e.event_type,
-                data: e.data,
-                id: e.id,
-                retry: e.retry,
-            });
-        }
-    }
-
-    Ok(events)
-}
-
-#[tauri::command]
-async fn cmd_get_http_response_events<R: Runtime>(
-    app_handle: AppHandle<R>,
-    response_id: &str,
-) -> YakumoResult<Vec<HttpResponseEvent>> {
-    let events: Vec<HttpResponseEvent> = app_handle.db().list_http_response_events(response_id)?;
-    Ok(events)
-}
-
-#[tauri::command]
-async fn cmd_import_data<R: Runtime>(
-    window: WebviewWindow<R>,
-    file_path: &str,
-) -> YakumoResult<BatchUpsertResult> {
-    import_data(&window, file_path).await
-}
-
-#[tauri::command]
-async fn cmd_export_data<R: Runtime>(
-    app_handle: AppHandle<R>,
-    export_path: &str,
-    workspace_ids: Vec<&str>,
-    include_private_environments: bool,
-) -> YakumoResult<()> {
-    let db = app_handle.db();
-    let version = app_handle.package_info().version.to_string();
-    let export_data =
-        get_workspace_export_resources(&db, &version, workspace_ids, include_private_environments)?;
-    let f = File::options()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(export_path)
-        .map_err(|e| GenericError(format!("Unable to create export file: {e}")))?;
-
-    serde_json::to_writer_pretty(&f, &export_data)
-        .map_err(|e| GenericError(format!("Failed to write export file: {e}")))?;
-
-    f.sync_all().map_err(|e| GenericError(format!("Failed to sync export file: {e}")))?;
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn cmd_save_response<R: Runtime>(
-    app_handle: AppHandle<R>,
-    response_id: &str,
-    filepath: &str,
-) -> YakumoResult<()> {
-    let response = app_handle.db().get_http_response(response_id)?;
-
-    let body_path =
-        response.body_path.ok_or(GenericError("Response does not have a body".to_string()))?;
-    fs::copy(body_path, filepath)
-        .map_err(|e| GenericError(format!("Failed to save response: {e}")))?;
-
-    Ok(())
-}
-
-#[tauri::command]
 async fn cmd_send_http_request<R: Runtime>(
     app_handle: AppHandle<R>,
     window: WebviewWindow<R>,
@@ -1362,26 +1255,26 @@ pub fn run() {
             cmd_delete_all_http_responses,
             cmd_delete_send_history,
             cmd_dismiss_notification,
-            cmd_export_data,
+            file_commands::cmd_export_data,
             cmd_http_request_body,
-            cmd_http_response_body_bytes,
-            cmd_directory_is_empty,
+            file_commands::cmd_http_response_body_bytes,
+            file_commands::cmd_directory_is_empty,
             cmd_format_json,
             cmd_format_graphql,
             cmd_format_xml,
             cmd_format_html,
-            cmd_get_sse_events,
-            cmd_get_http_response_events,
+            file_commands::cmd_get_sse_events,
+            file_commands::cmd_get_http_response_events,
             cmd_get_workspace_meta,
             cmd_grpc_go,
             cmd_grpc_reflect,
-            cmd_import_data,
+            file_commands::cmd_import_data,
             cmd_metadata,
             cmd_new_child_window,
             cmd_new_main_window,
             cmd_render_template,
             cmd_restart,
-            cmd_save_response,
+            file_commands::cmd_save_response,
             cmd_send_ephemeral_request,
             cmd_send_http_request,
             cmd_template_tokens_to_string,

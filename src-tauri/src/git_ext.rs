@@ -3,6 +3,7 @@
 //! This module provides the Tauri commands for git functionality.
 
 use crate::error::Result;
+use crate::path_guard;
 use std::path::{Path, PathBuf};
 use tauri::command;
 use yakumo_git::{
@@ -17,11 +18,13 @@ use yakumo_git::{
 
 #[command]
 pub async fn cmd_git_checkout(dir: &Path, branch: &str, force: bool) -> Result<String> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_checkout_branch(dir, branch, force).await?)
 }
 
 #[command]
 pub async fn cmd_git_branch(dir: &Path, branch: &str, base: Option<&str>) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_create_branch(dir, branch, base).await?)
 }
 
@@ -31,61 +34,73 @@ pub async fn cmd_git_delete_branch(
     branch: &str,
     force: Option<bool>,
 ) -> Result<BranchDeleteResult> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_delete_branch(dir, branch, force.unwrap_or(false)).await?)
 }
 
 #[command]
 pub async fn cmd_git_delete_remote_branch(dir: &Path, branch: &str) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_delete_remote_branch(dir, branch).await?)
 }
 
 #[command]
 pub async fn cmd_git_merge_branch(dir: &Path, branch: &str) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_merge_branch(dir, branch).await?)
 }
 
 #[command]
 pub async fn cmd_git_rename_branch(dir: &Path, old_name: &str, new_name: &str) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_rename_branch(dir, old_name, new_name).await?)
 }
 
 #[command]
 pub async fn cmd_git_status(dir: &Path) -> Result<GitStatusSummary> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_status(dir)?)
 }
 
 #[command]
 pub async fn cmd_git_log(dir: &Path) -> Result<Vec<GitCommit>> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_log(dir)?)
 }
 
 #[command]
 pub async fn cmd_git_initialize(dir: &Path) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_init(dir)?)
 }
 
 #[command]
 pub async fn cmd_git_clone(url: &str, dir: &Path) -> Result<CloneResult> {
+    path_guard::writable_parent(dir, "Git clone target")?;
     Ok(git_clone(url, dir).await?)
 }
 
 #[command]
 pub async fn cmd_git_commit(dir: &Path, message: &str) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_commit(dir, message).await?)
 }
 
 #[command]
 pub async fn cmd_git_fetch_all(dir: &Path) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_fetch_all(dir).await?)
 }
 
 #[command]
 pub async fn cmd_git_push(dir: &Path) -> Result<PushResult> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_push(dir).await?)
 }
 
 #[command]
 pub async fn cmd_git_pull(dir: &Path) -> Result<PullResult> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_pull(dir).await?)
 }
 
@@ -95,17 +110,21 @@ pub async fn cmd_git_pull_force_reset(
     remote: &str,
     branch: &str,
 ) -> Result<PullResult> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_pull_force_reset(dir, remote, branch).await?)
 }
 
 #[command]
 pub async fn cmd_git_pull_merge(dir: &Path, remote: &str, branch: &str) -> Result<PullResult> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_pull_merge(dir, remote, branch).await?)
 }
 
 #[command]
 pub async fn cmd_git_add(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     for path in rela_paths {
+        path_guard::safe_relative_path(&path, "Git add path")?;
         git_add(dir, &path)?;
     }
     Ok(())
@@ -113,7 +132,9 @@ pub async fn cmd_git_add(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()> {
 
 #[command]
 pub async fn cmd_git_unstage(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     for path in rela_paths {
+        path_guard::safe_relative_path(&path, "Git unstage path")?;
         git_unstage(dir, &path)?;
     }
     Ok(())
@@ -121,6 +142,7 @@ pub async fn cmd_git_unstage(dir: &Path, rela_paths: Vec<PathBuf>) -> Result<()>
 
 #[command]
 pub async fn cmd_git_reset_changes(dir: &Path) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_reset_changes(dir).await?)
 }
 
@@ -135,15 +157,18 @@ pub async fn cmd_git_add_credential(
 
 #[command]
 pub async fn cmd_git_remotes(dir: &Path) -> Result<Vec<GitRemote>> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_remotes(dir)?)
 }
 
 #[command]
 pub async fn cmd_git_add_remote(dir: &Path, name: &str, url: &str) -> Result<GitRemote> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_add_remote(dir, name, url)?)
 }
 
 #[command]
 pub async fn cmd_git_rm_remote(dir: &Path, name: &str) -> Result<()> {
+    path_guard::existing_dir(dir, "Git directory")?;
     Ok(git_rm_remote(dir, name)?)
 }

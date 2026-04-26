@@ -27,6 +27,8 @@ Completed in this round:
 - Removed backend `Plugin` / `PluginKeyValue` runtime models, query modules, generated bindings, and legacy database migrations.
 - Tightened the default Tauri capability by removing frontend fs and shell permissions, deduplicating clipboard grants, and dropping unused opener path access.
 - Replaced frontend fs reads with narrower Rust commands for response bodies and sync-directory empty checks; response body commands now resolve paths from database `responseId` instead of trusting frontend paths.
+- Added a shared Tauri path guard for import/export/save/sync/git commands and rejected absolute or parent-traversing Git relative paths.
+- Split file and response-body commands out of `src-tauri/src/lib.rs` into `src-tauri/src/file_commands.rs`.
 
 Validation completed in this round:
 
@@ -114,7 +116,7 @@ Do not move these to Rust:
 ## Recommended next implementation order
 
 1. Continue splitting large Tauri commands out of `src-tauri/src/lib.rs` into domain command modules.
-2. Audit remaining command inputs that accept arbitrary filesystem paths, especially import/export and git sync flows.
+2. Bind git and sync commands to persisted workspace metadata where possible instead of accepting directory strings from frontend state.
 3. Upgrade Tauri Rust and JS plugin manifests explicitly to the versions already proven by the lockfile update.
 4. Upgrade TanStack Router family and regenerate routes.
 5. Plan Tailwind 4 as a dedicated UI/build migration.
