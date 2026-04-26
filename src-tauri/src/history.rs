@@ -2,7 +2,7 @@ use crate::models_ext::QueryManagerExt;
 use chrono::{NaiveDateTime, Utc};
 use log::debug;
 use std::sync::OnceLock;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Runtime, WebviewWindow};
 use yakumo_models::util::UpdateSource;
 
 const NAMESPACE: &str = "analytics";
@@ -71,4 +71,43 @@ pub fn get_or_upsert_launch_info<R: Runtime>(app_handle: &AppHandle<R>) -> &Laun
 
         info
     })
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_delete_all_grpc_connections<R: Runtime>(
+    request_id: &str,
+    app_handle: AppHandle<R>,
+    window: WebviewWindow<R>,
+) -> yakumo_models::error::Result<()> {
+    Ok(app_handle.db().delete_all_grpc_connections_for_request(
+        request_id,
+        &UpdateSource::from_window_label(window.label()),
+    )?)
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_delete_send_history<R: Runtime>(
+    workspace_id: &str,
+    app_handle: AppHandle<R>,
+    window: WebviewWindow<R>,
+) -> yakumo_models::error::Result<()> {
+    Ok(app_handle.with_tx(|tx| {
+        let source = &UpdateSource::from_window_label(window.label());
+        tx.delete_all_http_responses_for_workspace(workspace_id, source)?;
+        tx.delete_all_grpc_connections_for_workspace(workspace_id, source)?;
+        tx.delete_all_websocket_connections_for_workspace(workspace_id, source)?;
+        Ok(())
+    })?)
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_delete_all_http_responses<R: Runtime>(
+    request_id: &str,
+    app_handle: AppHandle<R>,
+    window: WebviewWindow<R>,
+) -> yakumo_models::error::Result<()> {
+    Ok(app_handle.db().delete_all_http_responses_for_request(
+        request_id,
+        &UpdateSource::from_window_label(window.label()),
+    )?)
 }

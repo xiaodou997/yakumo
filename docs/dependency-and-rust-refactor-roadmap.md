@@ -37,6 +37,7 @@ Completed in this round:
 - Split updater command/helper entry points out of `src-tauri/src/lib.rs` into `update_commands.rs`.
 - Moved HTTP send and request-body Tauri commands into `http_request.rs`, keeping `src-tauri/src/lib.rs` focused on setup and registration.
 - Moved JSON/GraphQL/XML/HTML formatting commands into `formatting.rs`.
+- Moved send-history deletion commands into `history.rs` and workspace meta lookup into `models_ext.rs`.
 
 Validation completed in this round:
 

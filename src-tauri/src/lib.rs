@@ -30,9 +30,7 @@ use yakumo_features::events::{Color, ShowToastRequest};
 use yakumo_grpc::manager::GrpcHandle;
 use yakumo_grpc::{Code, ServiceDefinition, serialize_message};
 use yakumo_mac_window::AppHandleMacWindowExt;
-use yakumo_models::models::{
-    GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType, WorkspaceMeta,
-};
+use yakumo_models::models::{GrpcConnection, GrpcConnectionState, GrpcEvent, GrpcEventType};
 use yakumo_models::util::UpdateSource;
 use yakumo_templates::strip_json_comments::strip_json_comments;
 use yakumo_templates::{RenderErrorBehavior, RenderOptions, TemplateCallback};
@@ -795,55 +793,6 @@ async fn cmd_grpc_go<R: Runtime>(
     Ok(conn.id)
 }
 
-#[tauri::command]
-async fn cmd_delete_all_grpc_connections<R: Runtime>(
-    request_id: &str,
-    app_handle: AppHandle<R>,
-    window: WebviewWindow<R>,
-) -> YakumoResult<()> {
-    Ok(app_handle.db().delete_all_grpc_connections_for_request(
-        request_id,
-        &UpdateSource::from_window_label(window.label()),
-    )?)
-}
-
-#[tauri::command]
-async fn cmd_delete_send_history<R: Runtime>(
-    workspace_id: &str,
-    app_handle: AppHandle<R>,
-    window: WebviewWindow<R>,
-) -> YakumoResult<()> {
-    Ok(app_handle.with_tx(|tx| {
-        let source = &UpdateSource::from_window_label(window.label());
-        tx.delete_all_http_responses_for_workspace(workspace_id, source)?;
-        tx.delete_all_grpc_connections_for_workspace(workspace_id, source)?;
-        tx.delete_all_websocket_connections_for_workspace(workspace_id, source)?;
-        Ok(())
-    })?)
-}
-
-#[tauri::command]
-async fn cmd_delete_all_http_responses<R: Runtime>(
-    request_id: &str,
-    app_handle: AppHandle<R>,
-    window: WebviewWindow<R>,
-) -> YakumoResult<()> {
-    Ok(app_handle.db().delete_all_http_responses_for_request(
-        request_id,
-        &UpdateSource::from_window_label(window.label()),
-    )?)
-}
-
-#[tauri::command]
-async fn cmd_get_workspace_meta<R: Runtime>(
-    app_handle: AppHandle<R>,
-    workspace_id: &str,
-) -> YakumoResult<WorkspaceMeta> {
-    let db = app_handle.db();
-    let workspace = db.get_workspace(workspace_id)?;
-    Ok(db.get_or_create_workspace_meta(&workspace.id)?)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default().plugin(
@@ -976,9 +925,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             update_commands::cmd_check_for_updates,
-            cmd_delete_all_grpc_connections,
-            cmd_delete_all_http_responses,
-            cmd_delete_send_history,
+            history::cmd_delete_all_grpc_connections,
+            history::cmd_delete_all_http_responses,
+            history::cmd_delete_send_history,
             cmd_dismiss_notification,
             file_commands::cmd_export_data,
             http_request::cmd_http_request_body,
@@ -990,7 +939,7 @@ pub fn run() {
             formatting::cmd_format_html,
             file_commands::cmd_get_sse_events,
             file_commands::cmd_get_http_response_events,
-            cmd_get_workspace_meta,
+            models_ext::models_get_workspace_meta,
             cmd_grpc_go,
             cmd_grpc_reflect,
             file_commands::cmd_import_data,

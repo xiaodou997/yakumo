@@ -12,7 +12,9 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use yakumo_models::blob_manager::BlobManager;
 use yakumo_models::db_context::DbContext;
 use yakumo_models::error::Result;
-use yakumo_models::models::{AnyModel, GraphQlIntrospection, GrpcEvent, Settings, WebsocketEvent};
+use yakumo_models::models::{
+    AnyModel, GraphQlIntrospection, GrpcEvent, Settings, WebsocketEvent, WorkspaceMeta,
+};
 use yakumo_models::query_manager::QueryManager;
 use yakumo_models::util::UpdateSource;
 
@@ -225,6 +227,16 @@ pub(crate) fn models_grpc_events<R: Runtime>(
 #[tauri::command]
 pub(crate) fn models_get_settings<R: Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Settings> {
     Ok(app_handle.db().get_settings())
+}
+
+#[tauri::command]
+pub(crate) fn models_get_workspace_meta<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    workspace_id: &str,
+) -> Result<WorkspaceMeta> {
+    let db = app_handle.db();
+    let workspace = db.get_workspace(workspace_id)?;
+    Ok(db.get_or_create_workspace_meta(&workspace.id)?)
 }
 
 #[tauri::command]
