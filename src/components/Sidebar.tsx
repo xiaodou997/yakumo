@@ -661,8 +661,7 @@ async function handleSubmitEdit(item: SidebarModel, text: string) {
 }
 
 function handleActivate(item: SidebarModel) {
-  // TODO: Add folder layout support
-  if (item.model !== "folder" && item.model !== "workspace") {
+  if (item.model !== "workspace") {
     navigateToRequestOrFolderOrWorkspace(item.id, item.model);
   }
 }

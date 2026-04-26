@@ -43,7 +43,7 @@
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | Curl 导入 | 已实现 | `cmd_curl_to_request` 和文件导入路径均使用内置 curl importer。 |
-| Yakumo native JSON | 待修复 | 内置 importer 存在，需样例回归。 |
+| Yakumo native JSON | 已实现 | 内置 importer 已补样例回归，覆盖 workspace/folder/http/gRPC/websocket 资源读取。 |
 | Postman / Insomnia / OpenAPI 3 / Swagger 2 | 已实现 | 内置 importer 已支持主要 JSON 导入路径，并补了基础样例测试。 |
 | 导出 JSON | 已实现 | 桌面导出命令保留。 |
 

@@ -1,11 +1,17 @@
-import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
-import { foldersAtom } from "@yakumo-internal/models";
+import type {
+  Folder,
+  GrpcRequest,
+  HttpRequest,
+  WebsocketRequest,
+} from "@yakumo-internal/models";
+import { foldersAtom, websocketConnectionsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { allRequestsAtom } from "../hooks/useAllRequests";
 import { useFolderActions } from "../hooks/useFolderActions";
+import { useLatestGrpcConnection } from "../hooks/useLatestGrpcConnection";
 import { useLatestHttpResponse } from "../hooks/useLatestHttpResponse";
 import { sendAnyHttpRequest } from "../hooks/useSendAnyHttpRequest";
 import { fireAndForget } from "../lib/fireAndForget";
@@ -21,6 +27,7 @@ import { IconButton } from "./core/IconButton";
 import { LoadingIcon } from "./core/LoadingIcon";
 import { Separator } from "./core/Separator";
 import { SizeTag } from "./core/SizeTag";
+import { WebsocketStatusTag } from "./core/WebsocketStatusTag";
 import { HStack } from "./core/Stacks";
 import { HttpResponsePane } from "./HttpResponsePane";
 
@@ -95,9 +102,28 @@ function ChildCard({ child }: { child: Folder | HttpRequest | GrpcRequest | Webs
     await router.navigate({
       to: "/workspaces/$workspaceId",
       params: { workspaceId: child.workspaceId },
-      search: (prev) => ({ ...prev, request_id: child.id }),
+      search: (prev) => ({
+        ...prev,
+        request_id: child.model === "folder" ? null : child.id,
+        folder_id: child.model === "folder" ? child.id : null,
+      }),
     });
-  }, [child.id, child.workspaceId]);
+  }, [child.id, child.model, child.workspaceId]);
+
+  const handlePrimaryAction = useCallback(() => {
+    if (child.model === "http_request") {
+      sendAnyHttpRequest.mutate(child.id);
+      return;
+    }
+    fireAndForget(navigate());
+  }, [child.id, child.model, navigate]);
+
+  const primaryTitle =
+    child.model === "http_request"
+      ? "Send Request"
+      : child.model === "folder"
+        ? "Open Folder"
+        : "Open Request";
 
   return (
     <div
@@ -114,7 +140,7 @@ function ChildCard({ child }: { child: Folder | HttpRequest | GrpcRequest | Webs
         <HStack space={0.5} className="ml-auto -mr-1.5">
           <IconButton
             color="custom"
-            title="Send Request"
+            title={child.model === "folder" ? "Open Folder" : "Open Request"}
             size="sm"
             icon="external_link"
             className="opacity-70 hover:opacity-100"
@@ -122,13 +148,11 @@ function ChildCard({ child }: { child: Folder | HttpRequest | GrpcRequest | Webs
           />
           <IconButton
             color="custom"
-            title="Send Request"
+            title={primaryTitle}
             size="sm"
-            icon="send_horizontal"
+            icon={child.model === "http_request" ? "send_horizontal" : "arrow_right"}
             className="opacity-70 hover:opacity-100"
-            onClick={() => {
-              sendAnyHttpRequest.mutate(child.id);
-            }}
+            onClick={handlePrimaryAction}
           />
         </HStack>
       </HStack>
@@ -159,7 +183,18 @@ function FolderCard({ folder }: { folder: Folder }) {
 }
 
 function RequestCard({ request }: { request: HttpRequest | GrpcRequest | WebsocketRequest }) {
-  return <div>TODO {request.id}</div>;
+  if (request.model === "grpc_request") {
+    return <GrpcRequestCard request={request} />;
+  }
+  if (request.model === "websocket_request") {
+    return <WebsocketRequestCard request={request} />;
+  }
+
+  return (
+    <div className="rounded border border-border-subtle px-2.5 py-2 font-mono text-xs text-text-subtle">
+      Unsupported request type
+    </div>
+  );
 }
 
 function HttpRequestCard({ request }: { request: HttpRequest }) {
@@ -213,4 +248,103 @@ function HttpRequestCard({ request }: { request: HttpRequest }) {
       )}
     </div>
   );
+}
+
+function GrpcRequestCard({ request }: { request: GrpcRequest }) {
+  const latestConnection = useLatestGrpcConnection(request.id);
+
+  return (
+    <div className="grid gap-2 overflow-hidden">
+      <code className="font-mono text-editor text-notice border border-notice rounded px-2.5 py-0.5 truncate w-full min-w-0">
+        {request.url}
+      </code>
+      <div className="rounded border border-border-subtle px-2.5 py-2 text-sm">
+        <div className="truncate text-text">
+          {(request.service ?? "Select Service") + "/" + (request.method ?? "Select Method")}
+        </div>
+        <HStack space={2} alignItems="center" className="mt-1.5 whitespace-nowrap overflow-x-auto">
+          {latestConnection == null ? (
+            <span className="text-text-subtle">No Connections</span>
+          ) : (
+            <>
+              <GrpcConnectionStateTag connection={latestConnection} />
+              <span>&bull;</span>
+              <span className="font-mono text-text-subtle">{latestConnection.elapsed}ms</span>
+              {latestConnection.error ? (
+                <>
+                  <span>&bull;</span>
+                  <span className="truncate text-danger">{latestConnection.error}</span>
+                </>
+              ) : null}
+            </>
+          )}
+        </HStack>
+      </div>
+    </div>
+  );
+}
+
+function WebsocketRequestCard({ request }: { request: WebsocketRequest }) {
+  const latestConnection = useLatestWebsocketConnection(request.id);
+
+  return (
+    <div className="grid gap-2 overflow-hidden">
+      <code className="font-mono text-editor text-primary border border-primary rounded px-2.5 py-0.5 truncate w-full min-w-0">
+        {request.url}
+      </code>
+      <div className="rounded border border-border-subtle px-2.5 py-2 text-sm">
+        <div className="truncate text-text">
+          {request.message ? request.message.split("\n")[0] : "No initial message"}
+        </div>
+        <HStack space={2} alignItems="center" className="mt-1.5 whitespace-nowrap overflow-x-auto">
+          {latestConnection == null ? (
+            <span className="text-text-subtle">No Connections</span>
+          ) : (
+            <>
+              <WebsocketStatusTag connection={latestConnection} />
+              <span>&bull;</span>
+              <span className="font-mono text-text-subtle">{latestConnection.elapsed}ms</span>
+              {latestConnection.error ? (
+                <>
+                  <span>&bull;</span>
+                  <span className="truncate text-danger">{latestConnection.error}</span>
+                </>
+              ) : null}
+            </>
+          )}
+        </HStack>
+      </div>
+    </div>
+  );
+}
+
+function useLatestWebsocketConnection(requestId: string | null) {
+  return useAtomValue(websocketConnectionsAtom).find((connection) => connection.requestId === requestId) ?? null;
+}
+
+function GrpcConnectionStateTag({
+  connection,
+}: {
+  connection: NonNullable<ReturnType<typeof useLatestGrpcConnection>>;
+}) {
+  let label = "CONNECTED";
+  let className = "text-success";
+
+  if (connection.error) {
+    label = "ERROR";
+    className = "text-danger";
+  } else if (connection.state === "initialized") {
+    label = "CONNECTING";
+    className = "text-text-subtle";
+  } else if (connection.state === "closed" && connection.status !== 0) {
+    label = `CLOSED ${connection.status}`;
+    className = "text-warning";
+  } else if (connection.state === "closed") {
+    label = "CLOSED";
+    className = "text-warning";
+  } else if (connection.status > 0) {
+    label = `OK ${connection.status}`;
+  }
+
+  return <span className={classNames("font-mono text-xs", className)}>{label}</span>;
 }

@@ -121,4 +121,117 @@ mod tests {
         let result = import_yakumo("not json");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_import_full_yakumo_export() {
+        let content = serde_json::json!({
+            "workspaces": [{
+                "model": "workspace",
+                "id": "wk_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "authentication": {},
+                "authenticationType": null,
+                "description": "Workspace export",
+                "headers": [],
+                "name": "Demo",
+                "encryptionKeyChallenge": null,
+                "settingValidateCertificates": true,
+                "settingFollowRedirects": true,
+                "settingRequestTimeout": 0,
+                "settingDnsOverrides": []
+            }],
+            "environments": [{
+                "model": "environment",
+                "id": "ev_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "workspaceId": "wk_1",
+                "name": "Base",
+                "variables": [],
+                "color": null,
+                "parentModel": "workspace",
+                "parentId": null
+            }],
+            "folders": [{
+                "model": "folder",
+                "id": "fl_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "workspaceId": "wk_1",
+                "folderId": null,
+                "authentication": {},
+                "authenticationType": null,
+                "description": "",
+                "headers": [],
+                "name": "Folder",
+                "sortPriority": 0
+            }],
+            "httpRequests": [{
+                "model": "http_request",
+                "id": "rq_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "workspaceId": "wk_1",
+                "folderId": "fl_1",
+                "authentication": {},
+                "authenticationType": null,
+                "body": { "text": "{}" },
+                "bodyType": "application/json",
+                "description": "",
+                "headers": [],
+                "method": "POST",
+                "name": "Create",
+                "sortPriority": 0,
+                "url": "https://api.example.com/users",
+                "urlParameters": []
+            }],
+            "grpcRequests": [{
+                "model": "grpc_request",
+                "id": "gr_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "workspaceId": "wk_1",
+                "folderId": "fl_1",
+                "authentication": {},
+                "authenticationType": null,
+                "description": "",
+                "message": "{}",
+                "metadata": [],
+                "method": "GetUser",
+                "name": "Get User",
+                "service": "users.UserService",
+                "sortPriority": 0,
+                "url": "https://grpc.example.com"
+            }],
+            "websocketRequests": [{
+                "model": "websocket_request",
+                "id": "wr_1",
+                "createdAt": "2026-04-26T00:00:00",
+                "updatedAt": "2026-04-26T00:00:00",
+                "workspaceId": "wk_1",
+                "folderId": "fl_1",
+                "authentication": {},
+                "authenticationType": null,
+                "description": "",
+                "headers": [],
+                "message": "{\"ping\":true}",
+                "name": "Socket",
+                "sortPriority": 0,
+                "url": "wss://socket.example.com",
+                "urlParameters": []
+            }]
+        })
+        .to_string();
+
+        let result = import_yakumo(&content).unwrap().unwrap();
+        let resources = result.resources.unwrap();
+        assert_eq!(resources.workspace.unwrap().id, "wk_1");
+        assert_eq!(resources.environment.unwrap().id, "ev_1");
+        assert_eq!(resources.folders.len(), 1);
+        assert_eq!(resources.http_requests.len(), 1);
+        assert_eq!(resources.grpc_requests.len(), 1);
+        assert_eq!(resources.websocket_requests.len(), 1);
+        assert_eq!(resources.http_requests[0].folder_id.as_deref(), Some("fl_1"));
+    }
 }
