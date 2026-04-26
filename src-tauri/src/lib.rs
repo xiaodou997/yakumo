@@ -5,7 +5,7 @@ use crate::http_request::send_http_request;
 use crate::models_ext::{BlobManagerExt, QueryManagerExt};
 use crate::notifications::YakumoNotifier;
 use crate::render::{render_grpc_request, render_template};
-use crate::updates::{UpdateMode, UpdateTrigger, YakumoUpdater};
+use crate::updates::YakumoUpdater;
 use crate::uri_scheme::handle_deep_link;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
@@ -58,9 +58,11 @@ mod path_guard;
 mod render;
 mod sync_ext;
 mod template_commands;
+mod update_commands;
 mod updates;
 mod uri_scheme;
 mod window;
+mod window_commands;
 mod window_menu;
 mod ws_ext;
 
@@ -797,12 +799,6 @@ async fn cmd_grpc_go<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_restart<R: Runtime>(app_handle: AppHandle<R>) -> YakumoResult<()> {
-    app_handle.request_restart();
-    Ok(())
-}
-
-#[tauri::command]
 async fn cmd_send_ephemeral_request<R: Runtime>(
     mut request: HttpRequest,
     environment_id: Option<&str>,
@@ -993,38 +989,6 @@ async fn cmd_get_workspace_meta<R: Runtime>(
     Ok(db.get_or_create_workspace_meta(&workspace.id)?)
 }
 
-#[tauri::command]
-async fn cmd_new_child_window(
-    parent_window: WebviewWindow,
-    url: &str,
-    label: &str,
-    title: &str,
-    inner_size: (f64, f64),
-) -> YakumoResult<()> {
-    window::create_child_window(&parent_window, url, label, title, inner_size)?;
-    Ok(())
-}
-
-#[tauri::command]
-async fn cmd_new_main_window(app_handle: AppHandle, url: &str) -> YakumoResult<()> {
-    window::create_main_window(&app_handle, url)?;
-    Ok(())
-}
-
-#[tauri::command]
-async fn cmd_check_for_updates<R: Runtime>(
-    window: WebviewWindow<R>,
-    yakumo_updater: State<'_, Mutex<YakumoUpdater>>,
-) -> YakumoResult<bool> {
-    let update_mode = get_update_mode(&window).await?;
-    let settings = window.db().get_settings();
-    Ok(yakumo_updater
-        .lock()
-        .await
-        .check_now(&window, update_mode, settings.auto_download_updates, UpdateTrigger::User)
-        .await?)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default().plugin(
@@ -1156,7 +1120,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            cmd_check_for_updates,
+            update_commands::cmd_check_for_updates,
             cmd_delete_all_grpc_connections,
             cmd_delete_all_http_responses,
             cmd_delete_send_history,
@@ -1176,10 +1140,10 @@ pub fn run() {
             cmd_grpc_reflect,
             file_commands::cmd_import_data,
             metadata_commands::cmd_metadata,
-            cmd_new_child_window,
-            cmd_new_main_window,
+            window_commands::cmd_new_child_window,
+            window_commands::cmd_new_main_window,
             template_commands::cmd_render_template,
-            cmd_restart,
+            window_commands::cmd_restart,
             file_commands::cmd_save_response,
             cmd_send_ephemeral_request,
             cmd_send_http_request,
@@ -1292,7 +1256,8 @@ pub fn run() {
                             if settings.autoupdate {
                                 time::sleep(Duration::from_secs(3)).await; // Wait a bit so it's not so jarring
                                 let val: State<'_, Mutex<YakumoUpdater>> = h.state();
-                                let update_mode = get_update_mode(&w).await.unwrap();
+                                let update_mode =
+                                    update_commands::get_update_mode(&w).await.unwrap();
                                 if let Err(e) = val
                                     .lock()
                                     .await
@@ -1327,11 +1292,6 @@ pub fn run() {
                 _ => {}
             };
         });
-}
-
-async fn get_update_mode<R: Runtime>(window: &WebviewWindow<R>) -> YakumoResult<UpdateMode> {
-    let settings = window.db().get_settings();
-    Ok(UpdateMode::new(settings.update_channel.as_str()))
 }
 
 fn safe_uri(endpoint: &str) -> String {

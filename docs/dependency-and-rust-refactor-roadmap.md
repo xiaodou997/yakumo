@@ -33,6 +33,8 @@ Completed in this round:
 - Bound normal Git operations to `WorkspaceMeta.settingSyncDir` via `workspaceId` and removed the old direct-directory Git commands from the Tauri invoke surface. Only clone and credential setup still use explicit user-selected inputs.
 - Deleted the unregistered direct-directory Git command functions so the Rust command module matches the tightened invoke surface.
 - Split app metadata commands and template rendering commands out of `src-tauri/src/lib.rs` into focused Tauri command modules.
+- Split app/window lifecycle commands out of `src-tauri/src/lib.rs` into `window_commands.rs`.
+- Split updater command/helper entry points out of `src-tauri/src/lib.rs` into `update_commands.rs`.
 
 Validation completed in this round:
 
