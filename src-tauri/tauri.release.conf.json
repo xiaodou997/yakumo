@@ -23,8 +23,8 @@
   "bundle": {
     "publisher": "Yakumo",
     "license": "MIT",
-    "copyright": "Yakumo API (based on Yakumo)",
-    "homepage": "https://github.com/mountain-loop/yaak",
+    "copyright": "Yakumo API",
+    "homepage": "https://github.com/xiaodou997/yakumo",
     "active": true,
     "category": "DeveloperTool",
     "createUpdaterArtifacts": true,
@@ -38,7 +38,7 @@
       "frameworks": []
     },
     "windows": {
-      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a Yakumo -c yaakapp %1"
+      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a Yakumo -c yakumo %1"
     },
     "linux": {
       "deb": {

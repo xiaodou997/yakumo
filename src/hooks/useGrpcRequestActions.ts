@@ -40,7 +40,7 @@ export async function getGrpcRequestActions() {
         const protoFiles = await getGrpcProtoFiles(grpcRequest.id);
         const payload: CallGrpcRequestActionRequest = {
           index: i,
-          pluginRefId: r.pluginRefId,
+          sourceId: r.sourceId,
           args: { grpcRequest, protoFiles },
         };
         await invokeCmd("cmd_call_grpc_request_action", { req: payload });

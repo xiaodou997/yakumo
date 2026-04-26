@@ -37,7 +37,7 @@ export async function getWebsocketRequestActions() {
       call: async (websocketRequest: WebsocketRequest) => {
         const payload: CallWebsocketRequestActionRequest = {
           index: i,
-          pluginRefId: r.pluginRefId,
+          sourceId: r.sourceId,
           args: { websocketRequest },
         };
         await invokeCmd("cmd_call_websocket_request_action", { req: payload });

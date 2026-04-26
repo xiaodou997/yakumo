@@ -21,7 +21,6 @@ export const httpResponseEventsAtom = createOrderedModelAtom(
   "asc",
 );
 export const keyValuesAtom = createModelAtom("key_value");
-export const pluginsAtom = createModelAtom("plugin");
 export const settingsAtom = createSingularModelAtom("settings");
 export const websocketRequestsAtom = createModelAtom("websocket_request");
 export const websocketEventsAtom = createOrderedModelAtom("websocket_event", "createdAt", "asc");

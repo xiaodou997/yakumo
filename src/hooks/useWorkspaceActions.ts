@@ -35,7 +35,7 @@ export async function getWorkspaceActions() {
       call: async (workspace: Workspace) => {
         const payload: CallWorkspaceActionRequest = {
           index: i,
-          pluginRefId: r.pluginRefId,
+          sourceId: r.sourceId,
           args: { workspace },
         };
         await invokeCmd("cmd_call_workspace_action", { req: payload });

@@ -24,6 +24,9 @@ Completed in this round:
 - Added a separate Rust `cmd_format_html` command boundary so HTML formatting no longer depends on the XML command name in frontend code.
 - Unified Yakumo's direct HTTP client dependency on `reqwest 0.13.2`; the workspace no longer carries both `reqwest 0.12` and `reqwest 0.13`.
 - Removed frontend plugin refresh hooks from built-in action/template-function query keys and deleted unused plugin-management hooks.
+- Removed backend `Plugin` / `PluginKeyValue` runtime models, query modules, generated bindings, and legacy database migrations.
+- Tightened the default Tauri capability by removing frontend fs and shell permissions, deduplicating clipboard grants, and dropping unused opener path access.
+- Replaced frontend fs reads with narrower Rust commands for response bodies and sync-directory empty checks; response body commands now resolve paths from database `responseId` instead of trusting frontend paths.
 
 Validation completed in this round:
 
@@ -101,7 +104,7 @@ Move these out of the frontend first:
 - Response body filtering and large-body reads: keep and expand Rust ownership to avoid loading large responses through frontend memory.
 - Importers: keep expanding `yakumo-features` importers for Postman, Insomnia, OpenAPI 3, and Swagger 2 so dialogs only display real Rust-backed formats.
 - Auth config refresh keys: remove frontend `js-md5` hashing by exposing a Rust-backed auth state revision or response-close counter.
-- Remaining plugin-named backend/data compatibility: `Plugin` and `PluginKeyValue` still exist in model/migration code and should either be renamed to `LegacyPlugin*` or removed in a database baseline reset.
+- Public action/template/auth payloads now use `sourceId` for built-in registries instead of plugin compatibility fields.
 
 Do not move these to Rust:
 
@@ -110,8 +113,8 @@ Do not move these to Rust:
 
 ## Recommended next implementation order
 
-1. Add Rust HTML formatting command and wire it into response/request formatting.
-2. Remove or rename backend `Plugin` / `PluginKeyValue` compatibility models.
+1. Continue splitting large Tauri commands out of `src-tauri/src/lib.rs` into domain command modules.
+2. Audit remaining command inputs that accept arbitrary filesystem paths, especially import/export and git sync flows.
 3. Upgrade Tauri Rust and JS plugin manifests explicitly to the versions already proven by the lockfile update.
 4. Upgrade TanStack Router family and regenerate routes.
 5. Plan Tailwind 4 as a dedicated UI/build migration.

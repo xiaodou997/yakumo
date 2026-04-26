@@ -1,7 +1,6 @@
 //! Authentication modules for Yakumo API.
 //!
-//! This module provides built-in authentication mechanisms
-//! that were previously implemented as plugins.
+//! This module provides built-in authentication mechanisms.
 
 pub mod apikey;
 pub mod basic;

@@ -5,7 +5,7 @@ import { jotaiStore } from "./jotai";
 export function resolvedModelName(r: AnyModel | null): string {
   if (r == null) return "";
 
-  if (!("url" in r) || r.model === "plugin") {
+  if (!("url" in r)) {
     return "name" in r ? r.name : "";
   }
 

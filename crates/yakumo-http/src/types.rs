@@ -13,7 +13,7 @@ use yakumo_common::serde::{get_bool, get_bool_map, get_str, get_str_map};
 use yakumo_models::models::HttpRequest;
 use yakumo_templates::strip_json_comments::{maybe_strip_json_comments, strip_json_comments};
 
-pub(crate) const MULTIPART_BOUNDARY: &str = "------YaakFormBoundary";
+pub(crate) const MULTIPART_BOUNDARY: &str = "------YakumoFormBoundary";
 
 pub enum SendableBody {
     Bytes(Bytes),
@@ -937,7 +937,7 @@ mod tests {
                 let body_str = String::from_utf8_lossy(&buf);
                 assert_eq!(
                     body_str,
-                    "--------YaakFormBoundary\r\nContent-Disposition: form-data; name=\"field1\"\r\n\r\nvalue1\r\n--------YaakFormBoundary\r\nContent-Disposition: form-data; name=\"field2\"\r\n\r\nvalue2\r\n--------YaakFormBoundary--\r\n",
+                    "--------YakumoFormBoundary\r\nContent-Disposition: form-data; name=\"field1\"\r\n\r\nvalue1\r\n--------YakumoFormBoundary\r\nContent-Disposition: form-data; name=\"field2\"\r\n\r\nvalue2\r\n--------YakumoFormBoundary--\r\n",
                 );
                 assert_eq!(content_length, Some(body_str.len()));
             }
@@ -974,7 +974,7 @@ mod tests {
                 let body_str = String::from_utf8_lossy(&buf);
                 assert_eq!(
                     body_str,
-                    "--------YaakFormBoundary\r\nContent-Disposition: form-data; name=\"file_field\"; filename=\"custom.txt\"\r\nContent-Type: text/plain\r\n\r\nThis is a test file!\n\r\n--------YaakFormBoundary--\r\n"
+                    "--------YakumoFormBoundary\r\nContent-Disposition: form-data; name=\"file_field\"; filename=\"custom.txt\"\r\nContent-Type: text/plain\r\n\r\nThis is a test file!\n\r\n--------YakumoFormBoundary--\r\n"
                 );
                 assert_eq!(content_length, Some(body_str.len()));
             }

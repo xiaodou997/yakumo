@@ -46,7 +46,7 @@ export function HttpAuthenticationEditor({ model }: Props) {
     return (
       <EmptyStateText>
         <p>
-          Auth plugin not found for <InlineCode>{model.authenticationType}</InlineCode>
+          Auth provider not found for <InlineCode>{model.authenticationType}</InlineCode>
         </p>
       </EmptyStateText>
     );

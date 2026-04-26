@@ -23,6 +23,8 @@ export function useSaveResponse(response: HttpResponse) {
         defaultPath: ext ? `${slug}.${ext}` : slug,
         title: "Save Response",
       });
+      if (filepath == null) return null;
+
       await invokeCmd("cmd_save_response", { responseId: response.id, filepath });
       showToast({
         message: (

@@ -5,7 +5,7 @@ import { jotaiStore } from "../lib/jotai";
 import { router } from "../lib/router";
 import { invokeCmd } from "../lib/tauri";
 
-// Allow tab with optional subtab (e.g., "plugins:installed")
+// Allow tab with an optional subtab suffix for future settings sections.
 type SettingsTabWithSubtab = SettingsTab | `${SettingsTab}:${string}` | null;
 
 export const openSettings = createFastMutation<void, string, SettingsTabWithSubtab>({

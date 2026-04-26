@@ -28,9 +28,9 @@ args: Array<FormInput>,
  */
 actions?: Array<AuthAction>, 
 /**
- * Plugin reference ID (for backwards compatibility, always empty now)
+ * Source registry ID for the built-in auth provider.
  */
-pluginRefId?: string, };
+sourceId?: string, };
 
 /**
  * Summary of an available authentication type

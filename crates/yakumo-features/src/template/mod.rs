@@ -1,7 +1,7 @@
 //! Template functions for Yakumo API.
 //!
 //! This module provides built-in template functions
-//! that were previously implemented as plugins.
+//! implemented as native Yakumo features.
 
 pub mod encode;
 pub mod hash;

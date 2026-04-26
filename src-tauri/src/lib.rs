@@ -68,7 +68,7 @@ mod window_menu;
 mod ws_ext;
 
 /// Built-in template callback that implements TemplateCallback trait
-/// using native Rust implementations instead of plugin system.
+/// using native Rust implementations.
 #[derive(Clone, Default)]
 pub struct BuiltinTemplateCallback {
     encryption_manager: Option<EncryptionManager>,
@@ -968,8 +968,33 @@ async fn cmd_http_request_body<R: Runtime>(
 }
 
 #[tauri::command]
-async fn cmd_get_sse_events(file_path: &str) -> YakumoResult<Vec<ServerSentEvent>> {
-    let body = fs::read(file_path)?;
+async fn cmd_http_response_body_bytes<R: Runtime>(
+    app_handle: AppHandle<R>,
+    response_id: &str,
+) -> YakumoResult<Option<Vec<u8>>> {
+    let response = app_handle.db().get_http_response(response_id)?;
+    let Some(body_path) = response.body_path else {
+        return Ok(None);
+    };
+
+    Ok(Some(fs::read(body_path)?))
+}
+
+#[tauri::command]
+async fn cmd_directory_is_empty(path: &str) -> YakumoResult<bool> {
+    Ok(fs::read_dir(path)?.next().is_none())
+}
+
+#[tauri::command]
+async fn cmd_get_sse_events<R: Runtime>(
+    app_handle: AppHandle<R>,
+    response_id: &str,
+) -> YakumoResult<Vec<ServerSentEvent>> {
+    let response = app_handle.db().get_http_response(response_id)?;
+    let Some(body_path) = response.body_path else {
+        return Ok(Vec::new());
+    };
+    let body = fs::read(body_path)?;
     let mut event_parser = EventParser::new();
     event_parser.process_bytes(body.into())?;
 
@@ -1021,13 +1046,12 @@ async fn cmd_export_data<R: Runtime>(
         .truncate(true)
         .write(true)
         .open(export_path)
-        .expect("Unable to create file");
+        .map_err(|e| GenericError(format!("Unable to create export file: {e}")))?;
 
     serde_json::to_writer_pretty(&f, &export_data)
-        .map_err(|e| GenericError(e.to_string()))
-        .expect("Failed to write");
+        .map_err(|e| GenericError(format!("Failed to write export file: {e}")))?;
 
-    f.sync_all().expect("Failed to sync");
+    f.sync_all().map_err(|e| GenericError(format!("Failed to sync export file: {e}")))?;
 
     Ok(())
 }
@@ -1042,7 +1066,8 @@ async fn cmd_save_response<R: Runtime>(
 
     let body_path =
         response.body_path.ok_or(GenericError("Response does not have a body".to_string()))?;
-    fs::copy(body_path, filepath).map_err(|e| GenericError(e.to_string()))?;
+    fs::copy(body_path, filepath)
+        .map_err(|e| GenericError(format!("Failed to save response: {e}")))?;
 
     Ok(())
 }
@@ -1255,10 +1280,8 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(yakumo_mac_window::init())
         .plugin(models_ext::init()) // Database setup only
         .plugin(yakumo_fonts::init());
@@ -1341,6 +1364,8 @@ pub fn run() {
             cmd_dismiss_notification,
             cmd_export_data,
             cmd_http_request_body,
+            cmd_http_response_body_bytes,
+            cmd_directory_is_empty,
             cmd_format_json,
             cmd_format_graphql,
             cmd_format_xml,

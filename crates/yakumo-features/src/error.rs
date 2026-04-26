@@ -28,15 +28,6 @@ pub enum Error {
     #[error("Timeout elapsed: {0}")]
     TimeoutElapsed(#[from] tokio::time::error::Elapsed),
 
-    #[error("Plugin not found: {0}")]
-    PluginNotFoundErr(String),
-
-    #[error("Auth plugin not found: {0}")]
-    AuthPluginNotFound(String),
-
-    #[error("Plugin error: {0}")]
-    PluginErr(String),
-
     #[error("zip error: {0}")]
     ZipError(#[from] zip_extract::ZipExtractError),
 

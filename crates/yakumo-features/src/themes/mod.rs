@@ -1,7 +1,7 @@
 //! Themes modules for Yakumo API.
 //!
 //! This module provides built-in theme configuration
-//! that was previously implemented as plugins.
+//! implemented as native Yakumo features.
 
 use crate::events::{Theme, ThemeComponentColors};
 

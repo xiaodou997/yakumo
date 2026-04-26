@@ -12,8 +12,6 @@ mod http_response_events;
 mod http_responses;
 mod key_values;
 mod model_changes;
-mod plugin_key_values;
-mod plugins;
 mod settings;
 mod sync_states;
 mod websocket_connections;

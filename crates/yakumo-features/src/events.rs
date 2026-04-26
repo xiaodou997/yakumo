@@ -344,9 +344,9 @@ pub struct HttpAuthenticationConfig {
     /// Optional actions that can be performed
     #[ts(optional)]
     pub actions: Option<Vec<AuthAction>>,
-    /// Plugin reference ID (for backwards compatibility, always empty now)
+    /// Source registry ID for the built-in auth provider.
     #[ts(optional)]
-    pub plugin_ref_id: Option<String>,
+    pub source_id: Option<String>,
 }
 
 /// An action that can be performed on an auth configuration

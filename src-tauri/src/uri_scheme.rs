@@ -20,19 +20,6 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
     let (_, window) = windows.iter().next().unwrap();
 
     match command {
-        "install-plugin" => {
-            // Plugin system removed - show error message
-            app_handle.emit(
-                "show_toast",
-                ShowToastRequest {
-                    message: "Plugin installation is not available in this version".to_string(),
-                    color: Some(Color::Warning),
-                    icon: None,
-                    timeout: Some(5000),
-                },
-            )?;
-            warn!("Plugin install requested but plugin system is removed");
-        }
         "import-data" => {
             let mut file_path = query_map.get("path").map(|s| s.to_owned());
             let name = query_map.get("name").map(|s| s.to_owned()).unwrap_or("data".to_string());

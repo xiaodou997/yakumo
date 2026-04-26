@@ -35,7 +35,7 @@ export function Prompt({
     [onResult, value],
   );
 
-  // Register callback for external input updates (from plugin dynamic resolution)
+  // Register callback for external input updates from dynamic resolution.
   useEffect(() => {
     onInputsUpdated?.(setInputs);
   }, [onInputsUpdated]);

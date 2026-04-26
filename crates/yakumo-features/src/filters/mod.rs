@@ -1,7 +1,7 @@
 //! Filter modules for Yakumo API.
 //!
 //! This module provides built-in filter functionality
-//! that were previously implemented as plugins.
+//! implemented as native Yakumo features.
 
 // TODO: Implement these modules
 // pub mod jsonpath;

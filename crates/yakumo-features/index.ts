@@ -1,7 +1,6 @@
 // Types exported from generated bindings
 export * from "./bindings/gen_models";
 export * from "./bindings/gen_events";
-export * from "./bindings/gen_search";
 import type {
   Folder,
   GrpcRequest,
@@ -10,8 +9,7 @@ import type {
   Workspace,
 } from "./bindings/gen_models";
 
-// Compatibility types for the built-in Yakumo feature layer. The plugin
-// runtime is removed, but the app still uses these UI/action contracts.
+// UI/action contracts for the built-in Yakumo feature layer.
 export type JsonPrimitive = string | number | boolean | null;
 
 export type Color = "primary" | "secondary" | "info" | "success" | "notice" | "warning" | "danger";
@@ -140,19 +138,19 @@ export type CallTemplateFunctionArgs = {
 };
 
 export type GetTemplateFunctionSummaryResponse = {
-  pluginRefId: string;
+  sourceId: string;
   functions: TemplateFunction[];
 };
 
 export type GetTemplateFunctionConfigResponse = {
-  pluginRefId: string;
+  sourceId: string;
   function: TemplateFunction;
 };
 
 export type HttpAuthenticationConfig = {
   args: FormInput[];
   actions?: Array<{ label: string; icon?: string }>;
-  pluginRefId?: string;
+  sourceId?: string;
 };
 
 export type HttpAuthenticationSummary = {
@@ -177,12 +175,12 @@ export type WorkspaceAction = ActionDefinition;
 export type FolderAction = ActionDefinition;
 
 type ActionResponse<TAction extends ActionDefinition> = {
-  pluginRefId: string;
+  sourceId: string;
   actions: TAction[];
 };
 
 type ActionRequest<TArgs extends Record<string, unknown>> = {
-  pluginRefId: string;
+  sourceId: string;
   index: number;
   args: TArgs;
 };
@@ -216,70 +214,7 @@ export type PromptTextRequest = {
   required?: boolean;
 };
 
-export type InternalEvent = {
-  id: string;
-  replyId?: string | null;
-  pluginName: string;
-  pluginRefId: string;
-  context?: unknown;
-  payload:
-    | (PromptTextRequest & { type: "prompt_text_request" })
-    | { type: "prompt_text_response"; value: string | null }
-    | {
-        type: "prompt_form_request";
-        id: string;
-        title: string;
-        description?: string;
-        size?: DialogSize;
-        inputs: FormInput[];
-        confirmText?: string;
-        cancelText?: string;
-      }
-    | {
-        type: "prompt_form_response";
-        values: Record<string, JsonPrimitive> | null;
-        done: boolean;
-      };
-};
-
 export type FilterResponse = {
   content: string | null;
   error?: string | null;
 };
-
-export type PluginMetadata = {
-  name?: string;
-  version?: string;
-  description?: string;
-  [key: string]: unknown;
-};
-
-// Plugin management functions are no longer supported in Yakumo API
-// All authentication and template functions are now built-in
-
-export async function searchPlugins(_query: string) {
-  console.warn("Plugin search is no longer supported");
-  return { plugins: [] };
-}
-
-export async function installPlugin(_name: string, _version: string | null) {
-  console.warn("Plugin installation is no longer supported");
-}
-
-export async function uninstallPlugin(_pluginId: string) {
-  console.warn("Plugin uninstallation is no longer supported");
-}
-
-export async function checkPluginUpdates() {
-  console.warn("Plugin updates are no longer supported");
-  return { updates: [] };
-}
-
-export async function updateAllPlugins() {
-  console.warn("Plugin updates are no longer supported");
-  return [];
-}
-
-export async function installPluginFromDirectory(_directory: string) {
-  console.warn("Plugin installation from directory is no longer supported");
-}

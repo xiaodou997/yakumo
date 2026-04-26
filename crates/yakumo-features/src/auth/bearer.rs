@@ -20,7 +20,7 @@ pub fn get_config() -> HttpAuthenticationConfig {
             multiline: None,
         }],
         actions: None,
-        plugin_ref_id: None,
+        source_id: None,
     }
 }
 

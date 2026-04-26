@@ -1,4 +1,3 @@
-import { readFile } from "@tauri-apps/plugin-fs";
 import type { HttpResponse } from "@yakumo-internal/models";
 import type { FilterResponse } from "@yakumo/features";
 import type { ServerSentEvent } from "@yakumo-internal/sse";
@@ -12,7 +11,7 @@ export async function getResponseBodyText({
   filter: string | null;
 }): Promise<string | null> {
   const result = await invokeCmd<FilterResponse>("cmd_http_response_body", {
-    response,
+    responseId: response.id,
     filter,
   });
 
@@ -28,13 +27,15 @@ export async function getResponseBodyEventSource(
 ): Promise<ServerSentEvent[]> {
   if (!response.bodyPath) return [];
   return invokeCmd<ServerSentEvent[]>("cmd_get_sse_events", {
-    filePath: response.bodyPath,
+    responseId: response.id,
   });
 }
 
 export async function getResponseBodyBytes(
   response: HttpResponse,
 ): Promise<Uint8Array<ArrayBuffer> | null> {
-  if (!response.bodyPath) return null;
-  return readFile(response.bodyPath);
+  const data = await invokeCmd<number[] | null>("cmd_http_response_body_bytes", {
+    responseId: response.id,
+  });
+  return data == null ? null : new Uint8Array(data);
 }

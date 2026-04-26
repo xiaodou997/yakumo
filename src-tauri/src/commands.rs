@@ -1,9 +1,10 @@
 use crate::encoding::read_response_body;
 use crate::error::{Error, Result};
+use crate::models_ext::QueryManagerExt;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use serde_json::{Value, json};
-use tauri::{Manager, Runtime, State, WebviewWindow, command};
+use tauri::{AppHandle, Manager, Runtime, State, WebviewWindow, command};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use yakumo_crypto::manager::EncryptionManager;
 use yakumo_features::actions::{copy_curl, copy_grpcurl};
@@ -13,7 +14,7 @@ use yakumo_features::events::{
 };
 use yakumo_features::importer::curl;
 use yakumo_features::themes::all_themes;
-use yakumo_models::models::{GrpcRequest, HttpRequest, HttpRequestHeader, HttpResponse};
+use yakumo_models::models::{GrpcRequest, HttpRequest, HttpRequestHeader};
 use yakumo_models::queries::workspaces::default_headers;
 use yakumo_templates::{Parser, Token, Val};
 
@@ -119,9 +120,11 @@ pub(crate) async fn cmd_get_http_authentication_config(
 
 #[command]
 pub(crate) async fn cmd_http_response_body(
-    response: HttpResponse,
+    app_handle: AppHandle,
+    response_id: &str,
     filter: Option<String>,
 ) -> Result<Value> {
+    let response = app_handle.db().get_http_response(response_id)?;
     let Some(body_path) = response.body_path else {
         return Ok(json!({ "content": "" }));
     };
@@ -164,7 +167,7 @@ pub(crate) async fn cmd_curl_to_request(
 #[command]
 pub(crate) async fn cmd_template_function_summaries() -> Result<Vec<Value>> {
     Ok(vec![json!({
-        "pluginRefId": "builtin",
+        "sourceId": "builtin",
         "functions": builtin_template_functions(),
     })])
 }
@@ -179,7 +182,7 @@ pub(crate) async fn cmd_template_function_config(function_name: &str) -> Result<
         })?;
 
     Ok(json!({
-        "pluginRefId": "builtin",
+        "sourceId": "builtin",
         "function": function,
     }))
 }
@@ -187,7 +190,7 @@ pub(crate) async fn cmd_template_function_config(function_name: &str) -> Result<
 #[command]
 pub(crate) async fn cmd_http_request_actions() -> Result<Vec<Value>> {
     Ok(vec![json!({
-        "pluginRefId": "builtin",
+        "sourceId": "builtin",
         "actions": [{ "label": "Copy as curl", "icon": "copy" }],
     })])
 }
@@ -195,24 +198,24 @@ pub(crate) async fn cmd_http_request_actions() -> Result<Vec<Value>> {
 #[command]
 pub(crate) async fn cmd_grpc_request_actions() -> Result<Vec<Value>> {
     Ok(vec![json!({
-        "pluginRefId": "builtin",
+        "sourceId": "builtin",
         "actions": [{ "label": "Copy as grpcurl", "icon": "copy" }],
     })])
 }
 
 #[command]
 pub(crate) async fn cmd_websocket_request_actions() -> Result<Vec<Value>> {
-    Ok(vec![json!({ "pluginRefId": "builtin", "actions": [] })])
+    Ok(vec![json!({ "sourceId": "builtin", "actions": [] })])
 }
 
 #[command]
 pub(crate) async fn cmd_workspace_actions() -> Result<Vec<Value>> {
-    Ok(vec![json!({ "pluginRefId": "builtin", "actions": [] })])
+    Ok(vec![json!({ "sourceId": "builtin", "actions": [] })])
 }
 
 #[command]
 pub(crate) async fn cmd_folder_actions() -> Result<Vec<Value>> {
-    Ok(vec![json!({ "pluginRefId": "builtin", "actions": [] })])
+    Ok(vec![json!({ "sourceId": "builtin", "actions": [] })])
 }
 
 #[command]

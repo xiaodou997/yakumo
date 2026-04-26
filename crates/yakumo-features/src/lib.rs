@@ -4,7 +4,7 @@
 //! actions, and other functionality as native Rust implementations.
 //!
 //! All features are implemented in Rust for better performance and
-//! smaller bundle size. No external plugin runtime is needed.
+//! smaller bundle size.
 
 pub mod error;
 pub mod events;

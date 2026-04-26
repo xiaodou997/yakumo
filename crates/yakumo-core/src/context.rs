@@ -47,7 +47,7 @@ pub trait AppContext: Send + Sync + Clone {
     /// This is where the database and other persistent data are stored.
     fn app_data_dir(&self) -> PathBuf;
 
-    /// Returns the application identifier (e.g., "app.yaak.desktop").
+    /// Returns the application identifier (e.g., "api.yakumo.app").
     /// Used for keyring access and other platform-specific features.
     fn app_identifier(&self) -> &str;
 

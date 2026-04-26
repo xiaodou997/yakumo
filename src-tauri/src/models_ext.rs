@@ -145,7 +145,6 @@ pub(crate) fn models_upsert<R: Runtime>(
         AnyModel::HttpRequest(m) => db.upsert_http_request(&m, source)?.id,
         AnyModel::HttpResponse(m) => db.upsert_http_response(&m, source, &blobs)?.id,
         AnyModel::KeyValue(m) => db.upsert_key_value(&m, source)?.id,
-        AnyModel::Plugin(m) => db.upsert_plugin(&m, source)?.id,
         AnyModel::Settings(m) => db.upsert_settings(&m, source)?.id,
         AnyModel::WebsocketRequest(m) => db.upsert_websocket_request(&m, source)?.id,
         AnyModel::Workspace(m) => db.upsert_workspace(&m, source)?.id,
@@ -175,7 +174,6 @@ pub(crate) fn models_delete<R: Runtime>(
             AnyModel::GrpcRequest(m) => tx.delete_grpc_request(&m, source)?.id,
             AnyModel::HttpRequest(m) => tx.delete_http_request(&m, source)?.id,
             AnyModel::HttpResponse(m) => tx.delete_http_response(&m, source, &blobs)?.id,
-            AnyModel::Plugin(m) => tx.delete_plugin(&m, source)?.id,
             AnyModel::WebsocketConnection(m) => tx.delete_websocket_connection(&m, source)?.id,
             AnyModel::WebsocketRequest(m) => tx.delete_websocket_request(&m, source)?.id,
             AnyModel::Workspace(m) => tx.delete_workspace(&m, source)?.id,
@@ -262,8 +260,6 @@ pub(crate) async fn models_workspace_models<R: Runtime>(
         l.push(db.get_settings().into());
         l.append(&mut db.list_workspaces()?.into_iter().map(Into::into).collect());
         l.append(&mut db.list_key_values()?.into_iter().map(Into::into).collect());
-        // Add plugins from database (no need to resolve them with plugin_manager)
-        l.append(&mut db.list_plugins()?.into_iter().map(Into::into).collect());
     }
 
     // Add the workspace children

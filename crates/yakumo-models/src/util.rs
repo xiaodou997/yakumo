@@ -53,7 +53,6 @@ pub enum ModelChangeEvent {
 pub enum UpdateSource {
     Background,
     Import,
-    Plugin,
     Sync,
     Window { label: String },
 }

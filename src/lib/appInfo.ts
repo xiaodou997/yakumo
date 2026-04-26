@@ -8,7 +8,6 @@ export interface AppInfo {
   name: string;
   appDataDir: string;
   appLogDir: string;
-  vendoredPluginDir: string;
   defaultProjectDir: string;
   identifier: string;
   featureLicense: boolean;

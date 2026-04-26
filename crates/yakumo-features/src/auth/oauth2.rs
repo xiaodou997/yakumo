@@ -43,7 +43,7 @@ pub fn get_config() -> HttpAuthenticationConfig {
             },
         ],
         actions: None,
-        plugin_ref_id: None,
+        source_id: None,
     }
 }
 

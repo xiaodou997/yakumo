@@ -80,7 +80,7 @@ function ExportDataDialogContent({
       : "workspaces";
     const exportPath = await save({
       title: t("export.exportData"),
-      defaultPath: `yaak.${slug}.json`,
+      defaultPath: `yakumo.${slug}.json`,
     });
     if (exportPath == null) {
       return;

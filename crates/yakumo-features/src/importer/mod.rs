@@ -1,7 +1,7 @@
 //! Import modules for Yakumo API.
 //!
 //! This module provides built-in import functionality
-//! that were previously implemented as plugins.
+//! implemented as native Yakumo features.
 
 pub mod curl;
 pub mod yakumo;

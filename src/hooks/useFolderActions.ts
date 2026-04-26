@@ -35,7 +35,7 @@ export async function getFolderActions() {
       call: async (folder: Folder) => {
         const payload: CallFolderActionRequest = {
           index: i,
-          pluginRefId: r.pluginRefId,
+          sourceId: r.sourceId,
           args: { folder },
         };
         await invokeCmd("cmd_call_folder_action", { req: payload });

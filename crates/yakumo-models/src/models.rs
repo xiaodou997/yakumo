@@ -2070,129 +2070,6 @@ impl UpsertModelInfo for GrpcEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
 #[serde(default, rename_all = "camelCase")]
 #[ts(export, export_to = "gen_models.ts")]
-#[enum_def(table_name = "plugins")]
-pub struct Plugin {
-    #[ts(type = "\"plugin\"")]
-    pub model: String,
-    pub id: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-
-    pub checked_at: Option<NaiveDateTime>,
-    pub directory: String,
-    pub enabled: bool,
-    pub url: Option<String>,
-    pub source: PluginSource,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "gen_models.ts")]
-pub enum PluginSource {
-    Bundled,
-    Filesystem,
-    Registry,
-}
-
-impl FromStr for PluginSource {
-    type Err = crate::error::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "bundled" => Ok(Self::Bundled),
-            "filesystem" => Ok(Self::Filesystem),
-            "registry" => Ok(Self::Registry),
-            _ => Ok(Self::default()),
-        }
-    }
-}
-
-impl Display for PluginSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            PluginSource::Bundled => "bundled".to_string(),
-            PluginSource::Filesystem => "filesystem".to_string(),
-            PluginSource::Registry => "registry".to_string(),
-        };
-        write!(f, "{}", str)
-    }
-}
-
-impl Default for PluginSource {
-    fn default() -> Self {
-        Self::Filesystem
-    }
-}
-
-impl UpsertModelInfo for Plugin {
-    fn table_name() -> impl IntoTableRef + IntoIden {
-        PluginIden::Table
-    }
-
-    fn id_column() -> impl IntoIden + Eq + Clone {
-        PluginIden::Id
-    }
-
-    fn generate_id() -> String {
-        generate_prefixed_id("pg")
-    }
-
-    fn order_by() -> (impl IntoColumnRef, Order) {
-        (PluginIden::CreatedAt, Desc)
-    }
-
-    fn get_id(&self) -> String {
-        self.id.clone()
-    }
-
-    fn insert_values(
-        self,
-        source: &UpdateSource,
-    ) -> Result<Vec<(impl IntoIden + Eq, impl Into<SimpleExpr>)>> {
-        use PluginIden::*;
-        Ok(vec![
-            (CreatedAt, upsert_date(source, self.created_at)),
-            (UpdatedAt, upsert_date(source, self.updated_at)),
-            (CheckedAt, self.checked_at.into()),
-            (Directory, self.directory.into()),
-            (Url, self.url.into()),
-            (Enabled, self.enabled.into()),
-            (Source, self.source.to_string().into()),
-        ])
-    }
-
-    fn update_columns() -> Vec<impl IntoIden> {
-        vec![
-            PluginIden::UpdatedAt,
-            PluginIden::CheckedAt,
-            PluginIden::Directory,
-            PluginIden::Url,
-            PluginIden::Enabled,
-            PluginIden::Source,
-        ]
-    }
-
-    fn from_row(row: &Row) -> rusqlite::Result<Self>
-    where
-        Self: Sized,
-    {
-        Ok(Self {
-            id: row.get("id")?,
-            model: row.get("model")?,
-            created_at: row.get("created_at")?,
-            updated_at: row.get("updated_at")?,
-            checked_at: row.get("checked_at")?,
-            url: row.get("url")?,
-            directory: row.get("directory")?,
-            enabled: row.get("enabled")?,
-            source: PluginSource::from_str(row.get::<_, String>("source")?.as_str()).unwrap(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
-#[serde(default, rename_all = "camelCase")]
-#[ts(export, export_to = "gen_models.ts")]
 #[enum_def(table_name = "sync_states")]
 pub struct SyncState {
     #[ts(type = "\"sync_state\"")]
@@ -2347,36 +2224,6 @@ impl UpsertModelInfo for KeyValue {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
-#[serde(default, rename_all = "camelCase")]
-#[ts(export, export_to = "gen_models.ts")]
-#[enum_def(table_name = "plugin_key_values")]
-pub struct PluginKeyValue {
-    #[ts(type = "\"plugin_key_value\"")]
-    pub model: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-
-    pub plugin_name: String,
-    pub key: String,
-    pub value: String,
-}
-
-impl<'s> TryFrom<&Row<'s>> for PluginKeyValue {
-    type Error = rusqlite::Error;
-
-    fn try_from(r: &Row<'s>) -> std::result::Result<Self, Self::Error> {
-        Ok(Self {
-            model: r.get("model")?,
-            created_at: r.get("created_at")?,
-            updated_at: r.get("updated_at")?,
-            plugin_name: r.get("plugin_name")?,
-            key: r.get("key")?,
-            value: r.get("value")?,
-        })
-    }
-}
-
 fn default_true() -> bool {
     true
 }
@@ -2451,7 +2298,6 @@ define_any_model! {
     HttpResponse,
     HttpResponseEvent,
     KeyValue,
-    Plugin,
     Settings,
     SyncState,
     WebsocketConnection,
@@ -2483,7 +2329,6 @@ impl<'de> Deserialize<'de> for AnyModel {
             Some(m) if m == "http_response" => HttpResponse(fv(value).unwrap()),
             Some(m) if m == "http_response_event" => HttpResponseEvent(fv(value).unwrap()),
             Some(m) if m == "key_value" => KeyValue(fv(value).unwrap()),
-            Some(m) if m == "plugin" => Plugin(fv(value).unwrap()),
             Some(m) if m == "settings" => Settings(fv(value).unwrap()),
             Some(m) if m == "sync_state" => SyncState(fv(value).unwrap()),
             Some(m) if m == "websocket_connection" => WebsocketConnection(fv(value).unwrap()),

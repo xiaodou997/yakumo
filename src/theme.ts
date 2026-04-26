@@ -30,7 +30,7 @@ listen<ModelPayload>("model_write", async (event) => {
   if (event.payload.change.type !== "upsert") return;
 
   const model = event.payload.model.model;
-  if (model !== "settings" && model !== "plugin") return;
+  if (model !== "settings") return;
   await configureTheme();
 }).catch(console.error);
 

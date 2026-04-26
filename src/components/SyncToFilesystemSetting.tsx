@@ -1,6 +1,6 @@
-import { readDir } from "@tauri-apps/plugin-fs";
 import { useState } from "react";
 import { openWorkspaceFromSyncDir } from "../commands/openWorkspaceFromSyncDir";
+import { invokeCmd } from "../lib/tauri";
 import { Banner } from "./core/Banner";
 import { Button } from "./core/Button";
 import { Checkbox } from "./core/Checkbox";
@@ -50,8 +50,8 @@ export function SyncToFilesystemSetting({
         filePath={value.filePath}
         onChange={async ({ filePath }) => {
           if (filePath != null) {
-            const files = await readDir(filePath);
-            if (files.length > 0) {
+            const isEmpty = await invokeCmd<boolean>("cmd_directory_is_empty", { path: filePath });
+            if (!isEmpty) {
               setSyncDir(filePath);
               return;
             }

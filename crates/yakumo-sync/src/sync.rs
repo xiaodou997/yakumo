@@ -543,7 +543,7 @@ pub fn apply_sync_state_ops(
 }
 
 fn derive_model_filename(m: &SyncModel) -> PathBuf {
-    let rel = format!("yaak.{}.yaml", m.id());
+    let rel = format!("yakumo.{}.yaml", m.id());
     Path::new(&rel).to_path_buf()
 }
 

@@ -35,7 +35,7 @@ export async function getHttpRequestActions() {
       call: async (httpRequest: HttpRequest) => {
         const payload: CallHttpRequestActionRequest = {
           index: i,
-          pluginRefId: r.pluginRefId,
+          sourceId: r.sourceId,
           args: { httpRequest },
         };
         await invokeCmd("cmd_call_http_request_action", { req: payload });

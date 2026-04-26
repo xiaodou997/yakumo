@@ -33,7 +33,7 @@ pub enum Error {
     LicenseError(#[from] yakumo_license::error::Error),
 
     #[error(transparent)]
-    PluginError(#[from] yakumo_features::error::Error),
+    FeatureError(#[from] yakumo_features::error::Error),
 
     #[error(transparent)]
     ApiError(#[from] yakumo_api::Error),

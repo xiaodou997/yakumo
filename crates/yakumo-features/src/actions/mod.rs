@@ -1,7 +1,6 @@
 //! Actions modules for Yakumo API.
 //!
-//! This module provides built-in action functionality
-//! that were previously implemented as plugins.
+//! This module provides built-in action functionality.
 
 pub mod copy_curl;
 pub mod copy_grpcurl;
