@@ -111,8 +111,10 @@ fn merge_patch(target: &mut Value, patch: &Value) {
                 *target = Value::Object(Map::new());
             }
 
-            let target_map =
-                target.as_object_mut().expect("merge_patch target expected to be object");
+            let Some(target_map) = target.as_object_mut() else {
+                *target = patch.clone();
+                return;
+            };
 
             for (key, patch_value) in patch_map {
                 if patch_value.is_null() {

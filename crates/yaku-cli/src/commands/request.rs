@@ -223,7 +223,7 @@ fn show(ctx: &CliContext, request_id: &str) -> CommandResult {
 }
 
 fn delete(ctx: &CliContext, request_id: &str, yes: bool) -> CommandResult {
-    if !yes && !confirm_delete("request", request_id) {
+    if !yes && !confirm_delete("request", request_id)? {
         println!("Aborted");
         return Ok(());
     }

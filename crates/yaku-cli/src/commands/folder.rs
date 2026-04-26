@@ -149,7 +149,7 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
 }
 
 fn delete(ctx: &CliContext, folder_id: &str, yes: bool) -> CommandResult {
-    if !yes && !confirm_delete("folder", folder_id) {
+    if !yes && !confirm_delete("folder", folder_id)? {
         println!("Aborted");
         return Ok(());
     }

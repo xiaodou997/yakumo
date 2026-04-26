@@ -112,7 +112,7 @@ fn update(ctx: &CliContext, json: Option<String>, json_input: Option<String>) ->
 }
 
 fn delete(ctx: &CliContext, workspace_id: &str, yes: bool) -> CommandResult {
-    if !yes && !confirm_delete("workspace", workspace_id) {
+    if !yes && !confirm_delete("workspace", workspace_id)? {
         println!("Aborted");
         return Ok(());
     }

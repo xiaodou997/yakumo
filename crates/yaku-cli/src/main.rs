@@ -30,7 +30,16 @@ async fn main() {
     let app_id =
         if cfg!(debug_assertions) { "app.yakumo.desktop.dev" } else { "app.yakumo.desktop" };
 
-    let data_dir = data_dir.unwrap_or_else(|| resolve_data_dir(app_id));
+    let data_dir = match data_dir {
+        Some(data_dir) => data_dir,
+        None => match resolve_data_dir(app_id) {
+            Ok(data_dir) => data_dir,
+            Err(error) => {
+                eprintln!("Error: {error}");
+                std::process::exit(1);
+            }
+        },
+    };
 
     version_check::maybe_check_for_updates().await;
 
@@ -193,11 +202,13 @@ fn resolve_cookie_jar_id(
     Ok(default_cookie_jar)
 }
 
-fn resolve_data_dir(app_id: &str) -> PathBuf {
+fn resolve_data_dir(app_id: &str) -> Result<PathBuf, String> {
     if let Some(dir) = wsl_data_dir(app_id) {
-        return dir;
+        return Ok(dir);
     }
-    dirs::data_dir().expect("Could not determine data directory").join(app_id)
+    dirs::data_dir()
+        .map(|dir| dir.join(app_id))
+        .ok_or_else(|| "Could not determine data directory for yaku-cli".to_string())
 }
 
 /// Detect WSL and resolve the Windows AppData\Roaming path for the Yakumo data directory.
