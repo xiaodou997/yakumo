@@ -382,12 +382,13 @@ export function HttpResponsePane({ style, className, activeRequestId }: Props) {
                             </Button>
                           </VStack>
                         </EmptyStateText>
-                      ) : activeResponse.state === "closed" &&
-                        (activeResponse.contentLength ?? 0) === 0 ? (
-                        <EmptyStateText>{t("common.empty")}</EmptyStateText>
                       ) : mimeType?.match(/^text\/event-stream/i) &&
                         viewMode === "pretty" ? (
                         <EventStreamViewer response={activeResponse} />
+                      ) : activeResponse.state === "closed" &&
+                        activeResponse.bodyPath == null &&
+                        (activeResponse.contentLength ?? 0) === 0 ? (
+                        <EmptyStateText>{t("common.empty")}</EmptyStateText>
                       ) : mimeType?.match(/^image\/svg/) ? (
                         <HttpSvgViewer response={activeResponse} />
                       ) : mimeType?.match(/^image/i) ? (

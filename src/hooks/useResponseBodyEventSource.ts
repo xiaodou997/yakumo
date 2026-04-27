@@ -6,7 +6,13 @@ import { getResponseBodyEventSource } from "../lib/responseBody";
 export function useResponseBodyEventSource(response: HttpResponse) {
   return useQuery<ServerSentEvent[]>({
     placeholderData: (prev) => prev, // Keep previous data on refetch
-    queryKey: ["response-body-event-source", response.id, response.contentLength],
+    queryKey: [
+      "response-body-event-source",
+      response.id,
+      response.updatedAt,
+      response.bodyPath,
+      response.state,
+    ],
     queryFn: () => getResponseBodyEventSource(response),
   });
 }
