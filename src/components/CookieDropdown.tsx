@@ -3,11 +3,8 @@ import { useAtomValue } from "jotai";
 import { memo, useMemo } from "react";
 import { useActiveCookieJar } from "../hooks/useActiveCookieJar";
 import { useCreateCookieJar } from "../hooks/useCreateCookieJar";
-import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
 import { showDialog } from "../lib/dialog";
-import { showPrompt } from "../lib/prompt";
 import { setWorkspaceSearchParams } from "../lib/setWorkspaceSearchParams";
-import { CookieDialog } from "./CookieDialog";
 import { Dropdown, type DropdownItem } from "./core/Dropdown";
 import { Icon } from "./core/Icon";
 import { IconButton } from "./core/IconButton";
@@ -35,8 +32,9 @@ export const CookieDropdown = memo(function CookieDropdown() {
               key: "manage",
               label: "Manage Cookies",
               leftSlot: <Icon icon="cookie" />,
-              onSelect: () => {
+              onSelect: async () => {
                 if (activeCookieJar == null) return;
+                const { CookieDialog } = await import("./CookieDialog");
                 showDialog({
                   id: "cookies",
                   title: "Manage Cookies",
@@ -50,6 +48,7 @@ export const CookieDropdown = memo(function CookieDropdown() {
               label: "Rename",
               leftSlot: <Icon icon="pencil" />,
               onSelect: async () => {
+                const { showPrompt } = await import("../lib/prompt");
                 const name = await showPrompt({
                   id: "rename-cookie-jar",
                   title: "Rename Cookie Jar",
@@ -74,6 +73,9 @@ export const CookieDropdown = memo(function CookieDropdown() {
                     leftSlot: <Icon icon="trash" />,
                     color: "danger",
                     onSelect: async () => {
+                      const { deleteModelWithConfirm } = await import(
+                        "../lib/deleteModelWithConfirm"
+                      );
                       await deleteModelWithConfirm(activeCookieJar);
                     },
                   },
