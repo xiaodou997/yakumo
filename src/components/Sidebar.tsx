@@ -40,6 +40,7 @@ import {
   activeWorkspaceIdAtom,
 } from "../hooks/useActiveWorkspace";
 import { allRequestsAtom } from "../hooks/useAllRequests";
+import { useDeferredMount } from "../hooks/useDeferredMount";
 import { useHotKey } from "../hooks/useHotKey";
 import { useListenToTauriEvent } from "../hooks/useListenToTauriEvent";
 import { useSidebarHidden } from "../hooks/useSidebarHidden";
@@ -621,14 +622,23 @@ function Sidebar({ className }: { className?: string }) {
           onDragEnd={handleDragEnd}
         />
       )}
-      <Suspense fallback={null}>
-        <GitDropdown />
-      </Suspense>
+      <DeferredGitDropdown />
     </aside>
   );
 }
 
 export default Sidebar;
+
+function DeferredGitDropdown() {
+  const ready = useDeferredMount();
+  if (!ready) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <GitDropdown />
+    </Suspense>
+  );
+}
 
 const activeIdAtom = atom<string | null>((get) => {
   return get(activeRequestIdAtom) || get(activeFolderIdAtom);

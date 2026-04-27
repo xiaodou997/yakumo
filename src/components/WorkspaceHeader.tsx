@@ -1,15 +1,8 @@
 import classNames from "classnames";
 import { useAtom, useAtomValue } from "jotai";
-import {
-  lazy,
-  memo,
-  type ReactNode,
-  Suspense,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { lazy, memo, type ReactNode, Suspense, useCallback } from "react";
 import { activeWorkspaceAtom, activeWorkspaceMetaAtom } from "../hooks/useActiveWorkspace";
+import { useDeferredMount } from "../hooks/useDeferredMount";
 import { useToggleCommandPalette } from "../hooks/useToggleCommandPalette";
 import { workspaceLayoutAtom } from "../lib/atoms";
 import { Icon } from "./core/Icon";
@@ -151,33 +144,6 @@ function DeferredHeaderControl({
   children: ReactNode;
   fallback?: ReactNode;
 }) {
-  const ready = useHeaderIdleReady();
+  const ready = useDeferredMount();
   return ready ? children : fallback;
-}
-
-function useHeaderIdleReady() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const done = () => {
-      if (!cancelled) setReady(true);
-    };
-
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(done, { timeout: 500 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(id);
-      };
-    }
-
-    const id = globalThis.setTimeout(done, 250);
-    return () => {
-      cancelled = true;
-      globalThis.clearTimeout(id);
-    };
-  }, []);
-
-  return ready;
 }
