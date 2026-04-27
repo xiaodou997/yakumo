@@ -28,13 +28,14 @@ import { duplicateRequestOrFolderAndNavigate } from "../lib/duplicateRequestOrFo
 import { jotaiStore } from "../lib/jotai";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { HeaderSize } from "./HeaderSize";
-import { Overlay } from "./Overlay";
 import type { ResizeHandleEvent } from "./ResizeHandle";
 import { ResizeHandle } from "./ResizeHandle";
-import { SidebarActions } from "./SidebarActions";
 import { WorkspaceBody } from "./WorkspaceBody";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
+const FloatingSidebar = lazy(() =>
+  import("./FloatingSidebar").then((m) => ({ default: m.FloatingSidebar })),
+);
 const Sidebar = lazy(() => import("./Sidebar"));
 
 const side = { gridArea: "side" };
@@ -119,29 +120,12 @@ export function Workspace() {
       )}
     >
       {floating ? (
-        <Overlay
-          open={!floatingSidebarHidden}
-          portalName="sidebar"
-          onClose={() => setFloatingSidebarHidden(true)}
-          zIndex={20}
-        >
-          <div
-            className={classNames(
-              "x-theme-sidebar",
-              "absolute top-0 left-0 bottom-0 bg-surface border-r border-border-subtle w-[20rem]",
-              "grid grid-rows-[auto_1fr]",
-            )}
-          >
-            <HeaderSize hideControls size="lg" className="border-transparent flex items-center">
-              <SidebarActions />
-            </HeaderSize>
-            <ErrorBoundary name="Sidebar (Floating)">
-              <Suspense fallback={<SidebarFallback />}>
-                <Sidebar />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
-        </Overlay>
+        <Suspense fallback={null}>
+          <FloatingSidebar
+            open={!floatingSidebarHidden}
+            onClose={() => setFloatingSidebarHidden(true)}
+          />
+        </Suspense>
       ) : (
         <>
           <div style={side} className={classNames("x-theme-sidebar", "overflow-hidden bg-surface")}>
