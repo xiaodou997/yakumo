@@ -1,9 +1,10 @@
 import { useAtomValue } from "jotai";
 import type { ReactNode } from "react";
-import { hideToast, toastsAtom } from "../lib/toast";
-import { Toast, type ToastProps } from "./core/Toast";
-import { ErrorBoundary } from "./ErrorBoundary";
-import { Portal } from "./Portal";
+import { lazy, Suspense } from "react";
+import { toastsAtom } from "../lib/toast";
+import type { ToastProps } from "./core/Toast";
+
+const ToastList = lazy(() => import("./ToastList").then((m) => ({ default: m.ToastList })));
 
 export type ToastInstance = {
   id: string;
@@ -15,26 +16,13 @@ export type ToastInstance = {
 
 export const Toasts = () => {
   const toasts = useAtomValue(toastsAtom);
+  if (toasts.length === 0) {
+    return null;
+  }
+
   return (
-    <Portal name="toasts">
-      <div className="absolute right-0 bottom-0 z-50">
-        {toasts.map((toast: ToastInstance) => {
-          const { message, uniqueKey, ...props } = toast;
-          return (
-            <ErrorBoundary key={uniqueKey} name={`Toast ${uniqueKey}`}>
-              <Toast
-                open
-                {...props}
-                // We call onClose inside actions.hide instead of passing to toast so that
-                // it gets called from external close calls as well
-                onClose={() => hideToast(toast)}
-              >
-                {message}
-              </Toast>
-            </ErrorBoundary>
-          );
-        })}
-      </div>
-    </Portal>
+    <Suspense fallback={null}>
+      <ToastList toasts={toasts} />
+    </Suspense>
   );
 };
