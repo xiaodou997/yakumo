@@ -3,7 +3,7 @@ import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import * as m from "motion/react-m";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
   useEnsureActiveCookieJar,
   useSubscribeActiveCookieJarId,
@@ -32,10 +32,11 @@ import { HeaderSize } from "./HeaderSize";
 import { Overlay } from "./Overlay";
 import type { ResizeHandleEvent } from "./ResizeHandle";
 import { ResizeHandle } from "./ResizeHandle";
-import Sidebar from "./Sidebar";
 import { SidebarActions } from "./SidebarActions";
 import { WorkspaceBody } from "./WorkspaceBody";
 import { WorkspaceHeader } from "./WorkspaceHeader";
+
+const Sidebar = lazy(() => import("./Sidebar"));
 
 const side = { gridArea: "side" };
 const head = { gridArea: "head" };
@@ -138,7 +139,9 @@ export function Workspace() {
               <SidebarActions />
             </HeaderSize>
             <ErrorBoundary name="Sidebar (Floating)">
-              <Sidebar />
+              <Suspense fallback={<SidebarFallback />}>
+                <Sidebar />
+              </Suspense>
             </ErrorBoundary>
           </m.div>
         </Overlay>
@@ -146,7 +149,9 @@ export function Workspace() {
         <>
           <div style={side} className={classNames("x-theme-sidebar", "overflow-hidden bg-surface")}>
             <ErrorBoundary name="Sidebar">
-              <Sidebar className="border-r border-border-subtle" />
+              <Suspense fallback={<SidebarFallback className="border-r border-border-subtle" />}>
+                <Sidebar className="border-r border-border-subtle" />
+              </Suspense>
             </ErrorBoundary>
           </div>
           <ResizeHandle
@@ -184,6 +189,10 @@ export function Workspace() {
       </ErrorBoundary>
     </div>
   );
+}
+
+function SidebarFallback({ className }: { className?: string }) {
+  return <div className={classNames(className, "h-full w-full bg-surface")} />;
 }
 
 function useGlobalWorkspaceHooks() {
