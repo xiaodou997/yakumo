@@ -24,7 +24,7 @@ import {
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { moveToWorkspace } from "../commands/moveToWorkspace";
 import { openFolderSettings } from "../commands/openFolderSettings";
 import { activeFolderIdAtom } from "../hooks/useActiveFolderId";
@@ -35,15 +35,11 @@ import {
 } from "../hooks/useActiveWorkspace";
 import { allRequestsAtom } from "../hooks/useAllRequests";
 import { getCreateDropdownItems } from "../hooks/useCreateDropdownItems";
-import { getFolderActions } from "../hooks/useFolderActions";
-import { getGrpcRequestActions } from "../hooks/useGrpcRequestActions";
 import { useHotKey } from "../hooks/useHotKey";
-import { getHttpRequestActions } from "../hooks/useHttpRequestActions";
 import { useListenToTauriEvent } from "../hooks/useListenToTauriEvent";
 import { getModelAncestors } from "../hooks/useModelAncestors";
 import { sendAnyHttpRequest } from "../hooks/useSendAnyHttpRequest";
 import { useSidebarHidden } from "../hooks/useSidebarHidden";
-import { getWebsocketRequestActions } from "../hooks/useWebsocketRequestActions";
 import { deepEqualAtom } from "../lib/atoms";
 import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
 import { fireAndForget } from "../lib/fireAndForget";
@@ -74,7 +70,10 @@ import type { TreeNode } from "./core/tree/common";
 import type { TreeHandle, TreeProps } from "./core/tree/Tree";
 import { Tree } from "./core/tree/Tree";
 import type { TreeItemProps } from "./core/tree/TreeItem";
-import { GitDropdown } from "./git/GitDropdown";
+
+const GitDropdown = lazy(() =>
+  import("./git/GitDropdown").then((m) => ({ default: m.GitDropdown })),
+);
 
 type SidebarModel =
   | Workspace
@@ -381,7 +380,7 @@ function Sidebar({ className }: { className?: string }) {
           onSelect: () => actions["request.send"].cb(items),
         },
         ...(items.length === 1 && child.model === "http_request"
-          ? await getHttpRequestActions()
+          ? await getSidebarHttpRequestActions()
           : []
         ).map((a) => ({
           label: a.label,
@@ -392,7 +391,7 @@ function Sidebar({ className }: { className?: string }) {
           },
         })),
         ...(items.length === 1 && child.model === "grpc_request"
-          ? await getGrpcRequestActions()
+          ? await getSidebarGrpcRequestActions()
           : []
         ).map((a) => ({
           label: a.label,
@@ -404,7 +403,7 @@ function Sidebar({ className }: { className?: string }) {
           },
         })),
         ...(items.length === 1 && child.model === "websocket_request"
-          ? await getWebsocketRequestActions()
+          ? await getSidebarWebsocketRequestActions()
           : []
         ).map((a) => ({
           label: a.label,
@@ -415,7 +414,7 @@ function Sidebar({ className }: { className?: string }) {
           },
         })),
         ...(items.length === 1 && child.model === "folder"
-          ? await getFolderActions()
+          ? await getSidebarFolderActions()
           : []
         ).map((a) => ({
           label: a.label,
@@ -635,7 +634,9 @@ function Sidebar({ className }: { className?: string }) {
           onDragEnd={handleDragEnd}
         />
       )}
-      <GitDropdown />
+      <Suspense fallback={null}>
+        <GitDropdown />
+      </Suspense>
     </aside>
   );
 }
@@ -664,6 +665,26 @@ function handleActivate(item: SidebarModel) {
   if (item.model !== "workspace") {
     navigateToRequestOrFolderOrWorkspace(item.id, item.model);
   }
+}
+
+async function getSidebarHttpRequestActions() {
+  const { getHttpRequestActions } = await import("../hooks/useHttpRequestActions");
+  return getHttpRequestActions();
+}
+
+async function getSidebarGrpcRequestActions() {
+  const { getGrpcRequestActions } = await import("../hooks/useGrpcRequestActions");
+  return getGrpcRequestActions();
+}
+
+async function getSidebarWebsocketRequestActions() {
+  const { getWebsocketRequestActions } = await import("../hooks/useWebsocketRequestActions");
+  return getWebsocketRequestActions();
+}
+
+async function getSidebarFolderActions() {
+  const { getFolderActions } = await import("../hooks/useFolderActions");
+  return getFolderActions();
 }
 
 const allPotentialChildrenAtom = atom<SidebarModel[]>((get) => {
