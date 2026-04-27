@@ -20,8 +20,8 @@ pub fn import_curl(content: &str) -> Result<Option<ImportResponse>, String> {
 
     Ok(Some(ImportResponse {
         resources: Some(ImportResources {
-            workspace: None,
-            environment: None,
+            workspaces: vec![],
+            environments: vec![],
             folders: vec![],
             http_requests: vec![req],
             grpc_requests: vec![],

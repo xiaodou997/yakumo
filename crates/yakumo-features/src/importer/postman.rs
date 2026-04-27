@@ -39,8 +39,8 @@ pub fn import_postman(json: &Value) -> Result<Option<ImportResponse>, String> {
 
     Ok(Some(ImportResponse {
         resources: Some(ImportResources {
-            workspace: None,
-            environment: None,
+            workspaces: vec![],
+            environments: vec![],
             folders,
             http_requests,
             grpc_requests: vec![],

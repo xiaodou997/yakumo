@@ -287,8 +287,8 @@ pub struct FormInput {
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "gen_events.ts")]
 pub struct ImportResources {
-    pub workspace: Option<Workspace>,
-    pub environment: Option<Environment>,
+    pub workspaces: Vec<Workspace>,
+    pub environments: Vec<Environment>,
     pub http_requests: Vec<HttpRequest>,
     pub websocket_requests: Vec<WebsocketRequest>,
     pub grpc_requests: Vec<GrpcRequest>,

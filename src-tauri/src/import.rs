@@ -29,7 +29,9 @@ pub(crate) async fn import_data<R: Runtime>(
         Some(r) => r,
         None => {
             return Err(crate::error::Error::GenericError(
-                "No resources found in import data".to_string(),
+                import_response
+                    .error
+                    .unwrap_or_else(|| "No resources found in import data".to_string()),
             ));
         }
     };
@@ -44,21 +46,27 @@ pub(crate) async fn import_data<R: Runtime>(
         request_id: None,
     };
 
-    let workspaces: Vec<Workspace> = match resources.workspace {
-        Some(mut w) => {
+    let workspaces: Vec<Workspace> = resources
+        .workspaces
+        .into_iter()
+        .map(|mut w| {
             w.id = maybe_gen_id::<Workspace>(&ctx, w.id.as_str(), &mut id_map);
-            vec![w]
-        }
-        None => vec![],
-    };
+            w
+        })
+        .collect();
 
-    let environments: Vec<Environment> = match resources.environment {
-        Some(mut v) => {
+    let environments: Vec<Environment> = resources
+        .environments
+        .into_iter()
+        .map(|mut v| {
             v.id = maybe_gen_id::<Environment>(&ctx, v.id.as_str(), &mut id_map);
             v.workspace_id = maybe_gen_id::<Workspace>(&ctx, v.workspace_id.as_str(), &mut id_map);
             match (v.parent_model.as_str(), v.parent_id.clone()) {
                 ("folder", Some(parent_id)) => {
                     v.parent_id = Some(maybe_gen_id::<Folder>(&ctx, &parent_id, &mut id_map));
+                }
+                ("environment", Some(parent_id)) => {
+                    v.parent_id = Some(maybe_gen_id::<Environment>(&ctx, &parent_id, &mut id_map));
                 }
                 ("", _) | (_, None) => {
                     // Fix any empty ones
@@ -70,10 +78,9 @@ pub(crate) async fn import_data<R: Runtime>(
                     v.parent_id = None;
                 }
             };
-            vec![v]
-        }
-        None => vec![],
-    };
+            v
+        })
+        .collect();
 
     let folders: Vec<Folder> = resources
         .folders

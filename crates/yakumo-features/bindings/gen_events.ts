@@ -53,7 +53,7 @@ export type HttpHeader = { name: string, value: string, };
 
 export type Icon = "alert_triangle" | "check" | "check_circle" | "chevron_down" | "copy" | "info" | "pin" | "search" | "trash" | "_unknown";
 
-export type ImportResources = { workspace: Workspace | null, environment: Environment | null, httpRequests: Array<HttpRequest>, websocketRequests: Array<WebsocketRequest>, grpcRequests: Array<GrpcRequest>, folders: Array<Folder>, };
+export type ImportResources = { workspaces: Array<Workspace>, environments: Array<Environment>, httpRequests: Array<HttpRequest>, websocketRequests: Array<WebsocketRequest>, grpcRequests: Array<GrpcRequest>, folders: Array<Folder>, };
 
 export type ImportResponse = { resources: ImportResources | null, error: string | null, };
 

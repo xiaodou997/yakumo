@@ -41,8 +41,8 @@ pub fn import_openapi(json: &Value) -> Result<Option<ImportResponse>, String> {
 
     Ok(Some(ImportResponse {
         resources: Some(ImportResources {
-            workspace: None,
-            environment: None,
+            workspaces: vec![],
+            environments: vec![],
             folders: vec![],
             http_requests,
             grpc_requests: vec![],

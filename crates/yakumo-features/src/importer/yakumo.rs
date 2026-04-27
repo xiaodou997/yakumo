@@ -21,7 +21,8 @@ pub fn import_yakumo(content: &str) -> Result<Option<ImportResponse>, String> {
     let resources = parse_import_resources(&json)?;
 
     // If no resources were found, return None
-    if resources.workspace.is_none()
+    if resources.workspaces.is_empty()
+        && resources.environments.is_empty()
         && resources.http_requests.is_empty()
         && resources.grpc_requests.is_empty()
         && resources.websocket_requests.is_empty()
@@ -35,28 +36,18 @@ pub fn import_yakumo(content: &str) -> Result<Option<ImportResponse>, String> {
 /// Parse import resources from JSON.
 fn parse_import_resources(json: &serde_json::Value) -> Result<ImportResources, String> {
     let obj = json.as_object().ok_or("Expected object")?;
+    let source = obj.get("resources").and_then(serde_json::Value::as_object).unwrap_or(obj);
 
-    // Parse the first workspace if present
-    let workspace = obj
-        .get("workspaces")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|v| parse_workspace(v).ok());
-
-    let environment = obj
-        .get("environments")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|v| parse_environment(v).ok());
-
-    let folders = parse_array(obj.get("folders"), parse_folder)?;
-    let http_requests = parse_array(obj.get("httpRequests"), parse_http_request)?;
-    let grpc_requests = parse_array(obj.get("grpcRequests"), parse_grpc_request)?;
-    let websocket_requests = parse_array(obj.get("websocketRequests"), parse_websocket_request)?;
+    let workspaces = parse_array(source.get("workspaces"), parse_workspace)?;
+    let environments = parse_array(source.get("environments"), parse_environment)?;
+    let folders = parse_array(source.get("folders"), parse_folder)?;
+    let http_requests = parse_array(source.get("httpRequests"), parse_http_request)?;
+    let grpc_requests = parse_array(source.get("grpcRequests"), parse_grpc_request)?;
+    let websocket_requests = parse_array(source.get("websocketRequests"), parse_websocket_request)?;
 
     Ok(ImportResources {
-        workspace,
-        environment,
+        workspaces,
+        environments,
         folders,
         http_requests,
         grpc_requests,
@@ -226,12 +217,92 @@ mod tests {
 
         let result = import_yakumo(&content).unwrap().unwrap();
         let resources = result.resources.unwrap();
-        assert_eq!(resources.workspace.unwrap().id, "wk_1");
-        assert_eq!(resources.environment.unwrap().id, "ev_1");
+        assert_eq!(resources.workspaces[0].id, "wk_1");
+        assert_eq!(resources.environments[0].id, "ev_1");
         assert_eq!(resources.folders.len(), 1);
         assert_eq!(resources.http_requests.len(), 1);
         assert_eq!(resources.grpc_requests.len(), 1);
         assert_eq!(resources.websocket_requests.len(), 1);
         assert_eq!(resources.http_requests[0].folder_id.as_deref(), Some("fl_1"));
+    }
+
+    #[test]
+    fn test_import_nested_workspace_export() {
+        let content = serde_json::json!({
+            "yakumoVersion": "0.0.2",
+            "yakumoSchema": 4,
+            "timestamp": "2026-04-27T00:00:00",
+            "resources": {
+                "workspaces": [{
+                    "model": "workspace",
+                    "id": "wk_1",
+                    "createdAt": "2026-04-26T00:00:00",
+                    "updatedAt": "2026-04-26T00:00:00",
+                    "authentication": {},
+                    "authenticationType": null,
+                    "description": "Workspace export",
+                    "headers": [],
+                    "name": "Demo",
+                    "encryptionKeyChallenge": null,
+                    "settingValidateCertificates": true,
+                    "settingFollowRedirects": true,
+                    "settingRequestTimeout": 0,
+                    "settingDnsOverrides": []
+                }],
+                "environments": [{
+                    "model": "environment",
+                    "id": "ev_1",
+                    "createdAt": "2026-04-26T00:00:00",
+                    "updatedAt": "2026-04-26T00:00:00",
+                    "workspaceId": "wk_1",
+                    "name": "Base",
+                    "variables": [],
+                    "color": null,
+                    "parentModel": "workspace",
+                    "parentId": null
+                }, {
+                    "model": "environment",
+                    "id": "ev_2",
+                    "createdAt": "2026-04-26T00:00:00",
+                    "updatedAt": "2026-04-26T00:00:00",
+                    "workspaceId": "wk_1",
+                    "name": "Local",
+                    "variables": [],
+                    "color": null,
+                    "parentModel": "environment",
+                    "parentId": "ev_1"
+                }],
+                "folders": [],
+                "httpRequests": [{
+                    "model": "http_request",
+                    "id": "rq_1",
+                    "createdAt": "2026-04-26T00:00:00",
+                    "updatedAt": "2026-04-26T00:00:00",
+                    "workspaceId": "wk_1",
+                    "folderId": null,
+                    "authentication": {},
+                    "authenticationType": null,
+                    "body": { "text": "{}" },
+                    "bodyType": "application/json",
+                    "description": "",
+                    "headers": [],
+                    "method": "POST",
+                    "name": "Create",
+                    "sortPriority": 0,
+                    "url": "https://api.example.com/users",
+                    "urlParameters": []
+                }],
+                "grpcRequests": [],
+                "websocketRequests": []
+            }
+        })
+        .to_string();
+
+        let result = import_yakumo(&content).unwrap().unwrap();
+        let resources = result.resources.unwrap();
+        assert_eq!(resources.workspaces.len(), 1);
+        assert_eq!(resources.environments.len(), 2);
+        assert_eq!(resources.environments[1].parent_id.as_deref(), Some("ev_1"));
+        assert_eq!(resources.http_requests.len(), 1);
     }
 }
