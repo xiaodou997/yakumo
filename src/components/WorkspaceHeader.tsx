@@ -1,6 +1,14 @@
 import classNames from "classnames";
 import { useAtom, useAtomValue } from "jotai";
-import { lazy, memo, Suspense, useCallback } from "react";
+import {
+  lazy,
+  memo,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { activeWorkspaceAtom, activeWorkspaceMetaAtom } from "../hooks/useActiveWorkspace";
 import { useToggleCommandPalette } from "../hooks/useToggleCommandPalette";
 import { workspaceLayoutAtom } from "../lib/atoms";
@@ -60,9 +68,11 @@ export const WorkspaceHeader = memo(function WorkspaceHeader({ className }: Prop
     >
       <HStack space={0.5} className={classNames("flex-1 pointer-events-none")}>
         <SidebarActions />
-        <Suspense fallback={<HeaderIconPlaceholder />}>
-          <CookieDropdown />
-        </Suspense>
+        <DeferredHeaderControl fallback={<HeaderIconPlaceholder />}>
+          <Suspense fallback={<HeaderIconPlaceholder />}>
+            <CookieDropdown />
+          </Suspense>
+        </DeferredHeaderControl>
         <HStack className="min-w-0">
           <Suspense fallback={<HeaderTextPlaceholder className="w-28" />}>
             <WorkspaceActionsDropdown />
@@ -79,17 +89,21 @@ export const WorkspaceHeader = memo(function WorkspaceHeader({ className }: Prop
         </Suspense>
       </div>
       <div className="flex-1 flex gap-1 items-center h-full justify-end pointer-events-none pr-1">
-        <Suspense fallback={null}>
-          <ImportCurlButton />
-        </Suspense>
+        <DeferredHeaderControl>
+          <Suspense fallback={null}>
+            <ImportCurlButton />
+          </Suspense>
+        </DeferredHeaderControl>
         {showEncryptionSetup ? (
           <PillButton color="danger" onClick={setupEncryption}>
             Enter Encryption Key
           </PillButton>
         ) : (
-          <Suspense fallback={null}>
-            <LicenseBadge />
-          </Suspense>
+          <DeferredHeaderControl>
+            <Suspense fallback={null}>
+              <LicenseBadge />
+            </Suspense>
+          </DeferredHeaderControl>
         )}
         <IconButton
           icon={
@@ -128,4 +142,42 @@ function HeaderIconPlaceholder() {
 
 function HeaderTextPlaceholder({ className }: { className: string }) {
   return <div className={classNames("h-sm flex-shrink-0 pointer-events-none", className)} />;
+}
+
+function DeferredHeaderControl({
+  children,
+  fallback = null,
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
+  const ready = useHeaderIdleReady();
+  return ready ? children : fallback;
+}
+
+function useHeaderIdleReady() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const done = () => {
+      if (!cancelled) setReady(true);
+    };
+
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(done, { timeout: 500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(id);
+      };
+    }
+
+    const id = globalThis.setTimeout(done, 250);
+    return () => {
+      cancelled = true;
+      globalThis.clearTimeout(id);
+    };
+  }, []);
+
+  return ready;
 }
