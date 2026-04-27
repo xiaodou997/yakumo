@@ -3,20 +3,16 @@ import { useLicense } from "@yakumo-internal/license";
 import { useRef } from "react";
 import { openSettings } from "../commands/openSettings";
 import { useCheckForUpdates } from "../hooks/useCheckForUpdates";
-import { useExportData } from "../hooks/useExportData";
 import { appInfo } from "../lib/appInfo";
 import { showDialog } from "../lib/dialog";
 import { useTranslate } from "../lib/i18n";
-import { importData } from "../lib/importData";
 import type { DropdownRef } from "./core/Dropdown";
 import { Dropdown } from "./core/Dropdown";
 import { Icon } from "./core/Icon";
 import { IconButton } from "./core/IconButton";
-import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 
 export function SettingsDropdown() {
   const t = useTranslate();
-  const exportData = useExportData();
   const dropdownRef = useRef<DropdownRef>(null);
   const checkForUpdates = useCheckForUpdates();
   const { check } = useLicense();
@@ -35,7 +31,8 @@ export function SettingsDropdown() {
           label: t("settings.menu.keyboardShortcuts"),
           hotKeyAction: "hotkeys.showHelp",
           leftSlot: <Icon icon="keyboard" />,
-          onSelect: () => {
+          onSelect: async () => {
+            const { KeyboardShortcutsDialog } = await import("./KeyboardShortcutsDialog");
             showDialog({
               id: "hotkey",
               title: t("settings.menu.keyboardShortcuts"),
@@ -48,12 +45,18 @@ export function SettingsDropdown() {
         {
           label: t("settings.menu.importData"),
           leftSlot: <Icon icon="folder_input" />,
-          onSelect: () => importData.mutate(),
+          onSelect: async () => {
+            const { importData } = await import("../lib/importData");
+            importData.mutate();
+          },
         },
         {
           label: t("settings.menu.exportData"),
           leftSlot: <Icon icon="folder_output" />,
-          onSelect: () => exportData.mutate(),
+          onSelect: async () => {
+            const { exportData } = await import("../hooks/useExportData");
+            exportData.mutate();
+          },
         },
         { type: "separator", label: `Yakumo API v${appInfo.version}` },
         {
