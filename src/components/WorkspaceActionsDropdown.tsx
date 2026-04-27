@@ -1,5 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getModel, settingsAtom, workspacesAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
@@ -18,14 +16,12 @@ import { useWorkspaceActions } from "../hooks/useWorkspaceActions";
 import { showDialog } from "../lib/dialog";
 import { jotaiStore } from "../lib/jotai";
 import { revealInFinderText } from "../lib/reveal";
-import { CloneGitRepositoryDialog } from "./CloneGitRepositoryDialog";
 import type { ButtonProps } from "./core/Button";
 import { Button } from "./core/Button";
 import type { DropdownItem } from "./core/Dropdown";
 import { Icon } from "./core/Icon";
 import type { RadioDropdownItem } from "./core/RadioDropdown";
 import { RadioDropdown } from "./core/RadioDropdown";
-import { SwitchWorkspaceDialog } from "./SwitchWorkspaceDialog";
 
 type Props = Pick<ButtonProps, "className" | "justify" | "forDropdown" | "leftSlot">;
 
@@ -40,7 +36,8 @@ export const WorkspaceActionsDropdown = memo(function WorkspaceActionsDropdown({
   const { mutate: deleteSendHistory } = useDeleteSendHistory();
   const workspaceActions = useWorkspaceActions();
 
-  const openCloneGitRepositoryDialog = useCallback(() => {
+  const openCloneGitRepositoryDialog = useCallback(async () => {
+    const { CloneGitRepositoryDialog } = await import("./CloneGitRepositoryDialog");
     showDialog({
       id: "clone-git-repository",
       size: "md",
@@ -75,6 +72,7 @@ export const WorkspaceActionsDropdown = memo(function WorkspaceActionsDropdown({
             label: "Open Folder",
             leftSlot: <Icon icon="folder_open" />,
             onSelect: async () => {
+              const { open } = await import("@tauri-apps/plugin-dialog");
               const dir = await open({
                 title: "Select Workspace Directory",
                 directory: true,
@@ -114,6 +112,7 @@ export const WorkspaceActionsDropdown = memo(function WorkspaceActionsDropdown({
         leftSlot: <Icon icon="folder_symlink" />,
         onSelect: async () => {
           if (workspaceMeta?.settingSyncDir == null) return;
+          const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
           await revealItemInDir(workspaceMeta.settingSyncDir);
         },
       },
@@ -156,6 +155,7 @@ export const WorkspaceActionsDropdown = memo(function WorkspaceActionsDropdown({
     const workspace = getModel("workspace", workspaceId);
     if (workspace == null) return;
 
+    const { SwitchWorkspaceDialog } = await import("./SwitchWorkspaceDialog");
     showDialog({
       id: "switch-workspace",
       size: "sm",
