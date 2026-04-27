@@ -5,7 +5,7 @@ import { closeWebsocket, connectWebsocket, sendWebsocket } from "@yakumo-interna
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useRef } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef } from "react";
 import { getActiveCookieJar } from "../hooks/useActiveCookieJar";
 import { getActiveEnvironment } from "../hooks/useActiveEnvironment";
 import { activeRequestIdAtom } from "../hooks/useActiveRequestId";
@@ -31,11 +31,20 @@ import type { Pair } from "./core/PairEditor";
 import { PlainInput } from "./core/PlainInput";
 import type { TabItem, TabsRef } from "./core/Tabs/Tabs";
 import { setActiveTab, TabContent, Tabs } from "./core/Tabs/Tabs";
-import { HeadersEditor } from "./HeadersEditor";
-import { HttpAuthenticationEditor } from "./HttpAuthenticationEditor";
-import { MarkdownEditor } from "./MarkdownEditor";
 import { UrlBar } from "./UrlBar";
-import { UrlParametersEditor } from "./UrlParameterEditor";
+
+const HeadersEditor = lazy(() =>
+  import("./HeadersEditor").then((m) => ({ default: m.HeadersEditor })),
+);
+const HttpAuthenticationEditor = lazy(() =>
+  import("./HttpAuthenticationEditor").then((m) => ({ default: m.HttpAuthenticationEditor })),
+);
+const MarkdownEditor = lazy(() =>
+  import("./MarkdownEditor").then((m) => ({ default: m.MarkdownEditor })),
+);
+const UrlParametersEditor = lazy(() =>
+  import("./UrlParameterEditor").then((m) => ({ default: m.UrlParametersEditor })),
+);
 
 interface Props {
   style: CSSProperties;
@@ -232,26 +241,33 @@ export function WebsocketRequestPane({ style, fullHeight, className, activeReque
             tabListClassName="mt-1 !mb-1.5"
             storageKey={TABS_STORAGE_KEY}
             activeTabKey={activeRequestId}
+            renderActiveContentOnly
           >
             <TabContent value={TAB_AUTH}>
-              <HttpAuthenticationEditor model={activeRequest} />
+              <Suspense fallback={null}>
+                <HttpAuthenticationEditor model={activeRequest} />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_HEADERS}>
-              <HeadersEditor
-                inheritedHeaders={inheritedHeaders}
-                forceUpdateKey={forceUpdateKey}
-                headers={activeRequest.headers}
-                stateKey={`headers.${activeRequest.id}`}
-                onChange={(headers) => patchModel(activeRequest, { headers })}
-              />
+              <Suspense fallback={null}>
+                <HeadersEditor
+                  inheritedHeaders={inheritedHeaders}
+                  forceUpdateKey={forceUpdateKey}
+                  headers={activeRequest.headers}
+                  stateKey={`headers.${activeRequest.id}`}
+                  onChange={(headers) => patchModel(activeRequest, { headers })}
+                />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_PARAMS}>
-              <UrlParametersEditor
-                stateKey={`params.${activeRequest.id}`}
-                forceUpdateKey={forceUpdateKey + urlParametersKey}
-                pairs={urlParameterPairs}
-                onChange={(urlParameters) => patchModel(activeRequest, { urlParameters })}
-              />
+              <Suspense fallback={null}>
+                <UrlParametersEditor
+                  stateKey={`params.${activeRequest.id}`}
+                  forceUpdateKey={forceUpdateKey + urlParametersKey}
+                  pairs={urlParameterPairs}
+                  onChange={(urlParameters) => patchModel(activeRequest, { urlParameters })}
+                />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_MESSAGE}>
               <Editor
@@ -278,14 +294,16 @@ export function WebsocketRequestPane({ style, fullHeight, className, activeReque
                   placeholder={resolvedModelName(activeRequest)}
                   onChange={(name) => patchModel(activeRequest, { name })}
                 />
-                <MarkdownEditor
-                  name="request-description"
-                  placeholder="Request description"
-                  defaultValue={activeRequest.description}
-                  stateKey={`description.${activeRequest.id}`}
-                  forceUpdateKey={forceUpdateKey}
-                  onChange={(description) => patchModel(activeRequest, { description })}
-                />
+                <Suspense fallback={null}>
+                  <MarkdownEditor
+                    name="request-description"
+                    placeholder="Request description"
+                    defaultValue={activeRequest.description}
+                    stateKey={`description.${activeRequest.id}`}
+                    forceUpdateKey={forceUpdateKey}
+                    onChange={(description) => patchModel(activeRequest, { description })}
+                  />
+                </Suspense>
               </div>
             </TabContent>
           </Tabs>

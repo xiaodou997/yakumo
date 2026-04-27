@@ -37,8 +37,6 @@ import {
 import { prepareImportQuerystring } from "../lib/prepareImportQuerystring";
 import { resolvedModelName } from "../lib/resolvedModelName";
 import { showToast } from "../lib/toast";
-import { BinaryFileEditor } from "./BinaryFileEditor";
-import { ConfirmLargeRequestBody } from "./ConfirmLargeRequestBody";
 import { CountBadge } from "./core/CountBadge";
 import type { GenericCompletionConfig } from "./core/Editor/genericCompletion";
 import { Editor } from "./core/Editor/LazyEditor";
@@ -48,18 +46,38 @@ import { PlainInput } from "./core/PlainInput";
 import type { TabItem, TabsRef } from "./core/Tabs/Tabs";
 import { setActiveTab, TabContent, Tabs } from "./core/Tabs/Tabs";
 import { EmptyStateText } from "./EmptyStateText";
-import { FormMultipartEditor } from "./FormMultipartEditor";
-import { FormUrlencodedEditor } from "./FormUrlencodedEditor";
-import { HeadersEditor } from "./HeadersEditor";
-import { HttpAuthenticationEditor } from "./HttpAuthenticationEditor";
-import { JsonBodyEditor } from "./JsonBodyEditor";
-import { MarkdownEditor } from "./MarkdownEditor";
 import { RequestMethodDropdown } from "./RequestMethodDropdown";
 import { UrlBar } from "./UrlBar";
-import { UrlParametersEditor } from "./UrlParameterEditor";
 
+const BinaryFileEditor = lazy(() =>
+  import("./BinaryFileEditor").then((m) => ({ default: m.BinaryFileEditor })),
+);
+const ConfirmLargeRequestBody = lazy(() =>
+  import("./ConfirmLargeRequestBody").then((m) => ({ default: m.ConfirmLargeRequestBody })),
+);
+const FormMultipartEditor = lazy(() =>
+  import("./FormMultipartEditor").then((m) => ({ default: m.FormMultipartEditor })),
+);
+const FormUrlencodedEditor = lazy(() =>
+  import("./FormUrlencodedEditor").then((m) => ({ default: m.FormUrlencodedEditor })),
+);
 const GraphQLEditor = lazy(() =>
   import("./graphql/GraphQLEditor").then((m) => ({ default: m.GraphQLEditor })),
+);
+const HeadersEditor = lazy(() =>
+  import("./HeadersEditor").then((m) => ({ default: m.HeadersEditor })),
+);
+const HttpAuthenticationEditor = lazy(() =>
+  import("./HttpAuthenticationEditor").then((m) => ({ default: m.HttpAuthenticationEditor })),
+);
+const JsonBodyEditor = lazy(() =>
+  import("./JsonBodyEditor").then((m) => ({ default: m.JsonBodyEditor })),
+);
+const MarkdownEditor = lazy(() =>
+  import("./MarkdownEditor").then((m) => ({ default: m.MarkdownEditor })),
+);
+const UrlParametersEditor = lazy(() =>
+  import("./UrlParameterEditor").then((m) => ({ default: m.UrlParametersEditor })),
 );
 
 interface Props {
@@ -409,94 +427,101 @@ export function HttpRequestPane({
             tabListClassName="mt-1 -mb-1.5"
             storageKey={TABS_STORAGE_KEY}
             activeTabKey={activeRequestId}
+            renderActiveContentOnly
           >
             <TabContent value={TAB_AUTH}>
-              <HttpAuthenticationEditor model={activeRequest} />
+              <Suspense fallback={null}>
+                <HttpAuthenticationEditor model={activeRequest} />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_HEADERS}>
-              <HeadersEditor
-                inheritedHeaders={inheritedHeaders}
-                forceUpdateKey={`${forceUpdateHeaderEditorKey}::${forceUpdateKey}`}
-                headers={activeRequest.headers}
-                stateKey={`headers.${activeRequest.id}`}
-                onChange={(headers) => patchModel(activeRequest, { headers })}
-              />
+              <Suspense fallback={null}>
+                <HeadersEditor
+                  inheritedHeaders={inheritedHeaders}
+                  forceUpdateKey={`${forceUpdateHeaderEditorKey}::${forceUpdateKey}`}
+                  headers={activeRequest.headers}
+                  stateKey={`headers.${activeRequest.id}`}
+                  onChange={(headers) => patchModel(activeRequest, { headers })}
+                />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_PARAMS}>
-              <UrlParametersEditor
-                stateKey={`params.${activeRequest.id}`}
-                forceUpdateKey={forceUpdateKey + urlParametersKey}
-                pairs={urlParameterPairs}
-                onChange={(urlParameters) =>
-                  patchModel(activeRequest, { urlParameters })
-                }
-              />
+              <Suspense fallback={null}>
+                <UrlParametersEditor
+                  stateKey={`params.${activeRequest.id}`}
+                  forceUpdateKey={forceUpdateKey + urlParametersKey}
+                  pairs={urlParameterPairs}
+                  onChange={(urlParameters) =>
+                    patchModel(activeRequest, { urlParameters })
+                  }
+                />
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_BODY}>
-              <ConfirmLargeRequestBody request={activeRequest}>
-                {activeRequest.bodyType === BODY_TYPE_JSON ? (
-                  <JsonBodyEditor
-                    forceUpdateKey={forceUpdateKey}
-                    heightMode={fullHeight ? "full" : "auto"}
-                    request={activeRequest}
-                  />
-                ) : activeRequest.bodyType === BODY_TYPE_XML ? (
-                  <Editor
-                    forceUpdateKey={forceUpdateKey}
-                    autocompleteFunctions
-                    autocompleteVariables
-                    placeholder="..."
-                    heightMode={fullHeight ? "full" : "auto"}
-                    defaultValue={`${activeRequest.body?.text ?? ""}`}
-                    language="xml"
-                    onChange={handleBodyTextChange}
-                    stateKey={`xml.${activeRequest.id}`}
-                  />
-                ) : activeRequest.bodyType === BODY_TYPE_GRAPHQL ? (
-                  <Suspense>
+              <Suspense fallback={null}>
+                <ConfirmLargeRequestBody request={activeRequest}>
+                  {activeRequest.bodyType === BODY_TYPE_JSON ? (
+                    <JsonBodyEditor
+                      forceUpdateKey={forceUpdateKey}
+                      heightMode={fullHeight ? "full" : "auto"}
+                      request={activeRequest}
+                    />
+                  ) : activeRequest.bodyType === BODY_TYPE_XML ? (
+                    <Editor
+                      forceUpdateKey={forceUpdateKey}
+                      autocompleteFunctions
+                      autocompleteVariables
+                      placeholder="..."
+                      heightMode={fullHeight ? "full" : "auto"}
+                      defaultValue={`${activeRequest.body?.text ?? ""}`}
+                      language="xml"
+                      onChange={handleBodyTextChange}
+                      stateKey={`xml.${activeRequest.id}`}
+                    />
+                  ) : activeRequest.bodyType === BODY_TYPE_GRAPHQL ? (
                     <GraphQLEditor
                       forceUpdateKey={forceUpdateKey}
                       baseRequest={activeRequest}
                       request={activeRequest}
                       onChange={handleBodyChange}
                     />
-                  </Suspense>
-                ) : activeRequest.bodyType === BODY_TYPE_FORM_URLENCODED ? (
-                  <FormUrlencodedEditor
-                    forceUpdateKey={forceUpdateKey}
-                    request={activeRequest}
-                    onChange={handleBodyChange}
-                  />
-                ) : activeRequest.bodyType === BODY_TYPE_FORM_MULTIPART ? (
-                  <FormMultipartEditor
-                    forceUpdateKey={forceUpdateKey}
-                    request={activeRequest}
-                    onChange={handleBodyChange}
-                  />
-                ) : activeRequest.bodyType === BODY_TYPE_BINARY ? (
-                  <BinaryFileEditor
-                    requestId={activeRequest.id}
-                    contentType={contentType}
-                    body={activeRequest.body}
-                    onChange={(body) => patchModel(activeRequest, { body })}
-                    onChangeContentType={handleContentTypeChange}
-                  />
-                ) : typeof activeRequest.bodyType === "string" ? (
-                  <Editor
-                    forceUpdateKey={forceUpdateKey}
-                    autocompleteFunctions
-                    autocompleteVariables
-                    language={languageFromContentType(contentType)}
-                    placeholder="..."
-                    heightMode={fullHeight ? "full" : "auto"}
-                    defaultValue={`${activeRequest.body?.text ?? ""}`}
-                    onChange={handleBodyTextChange}
-                    stateKey={`other.${activeRequest.id}`}
-                  />
-                ) : (
-                  <EmptyStateText>{t("request.emptyBody")}</EmptyStateText>
-                )}
-              </ConfirmLargeRequestBody>
+                  ) : activeRequest.bodyType === BODY_TYPE_FORM_URLENCODED ? (
+                    <FormUrlencodedEditor
+                      forceUpdateKey={forceUpdateKey}
+                      request={activeRequest}
+                      onChange={handleBodyChange}
+                    />
+                  ) : activeRequest.bodyType === BODY_TYPE_FORM_MULTIPART ? (
+                    <FormMultipartEditor
+                      forceUpdateKey={forceUpdateKey}
+                      request={activeRequest}
+                      onChange={handleBodyChange}
+                    />
+                  ) : activeRequest.bodyType === BODY_TYPE_BINARY ? (
+                    <BinaryFileEditor
+                      requestId={activeRequest.id}
+                      contentType={contentType}
+                      body={activeRequest.body}
+                      onChange={(body) => patchModel(activeRequest, { body })}
+                      onChangeContentType={handleContentTypeChange}
+                    />
+                  ) : typeof activeRequest.bodyType === "string" ? (
+                    <Editor
+                      forceUpdateKey={forceUpdateKey}
+                      autocompleteFunctions
+                      autocompleteVariables
+                      language={languageFromContentType(contentType)}
+                      placeholder="..."
+                      heightMode={fullHeight ? "full" : "auto"}
+                      defaultValue={`${activeRequest.body?.text ?? ""}`}
+                      onChange={handleBodyTextChange}
+                      stateKey={`other.${activeRequest.id}`}
+                    />
+                  ) : (
+                    <EmptyStateText>{t("request.emptyBody")}</EmptyStateText>
+                  )}
+                </ConfirmLargeRequestBody>
+              </Suspense>
             </TabContent>
             <TabContent value={TAB_DESCRIPTION}>
               <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full">
@@ -510,16 +535,18 @@ export function HttpRequestPane({
                   placeholder={resolvedModelName(activeRequest)}
                   onChange={(name) => patchModel(activeRequest, { name })}
                 />
-                <MarkdownEditor
-                  name="request-description"
-                  placeholder={t("request.requestDescription")}
-                  defaultValue={activeRequest.description}
-                  stateKey={`description.${activeRequest.id}`}
-                  forceUpdateKey={updateKey}
-                  onChange={(description) =>
-                    patchModel(activeRequest, { description })
-                  }
-                />
+                <Suspense fallback={null}>
+                  <MarkdownEditor
+                    name="request-description"
+                    placeholder={t("request.requestDescription")}
+                    defaultValue={activeRequest.description}
+                    stateKey={`description.${activeRequest.id}`}
+                    forceUpdateKey={updateKey}
+                    onChange={(description) =>
+                      patchModel(activeRequest, { description })
+                    }
+                  />
+                </Suspense>
               </div>
             </TabContent>
           </Tabs>
