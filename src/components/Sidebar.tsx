@@ -1,5 +1,3 @@
-import type { Extension } from "@codemirror/state";
-import { Compartment } from "@codemirror/state";
 import { debounce } from "../lib/debounce";
 import type {
   AnyModel,
@@ -24,7 +22,17 @@ import {
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type ChangeEvent,
+  lazy,
+  memo,
+  type KeyboardEvent as ReactKeyboardEvent,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { activeFolderIdAtom } from "../hooks/useActiveFolderId";
 import { activeRequestIdAtom } from "../hooks/useActiveRequestId";
 import {
@@ -43,16 +51,12 @@ import { isSidebarFocused } from "../lib/scopes";
 import { navigateToRequestOrFolderOrWorkspace } from "../lib/setWorkspaceSearchParams";
 import type { ContextMenuProps, DropdownItem } from "./core/Dropdown";
 import { Dropdown } from "./core/Dropdown";
-import type { FieldDef } from "./core/Editor/filter/extension";
-import { filter } from "./core/Editor/filter/extension";
 import { evaluate, parseQuery } from "./core/Editor/filter/query";
 import { HttpMethodTag } from "./core/HttpMethodTag";
 import { HttpStatusTag } from "./core/HttpStatusTag";
 import { Icon } from "./core/Icon";
 import { IconButton } from "./core/IconButton";
 import { InlineCode } from "./core/InlineCode";
-import type { InputHandle } from "./core/Input";
-import { Input } from "./core/Input";
 import { LoadingIcon } from "./core/LoadingIcon";
 import {
   collapsedFamily,
@@ -96,13 +100,10 @@ function Sidebar({ className }: { className?: string }) {
   const activeWorkspaceId = useAtomValue(activeWorkspaceAtom)?.id;
   const treeId = `tree.${activeWorkspaceId ?? "unknown"}`;
   const filterText = useAtomValue(sidebarFilterAtom);
-  const [tree, allFields] = useAtomValue(sidebarTreeAtom) ?? [];
+  const tree = useAtomValue(sidebarTreeAtom);
   const wrapperRef = useRef<HTMLElement>(null);
   const treeRef = useRef<TreeHandle>(null);
-  const filterRef = useRef<InputHandle>(null);
-  const setFilterRef = useCallback((h: InputHandle | null) => {
-    filterRef.current = h;
-  }, []);
+  const filterRef = useRef<HTMLInputElement>(null);
   const allHidden = useMemo(() => {
     if (tree?.children?.length === 0) return false;
     if (filterText) return tree?.children?.every((c) => c.hidden);
@@ -224,7 +225,7 @@ function Sidebar({ className }: { className?: string }) {
   }, []);
 
   const handleFilterKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (e: ReactKeyboardEvent<HTMLInputElement>) => {
       e.stopPropagation(); // Don't trigger tree navigation hotkeys
       if (e.key === "Escape") {
         e.preventDefault();
@@ -234,12 +235,19 @@ function Sidebar({ className }: { className?: string }) {
     [clearFilterText],
   );
 
-  const handleFilterChange = useMemo(
+  const updateFilterText = useMemo(
     () =>
       debounce((text: string) => {
         jotaiStore.set(sidebarFilterAtom, (prev) => ({ ...prev, text }));
       }, 0),
     [],
+  );
+
+  const handleFilterChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      updateFilterText(e.currentTarget.value);
+    },
+    [updateFilterText],
   );
 
   const actions = useMemo(() => {
@@ -499,25 +507,6 @@ function Sidebar({ className }: { className?: string }) {
     [actions],
   );
 
-  // Use a language compartment for the filter so we can reconfigure it when the autocompletion changes
-  const filterLanguageCompartmentRef = useRef(new Compartment());
-  const filterCompartmentMountExtRef = useRef<Extension | null>(null);
-  if (filterCompartmentMountExtRef.current == null) {
-    filterCompartmentMountExtRef.current =
-      filterLanguageCompartmentRef.current.of(
-        filter({ fields: allFields ?? [] }),
-      );
-  }
-
-  useEffect(() => {
-    const view = filterRef.current;
-    if (!view) return;
-    const ext = filter({ fields: allFields ?? [] });
-    view.dispatch({
-      effects: filterLanguageCompartmentRef.current.reconfigure(ext),
-    });
-  }, [allFields]);
-
   if (tree == null || hidden) {
     return null;
   }
@@ -534,33 +523,27 @@ function Sidebar({ className }: { className?: string }) {
       <div className="w-full pl-3 pr-0.5 pt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center">
         {(tree.children?.length ?? 0) > 0 && (
           <>
-            <Input
-              hideLabel
-              setRef={setFilterRef}
-              size="sm"
-              label="filter"
-              language={null} // Explicitly disable
-              placeholder={t("sidebar.search")}
-              onChange={handleFilterChange}
-              defaultValue={filterText.text}
-              forceUpdateKey={filterText.key}
-              onKeyDown={handleFilterKeyDown}
-              stateKey={null}
-              wrapLines={false}
-              extraExtensions={
-                filterCompartmentMountExtRef.current ?? undefined
-              }
-              rightSlot={
-                filterText.text && (
-                  <IconButton
-                    className="!bg-transparent !h-auto min-h-full opacity-50 hover:opacity-100 -mr-1"
-                    icon="x"
-                    title={t("sidebar.clearFilter")}
-                    onClick={clearFilterText}
-                  />
-                )
-              }
-            />
+            <div className="grid h-sm min-h-sm min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center rounded-md border border-border bg-surface text-sm focus-within:ring-1 focus-within:ring-focus">
+              <input
+                key={filterText.key}
+                ref={filterRef}
+                aria-label="filter"
+                className="min-w-0 bg-transparent px-2 text-text outline-none placeholder:text-text-subtle"
+                defaultValue={filterText.text}
+                placeholder={t("sidebar.search")}
+                onChange={handleFilterChange}
+                onKeyDown={handleFilterKeyDown}
+              />
+              {filterText.text && (
+                <IconButton
+                  size="xs"
+                  className="!bg-transparent opacity-50 hover:opacity-100"
+                  icon="x"
+                  title={t("sidebar.clearFilter")}
+                  onClick={clearFilterText}
+                />
+              )}
+            </div>
             <Dropdown
               items={[
                 {
@@ -709,100 +692,83 @@ const sidebarFilterAtom = atom<{ text: string; key: string }>({
   key: "",
 });
 
-const sidebarTreeAtom = atom<[TreeNode<SidebarModel>, FieldDef[]] | null>(
-  (get) => {
-    const allModels = get(memoAllPotentialChildrenAtom);
-    const activeWorkspace = get(activeWorkspaceAtom);
-    const filter = get(sidebarFilterAtom);
+const sidebarTreeAtom = atom<TreeNode<SidebarModel> | null>((get) => {
+  const allModels = get(memoAllPotentialChildrenAtom);
+  const activeWorkspace = get(activeWorkspaceAtom);
+  const filter = get(sidebarFilterAtom);
 
-    const childrenMap: Record<string, Exclude<SidebarModel, Workspace>[]> = {};
-    for (const item of allModels) {
-      if ("folderId" in item && item.folderId == null) {
-        childrenMap[item.workspaceId] = childrenMap[item.workspaceId] ?? [];
-        childrenMap[item.workspaceId]?.push(item);
-      } else if ("folderId" in item && item.folderId != null) {
-        childrenMap[item.folderId] = childrenMap[item.folderId] ?? [];
-        childrenMap[item.folderId]?.push(item);
-      }
+  const childrenMap: Record<string, Exclude<SidebarModel, Workspace>[]> = {};
+  for (const item of allModels) {
+    if ("folderId" in item && item.folderId == null) {
+      childrenMap[item.workspaceId] = childrenMap[item.workspaceId] ?? [];
+      childrenMap[item.workspaceId]?.push(item);
+    } else if ("folderId" in item && item.folderId != null) {
+      childrenMap[item.folderId] = childrenMap[item.folderId] ?? [];
+      childrenMap[item.folderId]?.push(item);
+    }
+  }
+
+  if (activeWorkspace == null) {
+    return null;
+  }
+
+  const queryAst = parseQuery(filter.text);
+
+  // returns true if this node OR any child matches the filter
+  const build = (node: TreeNode<SidebarModel>, depth: number): boolean => {
+    const childItems = childrenMap[node.item.id] ?? [];
+    let matchesSelf = true;
+    const fields = getItemFields(node);
+    const model = node.item.model;
+    const isLeafNode = !(model === "folder" || model === "workspace");
+
+    if (queryAst != null) {
+      matchesSelf =
+        isLeafNode && evaluate(queryAst, { text: getItemText(node.item), fields });
     }
 
-    if (activeWorkspace == null) {
-      return null;
-    }
+    let matchesChild = false;
 
-    const queryAst = parseQuery(filter.text);
+    // Recurse to children
+    node.children = !isLeafNode ? [] : undefined;
 
-    // returns true if this node OR any child matches the filter
-    const allFields: Record<string, Set<string>> = {};
-    const build = (node: TreeNode<SidebarModel>, depth: number): boolean => {
-      const childItems = childrenMap[node.item.id] ?? [];
-      let matchesSelf = true;
-      const fields = getItemFields(node);
-      const model = node.item.model;
-      const isLeafNode = !(model === "folder" || model === "workspace");
-
-      for (const [field, value] of Object.entries(fields)) {
-        if (!value) continue;
-        allFields[field] = allFields[field] ?? new Set();
-        allFields[field].add(value);
-      }
-
-      if (queryAst != null) {
-        matchesSelf =
-          isLeafNode &&
-          evaluate(queryAst, { text: getItemText(node.item), fields });
-      }
-
-      let matchesChild = false;
-
-      // Recurse to children
-      node.children = !isLeafNode ? [] : undefined;
-
-      if (node.children != null) {
-        childItems.sort((a, b) => {
-          if (a.sortPriority === b.sortPriority) {
-            return a.updatedAt > b.updatedAt ? 1 : -1;
-          }
-          return a.sortPriority - b.sortPriority;
-        });
-
-        for (const item of childItems) {
-          const childNode = { item, parent: node, depth };
-          const childMatches = build(childNode, depth + 1);
-          if (childMatches) {
-            matchesChild = true;
-          }
-          node.children.push(childNode);
+    if (node.children != null) {
+      childItems.sort((a, b) => {
+        if (a.sortPriority === b.sortPriority) {
+          return a.updatedAt > b.updatedAt ? 1 : -1;
         }
-      }
-
-      // hide node IFF nothing in its subtree matches
-      const anyMatch = matchesSelf || matchesChild;
-      node.hidden = !anyMatch;
-
-      return anyMatch;
-    };
-
-    const root: TreeNode<SidebarModel> = {
-      item: activeWorkspace,
-      parent: null,
-      children: [],
-      depth: 0,
-    };
-
-    // Build tree and mark visibility in one pass
-    build(root, 1);
-
-    const fields: FieldDef[] = [];
-    for (const [name, values] of Object.entries(allFields)) {
-      fields.push({
-        name,
-        values: Array.from(values).filter((v) => v.length < 20),
+        return a.sortPriority - b.sortPriority;
       });
+
+      for (const item of childItems) {
+        const childNode = { item, parent: node, depth };
+        const childMatches = build(childNode, depth + 1);
+        if (childMatches) {
+          matchesChild = true;
+        }
+        node.children.push(childNode);
+      }
     }
-    return [root, fields] as const;
-  },
-);
+
+    // hide node IFF nothing in its subtree matches
+    const anyMatch = matchesSelf || matchesChild;
+    node.hidden = !anyMatch;
+
+    return anyMatch;
+  };
+
+  const root: TreeNode<SidebarModel> = {
+    item: activeWorkspace,
+    parent: null,
+    children: [],
+    depth: 0,
+  };
+
+  // Build tree and mark visibility in one pass
+  build(root, 1);
+
+  return root;
+});
 
 function getItemKey(item: SidebarModel) {
   const responses = jotaiStore.get(httpResponsesAtom);
