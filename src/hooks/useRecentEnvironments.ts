@@ -1,7 +1,9 @@
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { getKeyValue, setKeyValue } from "../lib/keyValueStore";
 import { activeEnvironmentAtom } from "./useActiveEnvironment";
+import { activeWorkspaceIdAtom } from "./useActiveWorkspace";
 import { useEnvironmentsBreakdown } from "./useEnvironmentsBreakdown";
 import { useKeyValue } from "./useKeyValue";
 
@@ -10,16 +12,25 @@ const namespace = "global";
 const fallback: string[] = [];
 
 export function useRecentEnvironments() {
-  const { subEnvironments, allEnvironments } = useEnvironmentsBreakdown();
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const { subEnvironments } = useEnvironmentsBreakdown();
   const kv = useKeyValue<string[]>({
-    key: kvKey(allEnvironments[0]?.workspaceId ?? "n/a"),
+    key: kvKey(activeWorkspaceId ?? "n/a"),
     namespace,
     fallback,
   });
 
+  const validEnvironmentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const environment of subEnvironments) {
+      if (environment.workspaceId === activeWorkspaceId) ids.add(environment.id);
+    }
+    return ids;
+  }, [activeWorkspaceId, subEnvironments]);
+
   const onlyValidIds = useMemo(
-    () => kv.value?.filter((id) => subEnvironments.some((e) => e.id === id)) ?? [],
-    [kv.value, subEnvironments],
+    () => kv.value?.filter((id) => validEnvironmentIds.has(id)) ?? [],
+    [kv.value, validEnvironmentIds],
   );
 
   return onlyValidIds;

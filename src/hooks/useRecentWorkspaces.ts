@@ -14,9 +14,14 @@ export function useRecentWorkspaces() {
   const workspaces = useAtomValue(workspacesAtom);
   const { value, isLoading } = useKeyValue<string[]>({ key: kvKey(), namespace, fallback });
 
+  const validWorkspaceIds = useMemo(
+    () => new Set(workspaces.map((workspace) => workspace.id)),
+    [workspaces],
+  );
+
   const onlyValidIds = useMemo(
-    () => value?.filter((id) => workspaces.some((w) => w.id === id)) ?? [],
-    [value, workspaces],
+    () => value?.filter((id) => validWorkspaceIds.has(id)) ?? [],
+    [value, validWorkspaceIds],
   );
 
   if (isLoading) return null;
@@ -43,6 +48,5 @@ async function updateRecentWorkspaces() {
 
   const withoutActiveId = recentIds.filter((id) => id !== activeWorkspaceId);
   const value = [activeWorkspaceId, ...withoutActiveId];
-  console.log("Recent workspaces update", activeWorkspaceId);
   await setKeyValue({ namespace, key, value });
 }

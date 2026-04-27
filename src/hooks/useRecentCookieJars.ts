@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { getKeyValue, setKeyValue } from "../lib/keyValueStore";
 import { activeCookieJarAtom } from "./useActiveCookieJar";
+import { activeWorkspaceIdAtom } from "./useActiveWorkspace";
 import { useKeyValue } from "./useKeyValue";
 
 const kvKey = (workspaceId: string) => `recent_cookie_jars::${workspaceId}`;
@@ -11,16 +12,25 @@ const namespace = "global";
 const fallback: string[] = [];
 
 export function useRecentCookieJars() {
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const cookieJars = useAtomValue(cookieJarsAtom);
   const kv = useKeyValue<string[]>({
-    key: kvKey(cookieJars[0]?.workspaceId ?? "n/a"),
+    key: kvKey(activeWorkspaceId ?? "n/a"),
     namespace,
     fallback,
   });
 
+  const validCookieJarIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const cookieJar of cookieJars) {
+      if (cookieJar.workspaceId === activeWorkspaceId) ids.add(cookieJar.id);
+    }
+    return ids;
+  }, [activeWorkspaceId, cookieJars]);
+
   const onlyValidIds = useMemo(
-    () => kv.value?.filter((id) => cookieJars?.some((e) => e.id === id)) ?? [],
-    [kv.value, cookieJars],
+    () => kv.value?.filter((id) => validCookieJarIds.has(id)) ?? [],
+    [kv.value, validCookieJarIds],
   );
 
   return onlyValidIds;
