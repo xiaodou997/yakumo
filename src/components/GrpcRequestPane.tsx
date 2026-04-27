@@ -1,7 +1,7 @@
 import { type GrpcRequest, type HttpRequestHeader, patchModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useRef } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef } from "react";
 import { useAuthTab } from "../hooks/useAuthTab";
 import { useContainerSize } from "../hooks/useContainerQuery";
 import type { ReflectResponseService } from "../hooks/useGrpc";
@@ -13,16 +13,31 @@ import { Button } from "./core/Button";
 import { CountBadge } from "./core/CountBadge";
 import { Icon } from "./core/Icon";
 import { IconButton } from "./core/IconButton";
+import { LoadingIcon } from "./core/LoadingIcon";
 import { PlainInput } from "./core/PlainInput";
 import { RadioDropdown } from "./core/RadioDropdown";
 import { HStack, VStack } from "./core/Stacks";
 import type { TabItem } from "./core/Tabs/Tabs";
 import { TabContent, Tabs } from "./core/Tabs/Tabs";
-import { GrpcEditor } from "./GrpcEditor";
-import { HeadersEditor } from "./HeadersEditor";
-import { HttpAuthenticationEditor } from "./HttpAuthenticationEditor";
-import { MarkdownEditor } from "./MarkdownEditor";
 import { UrlBar } from "./UrlBar";
+
+const GrpcEditor = lazy(() =>
+  import("./GrpcEditor").then((m) => ({ default: m.GrpcEditor })),
+);
+
+const HeadersEditor = lazy(() =>
+  import("./HeadersEditor").then((m) => ({ default: m.HeadersEditor })),
+);
+
+const HttpAuthenticationEditor = lazy(() =>
+  import("./HttpAuthenticationEditor").then((m) => ({
+    default: m.HttpAuthenticationEditor,
+  })),
+);
+
+const MarkdownEditor = lazy(() =>
+  import("./MarkdownEditor").then((m) => ({ default: m.MarkdownEditor })),
+);
 
 interface Props {
   style?: CSSProperties;
@@ -256,29 +271,36 @@ export function GrpcRequestPane({
         tabListClassName="mt-1 !mb-1.5"
         storageKey="grpc_request_tabs"
         activeTabKey={activeRequest.id}
+        renderActiveContentOnly
       >
         <TabContent value="message">
-          <GrpcEditor
-            onChange={handleChangeMessage}
-            forceUpdateKey={forceUpdateKey}
-            services={services}
-            reflectionError={reflectionError}
-            reflectionLoading={reflectionLoading}
-            request={activeRequest}
-            protoFiles={protoFiles}
-          />
+          <Suspense fallback={<GrpcTabFallback />}>
+            <GrpcEditor
+              onChange={handleChangeMessage}
+              forceUpdateKey={forceUpdateKey}
+              services={services}
+              reflectionError={reflectionError}
+              reflectionLoading={reflectionLoading}
+              request={activeRequest}
+              protoFiles={protoFiles}
+            />
+          </Suspense>
         </TabContent>
         <TabContent value={TAB_AUTH}>
-          <HttpAuthenticationEditor model={activeRequest} />
+          <Suspense fallback={<GrpcTabFallback />}>
+            <HttpAuthenticationEditor model={activeRequest} />
+          </Suspense>
         </TabContent>
         <TabContent value={TAB_METADATA}>
-          <HeadersEditor
-            inheritedHeaders={inheritedHeaders}
-            forceUpdateKey={forceUpdateKey}
-            headers={activeRequest.metadata}
-            stateKey={`headers.${activeRequest.id}`}
-            onChange={handleMetadataChange}
-          />
+          <Suspense fallback={<GrpcTabFallback />}>
+            <HeadersEditor
+              inheritedHeaders={inheritedHeaders}
+              forceUpdateKey={forceUpdateKey}
+              headers={activeRequest.metadata}
+              stateKey={`headers.${activeRequest.id}`}
+              onChange={handleMetadataChange}
+            />
+          </Suspense>
         </TabContent>
         <TabContent value={TAB_DESCRIPTION}>
           <div className="grid grid-rows-[auto_minmax(0,1fr)] h-full">
@@ -292,16 +314,26 @@ export function GrpcRequestPane({
               placeholder={resolvedModelName(activeRequest)}
               onChange={(name) => patchModel(activeRequest, { name })}
             />
-            <MarkdownEditor
-              name="request-description"
-              placeholder="Request description"
-              defaultValue={activeRequest.description}
-              stateKey={`description.${activeRequest.id}`}
-              onChange={handleDescriptionChange}
-            />
+            <Suspense fallback={<GrpcTabFallback />}>
+              <MarkdownEditor
+                name="request-description"
+                placeholder="Request description"
+                defaultValue={activeRequest.description}
+                stateKey={`description.${activeRequest.id}`}
+                onChange={handleDescriptionChange}
+              />
+            </Suspense>
           </div>
         </TabContent>
       </Tabs>
     </VStack>
+  );
+}
+
+function GrpcTabFallback() {
+  return (
+    <div className="h-full w-full grid place-items-center text-text-subtlest">
+      <LoadingIcon />
+    </div>
   );
 }

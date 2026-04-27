@@ -2,7 +2,7 @@ import { patchModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import { useActiveRequest } from "../hooks/useActiveRequest";
 import { useGrpc } from "../hooks/useGrpc";
 import { useGrpcProtoFiles } from "../hooks/useGrpcProtoFiles";
@@ -10,9 +10,16 @@ import { activeGrpcConnectionAtom, useGrpcEvents } from "../hooks/usePinnedGrpcC
 import { workspaceLayoutAtom } from "../lib/atoms";
 import { Banner } from "./core/Banner";
 import { HotkeyList } from "./core/HotkeyList";
+import { LoadingIcon } from "./core/LoadingIcon";
 import { SplitLayout } from "./core/SplitLayout";
-import { GrpcRequestPane } from "./GrpcRequestPane";
-import { GrpcResponsePane } from "./GrpcResponsePane";
+
+const GrpcRequestPane = lazy(() =>
+  import("./GrpcRequestPane").then((m) => ({ default: m.GrpcRequestPane })),
+);
+
+const GrpcResponsePane = lazy(() =>
+  import("./GrpcResponsePane").then((m) => ({ default: m.GrpcResponsePane })),
+);
 
 interface Props {
   style: CSSProperties;
@@ -84,20 +91,22 @@ export function GrpcConnectionLayout({ style }: Props) {
       style={style}
       layout={workspaceLayout}
       firstSlot={({ style }) => (
-        <GrpcRequestPane
-          style={style}
-          activeRequest={activeRequest}
-          protoFiles={protoFiles}
-          methodType={methodType}
-          isStreaming={grpc.isStreaming}
-          onGo={grpc.go.mutate}
-          onCommit={grpc.commit.mutate}
-          onCancel={grpc.cancel.mutate}
-          onSend={grpc.send.mutate}
-          services={services ?? null}
-          reflectionError={grpc.reflect.error as string | undefined}
-          reflectionLoading={grpc.reflect.isFetching}
-        />
+        <Suspense fallback={<GrpcPaneFallback style={style} />}>
+          <GrpcRequestPane
+            style={style}
+            activeRequest={activeRequest}
+            protoFiles={protoFiles}
+            methodType={methodType}
+            isStreaming={grpc.isStreaming}
+            onGo={grpc.go.mutate}
+            onCommit={grpc.commit.mutate}
+            onCancel={grpc.cancel.mutate}
+            onSend={grpc.send.mutate}
+            services={services ?? null}
+            reflectionError={grpc.reflect.error as string | undefined}
+            reflectionLoading={grpc.reflect.isFetching}
+          />
+        </Suspense>
       )}
       secondSlot={({ style }) =>
         !grpc.go.isPending && (
@@ -115,7 +124,9 @@ export function GrpcConnectionLayout({ style }: Props) {
                 {grpc.go.error}
               </Banner>
             ) : grpcEvents.length >= 0 ? (
-              <GrpcResponsePane activeRequest={activeRequest} methodType={methodType} />
+              <Suspense fallback={<GrpcPaneFallback />}>
+                <GrpcResponsePane activeRequest={activeRequest} methodType={methodType} />
+              </Suspense>
             ) : (
               <HotkeyList hotkeys={["request.send", "sidebar.focus", "url_bar.focus"]} />
             )}
@@ -123,5 +134,13 @@ export function GrpcConnectionLayout({ style }: Props) {
         )
       }
     />
+  );
+}
+
+function GrpcPaneFallback({ style }: { style?: CSSProperties }) {
+  return (
+    <div style={style} className="h-full w-full grid place-items-center text-text-subtlest">
+      <LoadingIcon />
+    </div>
   );
 }
