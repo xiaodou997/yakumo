@@ -4,17 +4,43 @@ import { useHttpRequestBody } from "../hooks/useHttpRequestBody";
 import { getMimeTypeFromContentType, languageFromContentType } from "../lib/contentType";
 import { LoadingIcon } from "./core/LoadingIcon";
 import { EmptyStateText } from "./EmptyStateText";
-import { AudioViewer } from "./responseViewers/AudioViewer";
-import { CsvViewer } from "./responseViewers/CsvViewer";
-import { ImageViewer } from "./responseViewers/ImageViewer";
-import { MultipartViewer } from "./responseViewers/MultipartViewer";
-import { SvgViewer } from "./responseViewers/SvgViewer";
-import { TextViewer } from "./responseViewers/TextViewer";
-import { VideoViewer } from "./responseViewers/VideoViewer";
-import { WebPageViewer } from "./responseViewers/WebPageViewer";
+
+const AudioViewer = lazy(() =>
+  import("./responseViewers/AudioViewer").then((m) => ({ default: m.AudioViewer })),
+);
+
+const CsvViewer = lazy(() =>
+  import("./responseViewers/CsvViewer").then((m) => ({ default: m.CsvViewer })),
+);
+
+const ImageViewer = lazy(() =>
+  import("./responseViewers/ImageViewer").then((m) => ({ default: m.ImageViewer })),
+);
+
+const MultipartViewer = lazy(() =>
+  import("./responseViewers/MultipartViewer").then((m) => ({
+    default: m.MultipartViewer,
+  })),
+);
 
 const PdfViewer = lazy(() =>
   import("./responseViewers/PdfViewer").then((m) => ({ default: m.PdfViewer })),
+);
+
+const SvgViewer = lazy(() =>
+  import("./responseViewers/SvgViewer").then((m) => ({ default: m.SvgViewer })),
+);
+
+const TextViewer = lazy(() =>
+  import("./responseViewers/TextViewer").then((m) => ({ default: m.TextViewer })),
+);
+
+const VideoViewer = lazy(() =>
+  import("./responseViewers/VideoViewer").then((m) => ({ default: m.VideoViewer })),
+);
+
+const WebPageViewer = lazy(() =>
+  import("./responseViewers/WebPageViewer").then((m) => ({ default: m.WebPageViewer })),
 );
 
 interface Props {
@@ -22,7 +48,11 @@ interface Props {
 }
 
 export function RequestBodyViewer({ response }: Props) {
-  return <RequestBodyViewerInner key={response.id} response={response} />;
+  return (
+    <Suspense fallback={<LoadingIcon />}>
+      <RequestBodyViewerInner key={response.id} response={response} />
+    </Suspense>
+  );
 }
 
 function RequestBodyViewerInner({ response }: Props) {
@@ -89,11 +119,7 @@ function RequestBodyViewerInner({ response }: Props) {
   }
 
   if (mimeType?.match(/pdf/i)) {
-    return (
-      <Suspense fallback={<LoadingIcon />}>
-        <PdfViewer data={body} />
-      </Suspense>
-    );
+    return <PdfViewer data={body} />;
   }
 
   return (
