@@ -6,7 +6,6 @@ import type {
   Workspace,
 } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
-import * as m from "motion/react-m";
 import { lazy, Suspense } from "react";
 import { activeFolderAtom } from "../hooks/useActiveFolder";
 import { activeRequestAtom } from "../hooks/useActiveRequest";
@@ -61,18 +60,12 @@ export function WorkspaceBodyContent({
 }) {
   if (activeWorkspace == null) {
     return (
-      <m.div
-        className="m-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        // Delay the entering because the workspaces might load after a slight delay
-        transition={{ delay: 0.5 }}
-      >
+      <div className="m-auto">
         <Banner color="warning" className="max-w-[30rem]">
           The active workspace was not found. Select a workspace from the header menu or report this
           bug to <FeedbackLink />
         </Banner>
-      </m.div>
+      </div>
     );
   }
 

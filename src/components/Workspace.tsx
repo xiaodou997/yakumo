@@ -1,7 +1,6 @@
 import { workspacesAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
-import * as m from "motion/react-m";
 import type { CSSProperties } from "react";
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -126,9 +125,7 @@ export function Workspace() {
           onClose={() => setFloatingSidebarHidden(true)}
           zIndex={20}
         >
-          <m.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+          <div
             className={classNames(
               "x-theme-sidebar",
               "absolute top-0 left-0 bottom-0 bg-surface border-r border-border-subtle w-[20rem]",
@@ -143,7 +140,7 @@ export function Workspace() {
                 <Sidebar />
               </Suspense>
             </ErrorBoundary>
-          </m.div>
+          </div>
         </Overlay>
       ) : (
         <>

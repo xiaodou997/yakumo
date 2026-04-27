@@ -1,6 +1,5 @@
 import classNames from "classnames";
 import { atom } from "jotai";
-import * as m from "motion/react-m";
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -696,7 +695,7 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
     };
 
     const menuContent = (
-      <m.div
+      <div
         ref={menuRef}
         tabIndex={0}
         onKeyDown={handleMenuKeyDown}
@@ -706,8 +705,6 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
           e.stopPropagation();
           e.preventDefault();
         }}
-        initial={{ opacity: 0, y: (styles.upsideDown ? 1 : -1) * 5, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
         role="menu"
         aria-orientation="vertical"
         dir="ltr"
@@ -806,7 +803,7 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
             />
           </div>
         )}
-      </m.div>
+      </div>
     );
 
     // Hotkeys must be rendered even when menu is closed (so they work globally)

@@ -1,5 +1,4 @@
 import classNames from "classnames";
-import * as m from "motion/react-m";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { Overlay } from "../Overlay";
@@ -65,9 +64,7 @@ export function Dialog({
           }
         }}
       >
-        <m.div
-          initial={{ top: 5, scale: 0.97 }}
-          animate={{ top: 0, scale: 1 }}
+        <div
           className={classNames(
             className,
             "grid grid-rows-[auto_auto_minmax(0,1fr)]",
@@ -123,7 +120,7 @@ export function Dialog({
               />
             </div>
           )}
-        </m.div>
+        </div>
       </div>
     </Overlay>
   );

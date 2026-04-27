@@ -3,7 +3,6 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { type } from "@tauri-apps/plugin-os";
 import classNames from "classnames";
 import { Provider as JotaiProvider } from "jotai";
-import { LazyMotion, MotionConfig } from "motion/react";
 import { lazy, Suspense } from "react";
 import { GlobalHooks } from "../components/GlobalHooks";
 import RouteError from "../components/RouteError";
@@ -23,24 +22,17 @@ export const Route = createRootRoute({
   errorComponent: RouteError,
 });
 
-const motionFeatures = () =>
-  import("framer-motion").then((mod) => mod.domAnimation);
-
 function RouteComponent() {
   return (
     <JotaiProvider store={jotaiStore}>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
-          <LazyMotion strict features={motionFeatures}>
-            <MotionConfig transition={{ duration: 0.1 }}>
-              <Suspense>
-                <Toasts />
-                <Dialogs />
-              </Suspense>
-              <Layout />
-              <GlobalHooks />
-            </MotionConfig>
-          </LazyMotion>
+          <Suspense>
+            <Toasts />
+            <Dialogs />
+          </Suspense>
+          <Layout />
+          <GlobalHooks />
         </I18nProvider>
       </QueryClientProvider>
     </JotaiProvider>

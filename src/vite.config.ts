@@ -46,10 +46,6 @@ function manualChunks(id: string): string | undefined {
     return "graphql";
   }
 
-  if (packageName === "motion" || packageName === "framer-motion") {
-    return "motion";
-  }
-
   return undefined;
 }
 

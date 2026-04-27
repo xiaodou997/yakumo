@@ -1,5 +1,4 @@
 import { useAtomValue } from "jotai";
-import { AnimatePresence } from "motion/react";
 import type { ReactNode } from "react";
 import { hideToast, toastsAtom } from "../lib/toast";
 import { Toast, type ToastProps } from "./core/Toast";
@@ -19,24 +18,22 @@ export const Toasts = () => {
   return (
     <Portal name="toasts">
       <div className="absolute right-0 bottom-0 z-50">
-        <AnimatePresence>
-          {toasts.map((toast: ToastInstance) => {
-            const { message, uniqueKey, ...props } = toast;
-            return (
-              <ErrorBoundary key={uniqueKey} name={`Toast ${uniqueKey}`}>
-                <Toast
-                  open
-                  {...props}
-                  // We call onClose inside actions.hide instead of passing to toast so that
-                  // it gets called from external close calls as well
-                  onClose={() => hideToast(toast)}
-                >
-                  {message}
-                </Toast>
-              </ErrorBoundary>
-            );
-          })}
-        </AnimatePresence>
+        {toasts.map((toast: ToastInstance) => {
+          const { message, uniqueKey, ...props } = toast;
+          return (
+            <ErrorBoundary key={uniqueKey} name={`Toast ${uniqueKey}`}>
+              <Toast
+                open
+                {...props}
+                // We call onClose inside actions.hide instead of passing to toast so that
+                // it gets called from external close calls as well
+                onClose={() => hideToast(toast)}
+              >
+                {message}
+              </Toast>
+            </ErrorBoundary>
+          );
+        })}
       </div>
     </Portal>
   );

@@ -1,7 +1,7 @@
 import type { ShowToastRequest } from "@yakumo/features";
 import classNames from "classnames";
-import * as m from "motion/react-m";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { useKey } from "react-use";
 import type { IconProps } from "./Icon";
@@ -45,13 +45,7 @@ export function Toast({ children, open, onClose, timeout, action, icon, color }:
   const toastIcon = icon === null ? null : (icon ?? (color && color in ICONS && ICONS[color]));
 
   return (
-    <m.div
-      initial={{ opacity: 0, right: "-10%" }}
-      animate={{ opacity: 100, right: 0 }}
-      exit={{ opacity: 0, right: "-100%" }}
-      transition={{ duration: 0.2 }}
-      className={classNames("bg-surface m-2 rounded-lg")}
-    >
+    <div className={classNames("bg-surface m-2 rounded-lg")}>
       <div
         className={classNames(
           `x-theme-toast x-theme-toast--${color}`,
@@ -79,15 +73,29 @@ export function Toast({ children, open, onClose, timeout, action, icon, color }:
 
         {timeout != null && (
           <div className="w-full absolute bottom-0 left-0 right-0">
-            <m.div
-              className="bg-surface-highlight h-[3px]"
-              initial={{ width: "100%" }}
-              animate={{ width: "0%", opacity: 0.2 }}
-              transition={{ duration: timeout / 1000, ease: "linear" }}
-            />
+            <ToastProgress timeout={timeout} />
           </div>
         )}
       </div>
-    </m.div>
+    </div>
+  );
+}
+
+function ToastProgress({ timeout }: { timeout: number }) {
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setRunning(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <div
+      className="bg-surface-highlight h-[3px] opacity-20"
+      style={{
+        width: running ? "0%" : "100%",
+        transition: `width ${timeout}ms linear`,
+      }}
+    />
   );
 }

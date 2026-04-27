@@ -1,5 +1,4 @@
 import { clear, readText } from "@tauri-apps/plugin-clipboard-manager";
-import * as m from "motion/react-m";
 import { useEffect, useState } from "react";
 import { useImportCurl } from "../hooks/useImportCurl";
 import { useWindowFocus } from "../hooks/useWindowFocus";
@@ -25,11 +24,7 @@ export function ImportCurlButton() {
   }
 
   return (
-    <m.div
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.5 }}
-    >
+    <div>
       <Button
         size="2xs"
         variant="border"
@@ -53,6 +48,6 @@ export function ImportCurlButton() {
       >
         Import Curl
       </Button>
-    </m.div>
+    </div>
   );
 }
