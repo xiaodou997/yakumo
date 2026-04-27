@@ -1,6 +1,4 @@
-import { clear, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { useEffect, useState } from "react";
-import { useImportCurl } from "../hooks/useImportCurl";
 import { useWindowFocus } from "../hooks/useWindowFocus";
 import { Button } from "./core/Button";
 import { Icon } from "./core/Icon";
@@ -9,13 +7,13 @@ export function ImportCurlButton() {
   const focused = useWindowFocus();
   const [clipboardText, setClipboardText] = useState("");
 
-  const importCurl = useImportCurl();
   const [isLoading, setIsLoading] = useState(false);
 
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    readText()
-      .then(setClipboardText)
+    import("@tauri-apps/plugin-clipboard-manager")
+      .then(({ readText }) => readText())
+      .then((text) => setClipboardText(text ?? ""))
       .catch(() => {});
   }, [focused]);
 
@@ -36,6 +34,10 @@ export function ImportCurlButton() {
         onClick={async () => {
           setIsLoading(true);
           try {
+            const [{ importCurl }, { clear }] = await Promise.all([
+              import("../hooks/useImportCurl"),
+              import("@tauri-apps/plugin-clipboard-manager"),
+            ]);
             await importCurl.mutateAsync({ command: clipboardText });
             await clear(); // Clear the clipboard so the button goes away
             setClipboardText("");
