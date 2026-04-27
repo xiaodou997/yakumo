@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useKey, useKeyPressEvent } from "react-use";
+import { useDocumentKey } from "../../../hooks/useDocumentKey";
 import type { HotKeyOptions, HotkeyAction } from "../../../hooks/useHotKey";
 import { useHotKey } from "../../../hooks/useHotKey";
 import { computeSideForDragMove } from "../../../lib/dnd";
@@ -349,30 +349,26 @@ function TreeInner<T extends { id: string }>(
     [handleSelect, selectableItems, treeId],
   );
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowUp" || e.key.toLowerCase() === "k",
     (e) => {
       if (!isTreeFocused()) return;
       e.preventDefault();
       selectPrevItem(e);
     },
-    undefined,
-    [selectableItems, handleSelect],
   );
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowDown" || e.key.toLowerCase() === "j",
     (e) => {
       if (!isTreeFocused()) return;
       e.preventDefault();
       selectNextItem(e);
     },
-    undefined,
-    [selectableItems, handleSelect],
   );
 
   // If the selected item is a collapsed folder, expand it. Otherwise, select next item
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowRight" || e.key === "l",
     (e) => {
       if (!isTreeFocused()) return;
@@ -392,13 +388,11 @@ function TreeInner<T extends { id: string }>(
         selectNextItem(e);
       }
     },
-    undefined,
-    [selectableItems, handleSelect],
   );
 
   // If the selected item is in a folder, select its parent.
   // If the selected item is an expanded folder, collapse it.
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowLeft" || e.key === "h",
     (e) => {
       if (!isTreeFocused()) return;
@@ -418,11 +412,9 @@ function TreeInner<T extends { id: string }>(
         selectParentItem(e);
       }
     },
-    { options: {} },
-    [selectableItems, handleSelect],
   );
 
-  useKeyPressEvent("Escape", async () => {
+  useDocumentKey("Escape", () => {
     if (!treeRef.current?.contains(document.activeElement)) return;
     clearDragState();
     const lastSelectedId = jotaiStore.get(focusIdsFamily(treeId)).lastId;

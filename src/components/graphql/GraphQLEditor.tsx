@@ -2,8 +2,8 @@ import type { HttpRequest } from "@yakumo-internal/models";
 
 import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useLocalStorage } from "react-use";
 import { useIntrospectGraphQL } from "../../hooks/useIntrospectGraphQL";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useStateWithDeps } from "../../hooks/useStateWithDeps";
 import { showDialog } from "../../lib/dialog";
 import { Banner } from "../core/Banner";

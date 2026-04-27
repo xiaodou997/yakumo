@@ -3,7 +3,7 @@ import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { useKey } from "react-use";
+import { useDocumentKey } from "../../hooks/useDocumentKey";
 import type { IconProps } from "./Icon";
 import { Icon } from "./Icon";
 import { IconButton } from "./IconButton";
@@ -32,15 +32,10 @@ const ICONS: Record<NonNullable<ToastProps["color"] | "custom">, IconProps["icon
 };
 
 export function Toast({ children, open, onClose, timeout, action, icon, color }: ToastProps) {
-  useKey(
-    "Escape",
-    () => {
-      if (!open) return;
-      onClose();
-    },
-    {},
-    [open],
-  );
+  useDocumentKey("Escape", () => {
+    if (!open) return;
+    onClose();
+  });
 
   const toastIcon = icon === null ? null : (icon ?? (color && color in ICONS && ICONS[color]));
 

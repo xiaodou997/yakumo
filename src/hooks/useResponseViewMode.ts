@@ -1,4 +1,4 @@
-import { useLocalStorage } from "react-use";
+import { useLocalStorage } from "./useLocalStorage";
 
 const DEFAULT_VIEW_MODE = "pretty";
 

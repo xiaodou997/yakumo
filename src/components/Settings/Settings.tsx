@@ -6,7 +6,7 @@ import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { useKeyPressEvent } from "react-use";
+import { useDocumentKey } from "../../hooks/useDocumentKey";
 import { appInfo } from "../../lib/appInfo";
 import { useTranslate } from "../../lib/i18n";
 import type { MessageKey } from "../../lib/i18n/messages";
@@ -88,7 +88,7 @@ export default function Settings({ hide }: Props) {
 
   // Close settings window on escape
   // TODO: Could this be put in a better place? Eg. in Rust key listener when creating the window
-  useKeyPressEvent("Escape", async () => {
+  useDocumentKey("Escape", async () => {
     if (hide != null) {
       // It's being shown in a dialog, so close the dialog
       hide();

@@ -1,7 +1,6 @@
 import classNames from "classnames";
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
-import { createGlobalState } from "react-use";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useFormatText } from "../../hooks/useFormatText";
 import type { EditorProps } from "../core/Editor/Editor";
@@ -11,6 +10,8 @@ import { IconButton } from "../core/IconButton";
 import { Input } from "../core/Input";
 
 const extraExtensions = [hyperlink];
+let filterTextState: Record<string, string | null> = {};
+const filterTextListeners = new Set<() => void>();
 
 interface Props {
   text: string;
@@ -25,7 +26,34 @@ interface Props {
   };
 }
 
-const useFilterText = createGlobalState<Record<string, string | null>>({});
+function useFilterText() {
+  const [state, setState] = useState(filterTextState);
+
+  useEffect(() => {
+    const listener = () => setState(filterTextState);
+    filterTextListeners.add(listener);
+    return () => {
+      filterTextListeners.delete(listener);
+    };
+  }, []);
+
+  const setFilterTextState = useCallback(
+    (
+      value:
+        | Record<string, string | null>
+        | ((currentValue: Record<string, string | null>) => Record<string, string | null>),
+    ) => {
+      filterTextState =
+        typeof value === "function" ? value(filterTextState) : value;
+      for (const listener of filterTextListeners) {
+        listener();
+      }
+    },
+    [],
+  );
+
+  return [state, setFilterTextState] as const;
+}
 
 export function TextViewer({ language, text, stateKey, pretty, className, onFilter }: Props) {
   const [filterTextMap, setFilterTextMap] = useFilterText();

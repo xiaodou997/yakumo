@@ -1,6 +1,6 @@
 import type { Virtualizer } from "@tanstack/react-virtual";
 import { useCallback } from "react";
-import { useKey } from "react-use";
+import { useDocumentKey } from "./useDocumentKey";
 
 interface UseEventViewerKeyboardProps {
   totalCount: number;
@@ -39,47 +39,39 @@ export function useEventViewerKeyboard({
     virtualizer?.scrollToIndex(newIndex, { align: "auto" });
   }, [activeIndex, setActiveIndex, totalCount, virtualizer]);
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowUp" || e.key === "k",
     (e) => {
       if (!enabled || !isContainerFocused()) return;
       e.preventDefault();
       selectPrev();
     },
-    undefined,
-    [enabled, isContainerFocused, selectPrev],
   );
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "ArrowDown" || e.key === "j",
     (e) => {
       if (!enabled || !isContainerFocused()) return;
       e.preventDefault();
       selectNext();
     },
-    undefined,
-    [enabled, isContainerFocused, selectNext],
   );
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "Escape",
     (e) => {
       if (!enabled || !isContainerFocused()) return;
       e.preventDefault();
       closePanel?.();
     },
-    undefined,
-    [enabled, isContainerFocused, closePanel],
   );
 
-  useKey(
+  useDocumentKey(
     (e) => e.key === "Enter" || e.key === " ",
     (e) => {
       if (!enabled || !isContainerFocused() || activeIndex == null) return;
       e.preventDefault();
       openPanel?.();
     },
-    undefined,
-    [enabled, isContainerFocused, activeIndex, openPanel],
   );
 }

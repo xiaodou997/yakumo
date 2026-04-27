@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocalStorage } from "react-use";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { Button } from "./core/Button";
 import { VStack } from "./core/Stacks";
 import { useTranslate } from "../lib/i18n";
