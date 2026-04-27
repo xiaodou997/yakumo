@@ -1,6 +1,11 @@
-import { useCallback } from "react";
-import { CommandPaletteDialog } from "../components/CommandPaletteDialog";
+import { lazy, Suspense, useCallback } from "react";
 import { toggleDialog } from "../lib/dialog";
+
+const CommandPaletteDialog = lazy(() =>
+  import("../components/CommandPaletteDialog").then((m) => ({
+    default: m.CommandPaletteDialog,
+  })),
+);
 
 export function useToggleCommandPalette() {
   const togglePalette = useCallback(() => {
@@ -12,7 +17,11 @@ export function useToggleCommandPalette() {
       vAlign: "top",
       noPadding: true,
       noScroll: true,
-      render: ({ hide }) => <CommandPaletteDialog onClose={hide} />,
+      render: ({ hide }) => (
+        <Suspense fallback={null}>
+          <CommandPaletteDialog onClose={hide} />
+        </Suspense>
+      ),
     });
   }, []);
 
