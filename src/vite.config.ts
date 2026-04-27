@@ -46,10 +46,6 @@ function manualChunks(id: string): string | undefined {
     return "graphql";
   }
 
-  if (packageName === "react-pdf" || packageName === "pdfjs-dist") {
-    return "pdf";
-  }
-
   if (packageName === "motion" || packageName === "framer-motion") {
     return "motion";
   }
@@ -80,6 +76,7 @@ export default defineConfig({
   ],
   build: {
     sourcemap: process.env.YAKUMO_BUILD_SOURCEMAP === "true",
+    modulePreload: false,
     outDir: "../dist",
     emptyOutDir: true,
     rollupOptions: {
