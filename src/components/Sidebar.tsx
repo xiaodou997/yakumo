@@ -25,8 +25,6 @@ import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
-import { moveToWorkspace } from "../commands/moveToWorkspace";
-import { openFolderSettings } from "../commands/openFolderSettings";
 import { activeFolderIdAtom } from "../hooks/useActiveFolderId";
 import { activeRequestIdAtom } from "../hooks/useActiveRequestId";
 import {
@@ -34,15 +32,10 @@ import {
   activeWorkspaceIdAtom,
 } from "../hooks/useActiveWorkspace";
 import { allRequestsAtom } from "../hooks/useAllRequests";
-import { getCreateDropdownItems } from "../hooks/useCreateDropdownItems";
 import { useHotKey } from "../hooks/useHotKey";
 import { useListenToTauriEvent } from "../hooks/useListenToTauriEvent";
-import { getModelAncestors } from "../hooks/useModelAncestors";
-import { sendAnyHttpRequest } from "../hooks/useSendAnyHttpRequest";
 import { useSidebarHidden } from "../hooks/useSidebarHidden";
 import { deepEqualAtom } from "../lib/atoms";
-import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
-import { fireAndForget } from "../lib/fireAndForget";
 import { useTranslate } from "../lib/i18n";
 import { jotaiStore } from "../lib/jotai";
 import { resolvedModelName } from "../lib/resolvedModelName";
@@ -74,6 +67,10 @@ import type { TreeItemProps } from "./core/tree/TreeItem";
 const GitDropdown = lazy(() =>
   import("./git/GitDropdown").then((m) => ({ default: m.GitDropdown })),
 );
+
+type CreateDropdownOptions = Parameters<
+  typeof import("../hooks/useCreateDropdownItems").getCreateDropdownItems
+>[0];
 
 type SidebarModel =
   | Workspace
@@ -283,6 +280,7 @@ function Sidebar({ className }: { className?: string }) {
       "sidebar.selected.delete": {
         enable,
         cb: async (items: SidebarModel[]) => {
+          const { deleteModelWithConfirm } = await import("../lib/deleteModelWithConfirm");
           await deleteModelWithConfirm(items);
         },
       },
@@ -313,6 +311,7 @@ function Sidebar({ className }: { className?: string }) {
       "sidebar.selected.move": {
         enable,
         cb: async (items: SidebarModel[]) => {
+          const { moveToWorkspace } = await import("../commands/moveToWorkspace");
           const requests = items.filter(
             (i): i is HttpRequest | GrpcRequest | WebsocketRequest =>
               i.model === "http_request" ||
@@ -327,6 +326,7 @@ function Sidebar({ className }: { className?: string }) {
       "request.send": {
         enable,
         cb: async (items: SidebarModel[]) => {
+          const { sendAnyHttpRequest } = await import("../hooks/useSendAnyHttpRequest");
           await Promise.all(
             items
               .filter((i) => i.model === "http_request")
@@ -347,7 +347,7 @@ function Sidebar({ className }: { className?: string }) {
 
       // No children means we're in the root
       if (child == null) {
-        return getCreateDropdownItems({
+        return getSidebarCreateDropdownItems({
           workspaceId,
           activeRequest: null,
           folderId: null,
@@ -369,7 +369,10 @@ function Sidebar({ className }: { className?: string }) {
           label: t("sidebar.folderSettings"),
           hidden: !(items.length === 1 && child.model === "folder"),
           leftSlot: <Icon icon="folder_cog" />,
-          onSelect: () => openFolderSettings(child.id),
+          onSelect: async () => {
+            const { openFolderSettings } = await import("../commands/openFolderSettings");
+            openFolderSettings(child.id);
+          },
         },
         {
           label: t("sidebar.send"),
@@ -429,12 +432,12 @@ function Sidebar({ className }: { className?: string }) {
         items.length === 1 && child.model === "folder"
           ? [
               { type: "separator" },
-              ...getCreateDropdownItems({
+              ...(await getSidebarCreateDropdownItems({
                 workspaceId,
                 activeRequest: null,
                 folderId: child.id,
                 t,
-              }),
+              })),
             ]
           : [];
       const menuItems: ContextMenuProps["items"] = [
@@ -472,8 +475,8 @@ function Sidebar({ className }: { className?: string }) {
             workspaces.length <= 1 ||
             requestItems.length === 0 ||
             requestItems.length !== items.length,
-          onSelect: () => {
-            fireAndForget(actions["sidebar.selected.move"].cb(items));
+          onSelect: async () => {
+            await actions["sidebar.selected.move"].cb(items);
           },
         },
         {
@@ -563,13 +566,14 @@ function Sidebar({ className }: { className?: string }) {
                 {
                   label: t("sidebar.focusActiveRequest"),
                   leftSlot: <Icon icon="crosshair" />,
-                  onSelect: () => {
+                  onSelect: async () => {
                     const activeId = jotaiStore.get(activeIdAtom);
                     if (activeId == null) return;
 
                     const folders = jotaiStore.get(foldersAtom);
                     const workspaces = jotaiStore.get(workspacesAtom);
                     const currentModel = getAnyModel(activeId);
+                    const { getModelAncestors } = await import("../hooks/useModelAncestors");
                     const ancestors = getModelAncestors(
                       folders,
                       workspaces,
@@ -670,6 +674,11 @@ function handleActivate(item: SidebarModel) {
 async function getSidebarHttpRequestActions() {
   const { getHttpRequestActions } = await import("../hooks/useHttpRequestActions");
   return getHttpRequestActions();
+}
+
+async function getSidebarCreateDropdownItems(options: CreateDropdownOptions) {
+  const { getCreateDropdownItems } = await import("../hooks/useCreateDropdownItems");
+  return getCreateDropdownItems(options);
 }
 
 async function getSidebarGrpcRequestActions() {
