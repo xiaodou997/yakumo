@@ -32,7 +32,7 @@ import { generateId } from "../../lib/generateId";
 import { getNodeText } from "../../lib/getNodeText";
 import { jotaiStore } from "../../lib/jotai";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { Overlay } from "../Overlay";
+import { Portal } from "../Portal";
 import { Button } from "./Button";
 import { Hotkey } from "./Hotkey";
 import { Icon, type IconProps } from "./Icon";
@@ -833,9 +833,9 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
     return (
       <>
         {hotKeyElements}
-        <Overlay noBackdrop open={isOpen} portalName="dropdown-menu">
+        <Portal name="dropdown-menu">
           {menuContent}
-        </Overlay>
+        </Portal>
       </>
     );
   },

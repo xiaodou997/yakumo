@@ -11,7 +11,6 @@ interface Props {
   onClose?: () => void;
   zIndex?: keyof typeof zIndexes;
   variant?: "default" | "transparent";
-  noBackdrop?: boolean;
 }
 
 const zIndexes: Record<number, string> = {
@@ -28,23 +27,9 @@ export function Overlay({
   open,
   onClose,
   portalName,
-  noBackdrop,
   children,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  if (noBackdrop) {
-    return (
-      <Portal name={portalName}>
-        {open && (
-          <FocusTrap focusTrapOptions={{ clickOutsideDeactivates: true }}>
-            {/* NOTE: <div> wrapper is required for some reason, or FocusTrap complains */}
-            <div>{children}</div>
-          </FocusTrap>
-        )}
-      </Portal>
-    );
-  }
 
   return (
     <Portal name={portalName}>
