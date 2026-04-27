@@ -1,4 +1,4 @@
-# Yakumo API NOTICE
+# Yakumo API Notice
 
 本项目是基于 Yaak 开源项目的衍生作品。
 

@@ -23,7 +23,7 @@ Current macOS release artifacts are temporary unsigned test builds. If macOS rep
 - Encrypt workspace secrets using the operating-system keychain through `yakumo-crypto`.
 - Use `yaku` for schema/list/show/create/update/delete workflows and HTTP send automation.
 
-For the implementation status matrix, see [`FEATURES.md`](FEATURES.md). For active planning and release rules, see [`docs/roadmap.md`](docs/roadmap.md).
+For the implementation status matrix, see [`docs/feature-status.md`](docs/feature-status.md). For the maintained project documents, see [`docs/README.md`](docs/README.md).
 
 ## Development
 
@@ -40,6 +40,7 @@ Use `YAKUMO_DEV_PORT` to override the desktop development port. The default is `
 
 ## Useful Resources
 
+- [Project Docs](docs/README.md)
 - [Original Yaak Project](https://github.com/mountain-loop/yaak)
 - [Tauri Documentation](https://v2.tauri.app/)
 

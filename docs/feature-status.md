@@ -1,4 +1,4 @@
-# Yakumo API 功能清单
+# Yakumo API Feature Status
 
 状态说明：`已实现` 表示当前代码路径存在并通过基础构建检查；`待修复` 表示入口存在但能力不完整或仍需回归验证；`待实现` 表示目标能力仍缺主要实现；`已移除` 表示第一阶段不再保留。
 
@@ -76,4 +76,4 @@
 | plugin API npm 发布 | 已移除 | 不维护旧插件 API 发布链路。 |
 | Flatpak / sponsors / 旧 Yaak release 链路 | 已移除 | 后续按 Yakumo release scope 重建。 |
 
-最后更新：2026-04-26
+Last updated: 2026-04-27
