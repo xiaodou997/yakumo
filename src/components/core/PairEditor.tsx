@@ -212,6 +212,17 @@ export function PairEditor({
   );
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const pairsById = useMemo(() => {
+    const itemsById = new Map<string, PairWithId>();
+    const indexById = new Map<string, number>();
+    let index = 0;
+    for (const pair of pairs) {
+      itemsById.set(pair.id, pair);
+      indexById.set(pair.id, index);
+      index += 1;
+    }
+    return { indexById, itemsById };
+  }, [pairs]);
 
   // dnd-kit: show the “between rows” marker while hovering
   const onDragMove = useCallback(
@@ -219,11 +230,11 @@ export function PairEditor({
       const overId = e.over?.id as string | undefined;
       if (!overId) return setHoveredIndex(null);
 
-      const overPair = pairs.find((p) => p.id === overId);
+      const overPair = pairsById.itemsById.get(overId);
       if (overPair == null) return setHoveredIndex(null);
 
       const side = computeSideForDragMove(overPair.id, e);
-      const overIndex = pairs.findIndex((p) => p.id === overId);
+      const overIndex = pairsById.indexById.get(overId) ?? -1;
       const hoveredIndex = overIndex + (side === "before" ? 0 : 1);
 
       setHoveredIndex(hoveredIndex);
@@ -233,10 +244,10 @@ export function PairEditor({
 
   const onDragStart = useCallback(
     (e: DragStartEvent) => {
-      const pair = pairs.find((p) => p.id === e.active.id);
+      const pair = pairsById.itemsById.get(String(e.active.id));
       setIsDragging(pair ?? null);
     },
-    [pairs],
+    [pairsById],
   );
 
   const onDragCancel = useCallback(() => setIsDragging(null), []);

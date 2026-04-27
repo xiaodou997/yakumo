@@ -1,5 +1,10 @@
-import type { Folder, Workspace } from "@yakumo-internal/models";
-import { foldersAtom, workspacesAtom } from "@yakumo-internal/models";
+import type { CookieJar, Folder, Workspace, WorkspaceMeta } from "@yakumo-internal/models";
+import {
+  cookieJarsAtom,
+  foldersAtom,
+  workspaceMetasAtom,
+  workspacesAtom,
+} from "@yakumo-internal/models";
 import { atom } from "jotai";
 
 export const foldersByIdAtom = atom((get) => {
@@ -16,6 +21,22 @@ export const workspacesByIdAtom = atom((get) => {
     workspacesById.set(workspace.id, workspace);
   }
   return workspacesById;
+});
+
+export const workspaceMetasByWorkspaceIdAtom = atom((get) => {
+  const workspaceMetasByWorkspaceId = new Map<string, WorkspaceMeta>();
+  for (const workspaceMeta of get(workspaceMetasAtom)) {
+    workspaceMetasByWorkspaceId.set(workspaceMeta.workspaceId, workspaceMeta);
+  }
+  return workspaceMetasByWorkspaceId;
+});
+
+export const cookieJarsByIdAtom = atom((get) => {
+  const cookieJarsById = new Map<string, CookieJar>();
+  for (const cookieJar of get(cookieJarsAtom)) {
+    cookieJarsById.set(cookieJar.id, cookieJar);
+  }
+  return cookieJarsById;
 });
 
 export const ancestorModelsByIdAtom = atom((get) => {

@@ -2,6 +2,7 @@ import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-interna
 import { patchModel, workspacesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+import { workspacesByIdAtom } from "../hooks/useModelLookupMaps";
 import { pluralizeCount } from "../lib/pluralize";
 import { resolvedModelName } from "../lib/resolvedModelName";
 import { router } from "../lib/router";
@@ -19,9 +20,10 @@ interface Props {
 
 export function MoveToWorkspaceDialog({ onDone, requests, activeWorkspaceId }: Props) {
   const workspaces = useAtomValue(workspacesAtom);
+  const workspacesById = useAtomValue(workspacesByIdAtom);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(activeWorkspaceId);
 
-  const targetWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const targetWorkspace = workspacesById.get(selectedWorkspaceId);
   const isSameWorkspace = selectedWorkspaceId === activeWorkspaceId;
 
   return (

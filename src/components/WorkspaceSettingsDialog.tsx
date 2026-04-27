@@ -1,8 +1,12 @@
-import { patchModel, workspaceMetasAtom, workspacesAtom } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useAuthTab } from "../hooks/useAuthTab";
 import { useHeadersTab } from "../hooks/useHeadersTab";
 import { useInheritedHeaders } from "../hooks/useInheritedHeaders";
+import {
+  workspaceMetasByWorkspaceIdAtom,
+  workspacesByIdAtom,
+} from "../hooks/useModelLookupMaps";
 import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
 import { router } from "../lib/router";
 import { CopyIconButton } from "./CopyIconButton";
@@ -42,8 +46,8 @@ export type WorkspaceSettingsTab =
 const DEFAULT_TAB: WorkspaceSettingsTab = TAB_GENERAL;
 
 export function WorkspaceSettingsDialog({ workspaceId, hide, tab }: Props) {
-  const workspace = useAtomValue(workspacesAtom).find((w) => w.id === workspaceId);
-  const workspaceMeta = useAtomValue(workspaceMetasAtom).find((m) => m.workspaceId === workspaceId);
+  const workspace = useAtomValue(workspacesByIdAtom).get(workspaceId);
+  const workspaceMeta = useAtomValue(workspaceMetasByWorkspaceIdAtom).get(workspaceId);
   const authTab = useAuthTab(TAB_AUTH, workspace ?? null);
   const headersTab = useHeadersTab(TAB_HEADERS, workspace ?? null);
   const inheritedHeaders = useInheritedHeaders(workspace ?? null);

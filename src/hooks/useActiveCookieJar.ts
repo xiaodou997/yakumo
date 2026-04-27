@@ -5,6 +5,7 @@ import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { setWorkspaceSearchParams } from "../lib/setWorkspaceSearchParams";
+import { cookieJarsByIdAtom } from "./useModelLookupMaps";
 
 export const activeCookieJarAtom = atom<CookieJar | null>(null);
 
@@ -15,13 +16,13 @@ export function useActiveCookieJar() {
 export function useSubscribeActiveCookieJarId() {
   const search = useSearch({ strict: false });
   const cookieJarId = search.cookie_jar_id;
-  const cookieJars = useAtomValue(cookieJarsAtom);
+  const cookieJarsById = useAtomValue(cookieJarsByIdAtom);
 
   useEffect(() => {
     if (search == null) return; // Happens during Vite hot reload
-    const activeCookieJar = cookieJars?.find((j) => j.id === cookieJarId) ?? null;
+    const activeCookieJar = cookieJarId == null ? null : (cookieJarsById.get(cookieJarId) ?? null);
     jotaiStore.set(activeCookieJarAtom, activeCookieJar);
-  }, [cookieJarId, cookieJars, search]);
+  }, [cookieJarId, cookieJarsById, search]);
 }
 
 export function getActiveCookieJar() {
@@ -30,6 +31,7 @@ export function getActiveCookieJar() {
 
 export function useEnsureActiveCookieJar() {
   const cookieJars = useAtomValue(cookieJarsAtom);
+  const cookieJarsById = useAtomValue(cookieJarsByIdAtom);
   const { cookie_jar_id: activeCookieJarId } = useSearch({ from: "/workspaces/$workspaceId/" });
 
   // Set the active cookie jar to the first one, if none set
@@ -41,7 +43,7 @@ export function useEnsureActiveCookieJar() {
   useEffect(() => {
     if (cookieJars == null) return; // Hasn't loaded yet
 
-    if (cookieJars.find((j) => j.id === activeCookieJarId)) {
+    if (activeCookieJarId != null && cookieJarsById.has(activeCookieJarId)) {
       return; // There's an active jar
     }
 
@@ -54,5 +56,5 @@ export function useEnsureActiveCookieJar() {
     // There's no active jar, so set it to the first one
     console.log("Defaulting active cookie jar to first jar", firstJar);
     setWorkspaceSearchParams({ cookie_jar_id: firstJar.id });
-  }, [cookieJars]);
+  }, [cookieJars, cookieJarsById]);
 }

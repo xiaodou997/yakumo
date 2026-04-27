@@ -1,6 +1,18 @@
 import type { KeyValue } from "@yakumo-internal/models";
 import { createGlobalModel, keyValuesAtom, patchModel } from "@yakumo-internal/models";
+import { atom } from "jotai";
 import { jotaiStore } from "./jotai";
+
+export const keyValuesByNamespaceAndKeyAtom = atom((get) => {
+  const keyValuesByNamespaceAndKey = new Map<string, KeyValue>();
+  for (const keyValue of get(keyValuesAtom)) {
+    keyValuesByNamespaceAndKey.set(
+      buildKeyValueLookupKey(keyValue.namespace, keyValue.key),
+      keyValue,
+    );
+  }
+  return keyValuesByNamespaceAndKey;
+});
 
 export async function setKeyValue<T>({
   namespace = "global",
@@ -29,10 +41,12 @@ export function getKeyValueRaw({
   namespace?: string;
   key: string | string[];
 }) {
-  const key = buildKeyValueKey(keyOrKeys);
-  const keyValues = jotaiStore.get(keyValuesAtom);
-  const kv = keyValues.find((kv) => kv.namespace === namespace && kv?.key === key);
-  return kv ?? null;
+  return (
+    jotaiStore
+      .get(keyValuesByNamespaceAndKeyAtom)
+      .get(buildKeyValueLookupKey(namespace, keyOrKeys)) ??
+    null
+  );
 }
 
 export function getKeyValue<T>({
@@ -67,4 +81,8 @@ export function extractKeyValueOrFallback<T>(kv: KeyValue | null, fallback: T): 
 export function buildKeyValueKey(key: string | string[]): string {
   if (typeof key === "string") return key;
   return key.join("::");
+}
+
+export function buildKeyValueLookupKey(namespace: string, key: string | string[]): string {
+  return JSON.stringify([namespace, buildKeyValueKey(key)]);
 }

@@ -9,7 +9,7 @@ import { foldersByIdAtom } from "./useModelLookupMaps";
 import { useParentFolders } from "./useParentFolders";
 
 export function useEnvironmentVariables(targetEnvironmentId: string | null) {
-  const { baseEnvironment, folderEnvironments } = useEnvironmentsBreakdown();
+  const { baseEnvironment, folderEnvironmentsByParentId } = useEnvironmentsBreakdown();
   const environmentsById = useAtomValue(environmentsByIdAtom);
   const activeEnvironment = useActiveEnvironment();
   const targetEnvironment =
@@ -24,12 +24,6 @@ export function useEnvironmentVariables(targetEnvironmentId: string | null) {
 
   return useMemo(() => {
     const varMap: Record<string, WrappedEnvironmentVariable> = {};
-    const folderEnvironmentsByParentId = new Map<string, Environment>();
-    for (const folderEnvironment of folderEnvironments) {
-      if (folderEnvironment.parentId != null) {
-        folderEnvironmentsByParentId.set(folderEnvironment.parentId, folderEnvironment);
-      }
-    }
 
     const folderVariables = parentFolders.flatMap((folder) =>
       wrapVariables(folderEnvironmentsByParentId.get(folder.id) ?? null, foldersById),
@@ -60,8 +54,8 @@ export function useEnvironmentVariables(targetEnvironmentId: string | null) {
   }, [
     activeEnvironment,
     baseEnvironment,
-    folderEnvironments,
     foldersById,
+    folderEnvironmentsByParentId,
     parentFolders,
     targetEnvironment,
   ]);

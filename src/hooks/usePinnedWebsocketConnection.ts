@@ -22,9 +22,11 @@ function recordKey(activeRequestId: string | null, latestConnection: WebsocketCo
   return `${activeRequestId}-${latestConnection?.id ?? "none"}`;
 }
 
-const websocketConnectionsByRequestIdAtom = atom((get) => {
+export const websocketConnectionsByRequestIdAtom = atom((get) => {
   const connectionsByRequestId = new Map<string, WebsocketConnection[]>();
+  const connectionsById = new Map<string, WebsocketConnection>();
   for (const connection of get(websocketConnectionsAtom)) {
+    connectionsById.set(connection.id, connection);
     const connections = connectionsByRequestId.get(connection.requestId);
     if (connections == null) {
       connectionsByRequestId.set(connection.requestId, [connection]);
@@ -32,22 +34,25 @@ const websocketConnectionsByRequestIdAtom = atom((get) => {
       connections.push(connection);
     }
   }
-  return connectionsByRequestId;
+  return { connectionsById, connectionsByRequestId };
 });
 
 export const activeWebsocketConnectionsAtom = atom<WebsocketConnection[]>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
-  return get(websocketConnectionsByRequestIdAtom).get(activeRequestId) ?? [];
+  return get(websocketConnectionsByRequestIdAtom).connectionsByRequestId.get(activeRequestId) ?? [];
 });
 
 export const activeWebsocketConnectionAtom = atom<WebsocketConnection | null>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
   const activeConnections = get(activeWebsocketConnectionsAtom);
   const latestConnection = activeConnections[0] ?? null;
+  const { connectionsById } = get(websocketConnectionsByRequestIdAtom);
   const pinnedConnectionId = get(pinnedWebsocketConnectionIdAtom)[
     recordKey(activeRequestId, latestConnection)
   ];
-  return activeConnections.find((c) => c.id === pinnedConnectionId) ?? activeConnections[0] ?? null;
+  const pinnedConnection =
+    pinnedConnectionId == null ? null : (connectionsById.get(pinnedConnectionId) ?? null);
+  return pinnedConnection?.requestId === activeRequestId ? pinnedConnection : latestConnection;
 });
 
 export function setPinnedWebsocketConnectionId(id: string | null) {

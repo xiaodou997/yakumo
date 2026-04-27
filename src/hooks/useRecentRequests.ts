@@ -1,8 +1,3 @@
-import {
-  grpcRequestsAtom,
-  httpRequestsAtom,
-  websocketRequestsAtom,
-} from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";
@@ -10,6 +5,7 @@ import { getKeyValue, setKeyValue } from "../lib/keyValueStore";
 import { activeRequestAtom } from "./useActiveRequest";
 import { activeWorkspaceIdAtom } from "./useActiveWorkspace";
 import { useKeyValue } from "./useKeyValue";
+import { requestIdsByWorkspaceIdAtom } from "./useRequestLookupMaps";
 
 const kvKey = (workspaceId: string) => `recent_requests::${workspaceId}`;
 const namespace = "global";
@@ -17,9 +13,7 @@ const fallback: string[] = [];
 
 export function useRecentRequests() {
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
-  const httpRequests = useAtomValue(httpRequestsAtom);
-  const grpcRequests = useAtomValue(grpcRequestsAtom);
-  const websocketRequests = useAtomValue(websocketRequestsAtom);
+  const requestIdsByWorkspaceId = useAtomValue(requestIdsByWorkspaceIdAtom);
 
   const { set: setRecentRequests, value: recentRequests } = useKeyValue<string[]>({
     key: kvKey(activeWorkspaceId ?? "n/a"),
@@ -27,22 +21,11 @@ export function useRecentRequests() {
     fallback,
   });
 
-  const validRequestIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const request of httpRequests) {
-      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
-    }
-    for (const request of grpcRequests) {
-      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
-    }
-    for (const request of websocketRequests) {
-      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
-    }
-    return ids;
-  }, [activeWorkspaceId, grpcRequests, httpRequests, websocketRequests]);
+  const validRequestIds =
+    activeWorkspaceId == null ? null : (requestIdsByWorkspaceId.get(activeWorkspaceId) ?? null);
 
   const onlyValidIds = useMemo(
-    () => recentRequests?.filter((id) => validRequestIds.has(id)) ?? [],
+    () => recentRequests?.filter((id) => validRequestIds?.has(id)) ?? [],
     [recentRequests, validRequestIds],
   );
 

@@ -6,6 +6,7 @@ import { createSubEnvironmentAndActivate } from "../commands/createEnvironment";
 import { activeWorkspaceAtom, activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
 import {
   environmentsBreakdownAtom,
+  environmentsByIdAtom,
   useEnvironmentsBreakdown,
 } from "../hooks/useEnvironmentsBreakdown";
 import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
@@ -37,14 +38,15 @@ interface Props {
 type TreeModel = Environment | Workspace;
 
 export function EnvironmentEditDialog({ initialEnvironmentId, setRef }: Props) {
-  const { allEnvironments, baseEnvironment, baseEnvironments } = useEnvironmentsBreakdown();
+  const { baseEnvironment, baseEnvironments } = useEnvironmentsBreakdown();
+  const environmentsById = useAtomValue(environmentsByIdAtom);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(
     initialEnvironmentId ?? null,
   );
 
   const selectedEnvironment =
     selectedEnvironmentId != null
-      ? allEnvironments.find((e) => e.id === selectedEnvironmentId)
+      ? environmentsById.get(selectedEnvironmentId)
       : baseEnvironment;
 
   return (

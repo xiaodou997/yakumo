@@ -51,25 +51,7 @@ export function getModelAncestors(
   workspaces: Workspace[],
   currentModel: AnyModel | null,
 ): ModelAncestor[] {
-  if (currentModel == null) return [];
-
-  const parentFolder =
-    "folderId" in currentModel && currentModel.folderId
-      ? folders.find((f) => f.id === currentModel.folderId)
-      : null;
-
-  if (parentFolder != null) {
-    return [parentFolder, ...getModelAncestors(folders, workspaces, parentFolder)];
-  }
-
-  const parentWorkspace =
-    "workspaceId" in currentModel && currentModel.workspaceId
-      ? workspaces.find((w) => w.id === currentModel.workspaceId)
-      : null;
-
-  if (parentWorkspace != null) {
-    return [parentWorkspace, ...getModelAncestors(folders, workspaces, parentWorkspace)];
-  }
-
-  return [];
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const workspacesById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
+  return getModelAncestorsFromMaps(foldersById, workspacesById, currentModel);
 }

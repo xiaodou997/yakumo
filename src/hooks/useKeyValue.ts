@@ -1,11 +1,16 @@
 import deepEqual from "@gilbarbara/deep-equal";
 import { useMutation } from "@tanstack/react-query";
-import { keyValuesAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";
-import { buildKeyValueKey, extractKeyValueOrFallback, setKeyValue } from "../lib/keyValueStore";
+import {
+  buildKeyValueKey,
+  buildKeyValueLookupKey,
+  extractKeyValueOrFallback,
+  keyValuesByNamespaceAndKeyAtom,
+  setKeyValue,
+} from "../lib/keyValueStore";
 
 const DEFAULT_NAMESPACE = "global";
 
@@ -18,22 +23,22 @@ export function useKeyValue<T extends object | boolean | number | string | null>
   key: string | string[];
   fallback: T;
 }) {
+  const storageKey = buildKeyValueKey(key);
+  const lookupKey = buildKeyValueLookupKey(namespace, storageKey);
+
   const { value, isLoading } = useAtomValue(
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- Only create a new atom when the key changes. Fallback might not be a stable reference, so we don't want to refresh on that.
     useMemo(
       () =>
         selectAtom(
-          keyValuesAtom,
-          (keyValues) => {
-            const keyValue =
-              keyValues?.find((kv) => buildKeyValueKey(kv.key) === buildKeyValueKey(key)) ?? null;
-            const value = keyValues == null ? null : extractKeyValueOrFallback(keyValue, fallback);
-            const isLoading = keyValues == null;
-            return { value, isLoading };
+          keyValuesByNamespaceAndKeyAtom,
+          (keyValuesByNamespaceAndKey) => {
+            const keyValue = keyValuesByNamespaceAndKey.get(lookupKey) ?? null;
+            return { value: extractKeyValueOrFallback(keyValue, fallback), isLoading: false };
           },
           (a, b) => deepEqual(a, b),
         ),
-      [buildKeyValueKey(key)],
+      [lookupKey],
     ),
   );
 
@@ -55,7 +60,7 @@ export function useKeyValue<T extends object | boolean | number | string | null>
         await mutateAsync(valueOrUpdate);
       }
     },
-    [typeof key === "string" ? key : key.join("::"), namespace, value],
+    [lookupKey, namespace, value],
   );
 
   const reset = useCallback(async () => mutateAsync(fallback), [fallback, mutateAsync]);
@@ -72,7 +77,7 @@ export function useKeyValue<T extends object | boolean | number | string | null>
 }
 
 export function getKeyValue<T extends object | boolean | number | string | null>({
-  namespace,
+  namespace = DEFAULT_NAMESPACE,
   key,
   fallback,
 }: {
@@ -80,11 +85,11 @@ export function getKeyValue<T extends object | boolean | number | string | null>
   key: string | string[];
   fallback: T;
 }) {
-  const keyValues = jotaiStore.get(keyValuesAtom);
   const keyValue =
-    keyValues?.find(
-      (kv) => kv.namespace === namespace && buildKeyValueKey(kv.key) === buildKeyValueKey(key),
-    ) ?? null;
+    jotaiStore
+      .get(keyValuesByNamespaceAndKeyAtom)
+      .get(buildKeyValueLookupKey(namespace, key)) ??
+    null;
   const value = extractKeyValueOrFallback(keyValue, fallback);
   return value;
 }

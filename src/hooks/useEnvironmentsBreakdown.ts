@@ -15,14 +15,18 @@ export const environmentsBreakdownAtom = atom((get) => {
   const baseEnvironments: Environment[] = [];
   const subEnvironments: Environment[] = [];
   const folderEnvironments: Environment[] = [];
+  const folderEnvironmentsByParentId = new Map<string, Environment>();
+  const subEnvironmentIdsByWorkspaceId = new Map<string, Set<string>>();
 
   for (const environment of allEnvironments) {
     if (environment.parentModel === "workspace") {
       baseEnvironments.push(environment);
     } else if (environment.parentModel === "environment") {
       subEnvironments.push(environment);
+      addId(subEnvironmentIdsByWorkspaceId, environment.workspaceId, environment.id);
     } else if (environment.parentModel === "folder" && environment.parentId != null) {
       folderEnvironments.push(environment);
+      folderEnvironmentsByParentId.set(environment.parentId, environment);
     }
   }
 
@@ -41,6 +45,8 @@ export const environmentsBreakdownAtom = atom((get) => {
     baseEnvironment,
     subEnvironments,
     folderEnvironments,
+    folderEnvironmentsByParentId,
+    subEnvironmentIdsByWorkspaceId,
     otherBaseEnvironments,
     baseEnvironments,
   };
@@ -48,4 +54,13 @@ export const environmentsBreakdownAtom = atom((get) => {
 
 export function useEnvironmentsBreakdown() {
   return useAtomValue(environmentsBreakdownAtom);
+}
+
+function addId(idsByKey: Map<string, Set<string>>, key: string, id: string) {
+  const ids = idsByKey.get(key);
+  if (ids == null) {
+    idsByKey.set(key, new Set([id]));
+  } else {
+    ids.add(id);
+  }
 }

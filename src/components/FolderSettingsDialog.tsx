@@ -1,4 +1,4 @@
-import { createWorkspaceModel, foldersAtom, patchModel } from "@yakumo-internal/models";
+import { createWorkspaceModel, patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { Fragment, useMemo } from "react";
 import { useAuthTab } from "../hooks/useAuthTab";
@@ -6,6 +6,7 @@ import { useEnvironmentsBreakdown } from "../hooks/useEnvironmentsBreakdown";
 import { useHeadersTab } from "../hooks/useHeadersTab";
 import { useInheritedHeaders } from "../hooks/useInheritedHeaders";
 import { useModelAncestors } from "../hooks/useModelAncestors";
+import { foldersByIdAtom } from "../hooks/useModelLookupMaps";
 import { deleteModelWithConfirm } from "../lib/deleteModelWithConfirm";
 import { hideDialog } from "../lib/dialog";
 import { CopyIconButton } from "./CopyIconButton";
@@ -41,17 +42,15 @@ export type FolderSettingsTab =
   | typeof TAB_VARIABLES;
 
 export function FolderSettingsDialog({ folderId, tab }: Props) {
-  const folders = useAtomValue(foldersAtom);
-  const folder = folders.find((f) => f.id === folderId) ?? null;
+  const foldersById = useAtomValue(foldersByIdAtom);
+  const folder = folderId == null ? null : (foldersById.get(folderId) ?? null);
   const ancestors = useModelAncestors(folder);
   const breadcrumbs = useMemo(() => ancestors.toReversed(), [ancestors]);
   const authTab = useAuthTab(TAB_AUTH, folder);
   const headersTab = useHeadersTab(TAB_HEADERS, folder);
   const inheritedHeaders = useInheritedHeaders(folder);
-  const environments = useEnvironmentsBreakdown();
-  const folderEnvironment = environments.allEnvironments.find(
-    (e) => e.parentModel === "folder" && e.parentId === folderId,
-  );
+  const { folderEnvironmentsByParentId } = useEnvironmentsBreakdown();
+  const folderEnvironment = folderId == null ? null : folderEnvironmentsByParentId.get(folderId);
   const numVars = (folderEnvironment?.variables ?? []).filter((v) => v.name).length;
 
   const tabs = useMemo<TabItem[]>(() => {

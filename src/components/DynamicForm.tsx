@@ -1,5 +1,5 @@
 import type { Folder, HttpRequest } from "@yakumo-internal/models";
-import { foldersAtom, httpRequestsAtom } from "@yakumo-internal/models";
+import { httpRequestsAtom } from "@yakumo-internal/models";
 import type {
   FormInput,
   FormInputCheckbox,
@@ -15,6 +15,7 @@ import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useActiveRequest } from "../hooks/useActiveRequest";
+import { foldersByIdAtom } from "../hooks/useModelLookupMaps";
 import { useRandomKey } from "../hooks/useRandomKey";
 import { capitalize } from "../lib/capitalize";
 import { showDialog } from "../lib/dialog";
@@ -494,7 +495,7 @@ function HttpRequestArg({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const folders = useAtomValue(foldersAtom);
+  const foldersById = useAtomValue(foldersByIdAtom);
   const httpRequests = useAtomValue(httpRequestsAtom);
   const activeHttpRequest = useActiveRequest("http_request");
 
@@ -515,7 +516,7 @@ function HttpRequestArg({
       options={httpRequests.map((r) => {
         return {
           label:
-            buildRequestBreadcrumbs(r, folders).join(" / ") +
+            buildRequestBreadcrumbs(r, foldersById).join(" / ") +
             (r.id === activeHttpRequest?.id ? " (current)" : ""),
           value: r.id,
         };
@@ -524,14 +525,17 @@ function HttpRequestArg({
   );
 }
 
-function buildRequestBreadcrumbs(request: HttpRequest, folders: Folder[]): string[] {
+function buildRequestBreadcrumbs(
+  request: HttpRequest,
+  foldersById: Map<string, Folder>,
+): string[] {
   const ancestors: (HttpRequest | Folder)[] = [request];
 
   const next = () => {
     const latest = ancestors[0];
     if (latest == null) return [];
 
-    const parent = folders.find((f) => f.id === latest.folderId);
+    const parent = latest.folderId == null ? null : foldersById.get(latest.folderId);
     if (parent == null) return;
 
     ancestors.unshift(parent);

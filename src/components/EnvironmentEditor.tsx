@@ -52,14 +52,21 @@ export function EnvironmentEditor({ environment, hideName, className, setRef }: 
       return { options };
     }
 
-    const allVariables = allEnvironments.flatMap((e) => e?.variables);
-    const allVariableNames = new Set(allVariables.map((v) => v?.name));
-    for (const name of allVariableNames) {
-      const containingEnvs = allEnvironments.filter((e) =>
-        e.variables.some((v) => v.name === name),
-      );
-      const isAlreadyInActive = containingEnvs.find((e) => e.id === environment.id);
-      if (isAlreadyInActive) {
+    const environmentsByVariableName = new Map<string, Environment[]>();
+    for (const candidateEnvironment of allEnvironments) {
+      for (const variable of candidateEnvironment.variables) {
+        if (!variable.name) continue;
+        const environments = environmentsByVariableName.get(variable.name);
+        if (environments == null) {
+          environmentsByVariableName.set(variable.name, [candidateEnvironment]);
+        } else {
+          environments.push(candidateEnvironment);
+        }
+      }
+    }
+
+    for (const [name, containingEnvs] of environmentsByVariableName) {
+      if (containingEnvs.some((e) => e.id === environment.id)) {
         continue;
       }
       options.push({

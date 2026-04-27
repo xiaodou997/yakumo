@@ -47,17 +47,20 @@ function recordKey(activeRequestId: string | null, latestConnection: GrpcConnect
 
 export const activeGrpcConnections = atom<GrpcConnection[]>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
-  return get(grpcConnectionsByRequestIdAtom).get(activeRequestId) ?? [];
+  return get(grpcConnectionsByRequestIdAtom).connectionsByRequestId.get(activeRequestId) ?? [];
 });
 
 export const activeGrpcConnectionAtom = atom<GrpcConnection | null>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
   const activeConnections = get(activeGrpcConnections);
   const latestConnection = activeConnections[0] ?? null;
+  const { connectionsById } = get(grpcConnectionsByRequestIdAtom);
   const pinnedConnectionId = get(pinnedGrpcConnectionIdsAtom)[
     recordKey(activeRequestId, latestConnection)
   ];
-  return activeConnections.find((c) => c.id === pinnedConnectionId) ?? activeConnections[0] ?? null;
+  const pinnedConnection =
+    pinnedConnectionId == null ? null : (connectionsById.get(pinnedConnectionId) ?? null);
+  return pinnedConnection?.requestId === activeRequestId ? pinnedConnection : latestConnection;
 });
 
 const grpcEventsByConnectionIdAtom = atom((get) => {

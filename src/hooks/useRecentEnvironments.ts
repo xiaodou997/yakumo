@@ -13,23 +13,20 @@ const fallback: string[] = [];
 
 export function useRecentEnvironments() {
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
-  const { subEnvironments } = useEnvironmentsBreakdown();
+  const { subEnvironmentIdsByWorkspaceId } = useEnvironmentsBreakdown();
   const kv = useKeyValue<string[]>({
     key: kvKey(activeWorkspaceId ?? "n/a"),
     namespace,
     fallback,
   });
 
-  const validEnvironmentIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const environment of subEnvironments) {
-      if (environment.workspaceId === activeWorkspaceId) ids.add(environment.id);
-    }
-    return ids;
-  }, [activeWorkspaceId, subEnvironments]);
+  const validEnvironmentIds =
+    activeWorkspaceId == null
+      ? null
+      : (subEnvironmentIdsByWorkspaceId.get(activeWorkspaceId) ?? null);
 
   const onlyValidIds = useMemo(
-    () => kv.value?.filter((id) => validEnvironmentIds.has(id)) ?? [],
+    () => kv.value?.filter((id) => validEnvironmentIds?.has(id)) ?? [],
     [kv.value, validEnvironmentIds],
   );
 

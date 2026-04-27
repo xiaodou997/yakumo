@@ -4,7 +4,7 @@ import { useKeyValue } from "./useKeyValue";
 import { httpResponsesByRequestIdAtom } from "./useLatestHttpResponse";
 
 export function usePinnedHttpResponse(activeRequestId: string) {
-  const responsesByRequestId = useAtomValue(httpResponsesByRequestIdAtom);
+  const { responsesById, responsesByRequestId } = useAtomValue(httpResponsesByRequestIdAtom);
   const responses = responsesByRequestId.get(activeRequestId) ?? [];
   const latestResponse = responses[0] ?? null;
   const { set, value: pinnedResponseId } = useKeyValue<string | null>({
@@ -13,8 +13,10 @@ export function usePinnedHttpResponse(activeRequestId: string) {
     fallback: null,
     namespace: "global",
   });
+  const pinnedResponse =
+    pinnedResponseId == null ? null : (responsesById.get(pinnedResponseId) ?? null);
   const activeResponse: HttpResponse | null =
-    responses.find((r) => r.id === pinnedResponseId) ?? latestResponse;
+    pinnedResponse?.requestId === activeRequestId ? pinnedResponse : latestResponse;
 
   const setPinnedResponseId = async (id: string) => {
     if (pinnedResponseId === id) {

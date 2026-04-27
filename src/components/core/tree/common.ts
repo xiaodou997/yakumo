@@ -21,9 +21,9 @@ export function getSelectedItems<T extends { id: string }>(
   treeId: string,
   selectableItems: SelectableTreeNode<T>[],
 ) {
-  const selectedItemIds = jotaiStore.get(selectedIdsFamily(treeId));
+  const selectedItemIds = new Set(jotaiStore.get(selectedIdsFamily(treeId)));
   return selectableItems
-    .filter((i) => selectedItemIds.includes(i.node.item.id))
+    .filter((i) => selectedItemIds.has(i.node.item.id))
     .map((i) => i.node.item);
 }
 

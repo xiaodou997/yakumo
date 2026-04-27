@@ -1,6 +1,7 @@
 import type { Cookie } from "@yakumo-internal/models";
-import { cookieJarsAtom, patchModel } from "@yakumo-internal/models";
+import { patchModel } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
+import { cookieJarsByIdAtom } from "../hooks/useModelLookupMaps";
 import { cookieDomain } from "../lib/model_util";
 import { Banner } from "./core/Banner";
 import { IconButton } from "./core/IconButton";
@@ -11,8 +12,8 @@ interface Props {
 }
 
 export const CookieDialog = ({ cookieJarId }: Props) => {
-  const cookieJars = useAtomValue(cookieJarsAtom);
-  const cookieJar = cookieJars?.find((c) => c.id === cookieJarId);
+  const cookieJarsById = useAtomValue(cookieJarsByIdAtom);
+  const cookieJar = cookieJarId == null ? null : cookieJarsById.get(cookieJarId);
 
   if (cookieJar == null) {
     return <div>No cookie jar selected</div>;

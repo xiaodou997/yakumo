@@ -8,7 +8,6 @@ import {
   foldersAtom,
   grpcRequestsAtom,
   httpRequestsAtom,
-  websocketConnectionsAtom,
   websocketRequestsAtom,
 } from "@yakumo-internal/models";
 import classNames from "classnames";
@@ -18,6 +17,7 @@ import { useCallback, useMemo } from "react";
 import { useFolderActions } from "../hooks/useFolderActions";
 import { useLatestGrpcConnection } from "../hooks/useLatestGrpcConnection";
 import { useLatestHttpResponse } from "../hooks/useLatestHttpResponse";
+import { websocketConnectionsByRequestIdAtom } from "../hooks/usePinnedWebsocketConnection";
 import { sendAnyHttpRequest } from "../hooks/useSendAnyHttpRequest";
 import { fireAndForget } from "../lib/fireAndForget";
 import { showDialog } from "../lib/dialog";
@@ -328,7 +328,8 @@ function WebsocketRequestCard({ request }: { request: WebsocketRequest }) {
 }
 
 function useLatestWebsocketConnection(requestId: string | null) {
-  return useAtomValue(websocketConnectionsAtom).find((connection) => connection.requestId === requestId) ?? null;
+  const { connectionsByRequestId } = useAtomValue(websocketConnectionsByRequestIdAtom);
+  return requestId == null ? null : (connectionsByRequestId.get(requestId)?.[0] ?? null);
 }
 
 function GrpcConnectionStateTag({

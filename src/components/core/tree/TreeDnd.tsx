@@ -67,6 +67,13 @@ function TreeInner<T extends { id: string }>(
 ) {
   const treeRef = useRef<HTMLDivElement>(null);
   const selectableItems = useSelectableItems(root);
+  const selectableItemsById = useMemo(() => {
+    const itemsById = new Map<string, SelectableTreeNode<T>>();
+    for (const item of selectableItems) {
+      itemsById.set(item.node.item.id, item);
+    }
+    return itemsById;
+  }, [selectableItems]);
   const [showContextMenu, setShowContextMenu] = useState<{
     items: DropdownItem[];
     x: number;
@@ -117,12 +124,11 @@ function TreeInner<T extends { id: string }>(
 
   const ensureTabbableItem = useCallback(() => {
     const lastSelectedId = jotaiStore.get(focusIdsFamily(treeId)).lastId;
-    const lastSelectedItem = selectableItems.find(
-      (i) => i.node.item.id === lastSelectedId && !i.node.hidden,
-    );
+    const lastSelectedItem =
+      lastSelectedId == null ? null : (selectableItemsById.get(lastSelectedId) ?? null);
 
     // If no item found, default to selecting the first item (prefer leaf node);
-    if (lastSelectedItem == null) {
+    if (lastSelectedItem == null || lastSelectedItem.node.hidden) {
       const firstLeafItem = selectableItems.find((i) => !i.node.hidden && i.node.children == null);
       const firstItem = firstLeafItem ?? selectableItems.find((i) => !i.node.hidden);
       if (firstItem != null) {
@@ -139,7 +145,7 @@ function TreeInner<T extends { id: string }>(
       jotaiStore.set(selectedIdsFamily(treeId), [id]);
       jotaiStore.set(focusIdsFamily(treeId), { anchorId: id, lastId: id });
     }
-  }, [selectableItems, treeId]);
+  }, [selectableItems, selectableItemsById, treeId]);
 
   // Ensure there's always a tabbable item after collapsed state changes
   useEffect(() => {
@@ -199,7 +205,8 @@ function TreeInner<T extends { id: string }>(
     if (getContextMenu == null) return;
     return (item: T) => {
       const items = getSelectedItems(treeId, selectableItems);
-      const isSelected = items.find((i) => i.id === item.id);
+      const selectedItemIds = new Set(items.map((i) => i.id));
+      const isSelected = selectedItemIds.has(item.id);
       if (isSelected) {
         // If right-clicked an item that was in the multiple-selection, use the entire selection
         return getContextMenu(items);
@@ -312,12 +319,12 @@ function TreeInner<T extends { id: string }>(
     (e: TreeItemClickEvent) => {
       const lastSelectedId = jotaiStore.get(focusIdsFamily(treeId)).lastId;
       const lastSelectedItem =
-        selectableItems.find((i) => i.node.item.id === lastSelectedId)?.node ?? null;
+        lastSelectedId == null ? null : (selectableItemsById.get(lastSelectedId)?.node ?? null);
       if (lastSelectedItem?.parent != null) {
         handleSelect(lastSelectedItem.parent.item, e);
       }
     },
-    [handleSelect, selectableItems, treeId],
+    [handleSelect, selectableItemsById, treeId],
   );
 
   useDocumentKey(
@@ -347,7 +354,8 @@ function TreeInner<T extends { id: string }>(
 
       const collapsed = jotaiStore.get(collapsedFamily(treeId));
       const lastSelectedId = jotaiStore.get(focusIdsFamily(treeId)).lastId;
-      const lastSelectedItem = selectableItems.find((i) => i.node.item.id === lastSelectedId);
+      const lastSelectedItem =
+        lastSelectedId == null ? null : selectableItemsById.get(lastSelectedId);
 
       if (
         lastSelectedId &&
@@ -371,7 +379,8 @@ function TreeInner<T extends { id: string }>(
 
       const collapsed = jotaiStore.get(collapsedFamily(treeId));
       const lastSelectedId = jotaiStore.get(focusIdsFamily(treeId)).lastId;
-      const lastSelectedItem = selectableItems.find((i) => i.node.item.id === lastSelectedId);
+      const lastSelectedItem =
+        lastSelectedId == null ? null : selectableItemsById.get(lastSelectedId);
 
       if (
         lastSelectedId &&
@@ -424,14 +433,14 @@ function TreeInner<T extends { id: string }>(
         return;
       }
 
-      const overSelectableItem = selectableItems.find((i) => i.node.item.id === over.id) ?? null;
+      const overSelectableItem = selectableItemsById.get(String(over.id)) ?? null;
       if (overSelectableItem == null) {
         return;
       }
 
       const draggingItems = jotaiStore.get(draggingIdsFamily(treeId));
       for (const id of draggingItems) {
-        const item = selectableItems.find((i) => i.node.item.id === id)?.node ?? null;
+        const item = selectableItemsById.get(id)?.node ?? null;
         if (item == null) {
           return;
         }
@@ -447,8 +456,8 @@ function TreeInner<T extends { id: string }>(
 
       const item = node.item;
       let hoveredParent = node.parent;
-      const dragIndex = selectableItems.findIndex((n) => n.node.item.id === item.id) ?? -1;
-      const hovered = selectableItems[dragIndex]?.node ?? null;
+      const dragIndex = overSelectableItem.index;
+      const hovered = overSelectableItem.node;
       const hoveredIndex = dragIndex + (side === "before" ? 0 : 1);
       let hoveredChildIndex = overSelectableItem.index + (side === "before" ? 0 : 1);
 
@@ -479,13 +488,14 @@ function TreeInner<T extends { id: string }>(
         });
       }
     },
-    [root.depth, root.item.id, selectableItems, treeId],
+    [root.depth, root.item.id, selectableItems.length, selectableItemsById, treeId],
   );
 
   const handleDragStart = useCallback(
     function handleDragStart(e: DragStartEvent) {
       const selectedItems = getSelectedItems(treeId, selectableItems);
-      const isDraggingSelectedItem = selectedItems.find((i) => i.id === e.active.id);
+      const selectedItemIds = new Set(selectedItems.map((i) => i.id));
+      const isDraggingSelectedItem = selectedItemIds.has(String(e.active.id));
 
       // If we started dragging an already-selected item, we'll use that
       if (isDraggingSelectedItem) {
@@ -495,7 +505,7 @@ function TreeInner<T extends { id: string }>(
         );
       } else {
         // If we started dragging a non-selected item, only drag that item
-        const activeItem = selectableItems.find((i) => i.node.item.id === e.active.id)?.node.item;
+        const activeItem = selectableItemsById.get(String(e.active.id))?.node.item;
         if (activeItem != null) {
           jotaiStore.set(draggingIdsFamily(treeId), [activeItem.id]);
           // Also update selection to just be this one
@@ -507,7 +517,7 @@ function TreeInner<T extends { id: string }>(
         }
       }
     },
-    [handleSelect, selectableItems, treeId],
+    [handleSelect, selectableItems, selectableItemsById, treeId],
   );
 
   const clearDragState = useCallback(() => {
@@ -539,7 +549,9 @@ function TreeInner<T extends { id: string }>(
       const hoveredParentS =
         hoveredParentId === root.item.id
           ? { node: root, depth: 0, index: 0 }
-          : (selectableItems.find((i) => i.node.item.id === hoveredParentId) ?? null);
+          : hoveredParentId == null
+            ? null
+            : (selectableItemsById.get(hoveredParentId) ?? null);
       const hoveredParent = hoveredParentS?.node ?? null;
 
       if (hoveredParent == null || hoveredIndex == null || !draggingItems?.length) {
@@ -549,7 +561,7 @@ function TreeInner<T extends { id: string }>(
       // Resolve the actual tree nodes for each dragged item (keeps order of draggingItems)
       const draggedNodes: TreeNode<T>[] = draggingItems
         .map((id) => {
-          return selectableItems.find((i) => i.node.item.id === id)?.node ?? null;
+          return selectableItemsById.get(id)?.node ?? null;
         })
         .filter((n) => n != null)
         // Filter out invalid drags (dragging into descendant)
@@ -578,7 +590,7 @@ function TreeInner<T extends { id: string }>(
         insertAt,
       });
     },
-    [treeId, clearDragState, selectableItems, root, onDragEnd],
+    [treeId, clearDragState, selectableItemsById, root, onDragEnd],
   );
 
   const treeItemListProps: Omit<

@@ -5,6 +5,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import slugify from "slugify";
 import { activeWorkspaceAtom } from "../hooks/useActiveWorkspace";
+import { workspacesByIdAtom } from "../hooks/useModelLookupMaps";
 import { translateCount, useTranslate } from "../lib/i18n";
 import { invokeCmd } from "../lib/tauri";
 import { Button } from "./core/Button";
@@ -43,6 +44,7 @@ function ExportDataDialogContent({
   activeWorkspace: Workspace;
 }) {
   const t = useTranslate();
+  const workspacesById = useAtomValue(workspacesByIdAtom);
   const [includePrivateEnvironments, setIncludePrivateEnvironments] =
     useState<boolean>(false);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<
@@ -73,8 +75,7 @@ function ExportDataDialogContent({
     const ids = Object.keys(selectedWorkspaces).filter(
       (k) => selectedWorkspaces[k],
     );
-    const workspace =
-      ids.length === 1 ? workspaces.find((w) => w.id === ids[0]) : undefined;
+    const workspace = ids.length === 1 ? workspacesById.get(ids[0] ?? "") : undefined;
     const slug = workspace
       ? slugify(workspace.name, { lower: true })
       : "workspaces";
@@ -98,7 +99,7 @@ function ExportDataDialogContent({
     onHide,
     onSuccess,
     selectedWorkspaces,
-    workspaces,
+    workspacesById,
   ]);
 
   const allSelected = workspaces.every((w) => selectedWorkspaces[w.id]);
