@@ -20,10 +20,7 @@ import { Dropdown } from "../core/Dropdown";
 import { Icon } from "../core/Icon";
 import { InlineCode } from "../core/InlineCode";
 import { gitCallbacks } from "./callbacks";
-import { GitCommitDialog } from "./GitCommitDialog";
-import { GitRemotesDialog } from "./GitRemotesDialog";
 import { handlePullResult, handlePushResult } from "./git-util";
-import { HistoryDialog } from "./HistoryDialog";
 
 export function GitDropdown() {
   const workspaceMeta = useAtomValue(activeWorkspaceMetaAtom);
@@ -129,6 +126,7 @@ function SyncDropdownWithSyncDir({ workspaceId }: { workspaceId: string }) {
       hidden: (log.data ?? []).length === 0,
       leftSlot: <Icon icon="history" />,
       onSelect: async () => {
+        const { HistoryDialog } = await import("./HistoryDialog");
         showDialog({
           id: "git-history",
           size: "md",
@@ -141,7 +139,10 @@ function SyncDropdownWithSyncDir({ workspaceId }: { workspaceId: string }) {
     {
       label: "Manage Remotes...",
       leftSlot: <Icon icon="hard_drive_download" />,
-      onSelect: () => GitRemotesDialog.show(workspaceId),
+      onSelect: async () => {
+        const { GitRemotesDialog } = await import("./GitRemotesDialog");
+        GitRemotesDialog.show(workspaceId);
+      },
     },
     { type: "separator" },
     {
@@ -212,7 +213,8 @@ function SyncDropdownWithSyncDir({ workspaceId }: { workspaceId: string }) {
       label: "Commit...",
 
       leftSlot: <Icon icon="git_commit_vertical" />,
-      onSelect() {
+      async onSelect() {
+        const { GitCommitDialog } = await import("./GitCommitDialog");
         showDialog({
           id: "commit",
           title: "Commit Changes",
