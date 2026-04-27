@@ -42,7 +42,7 @@ function manualChunks(id: string): string | undefined {
     return "vendor-react";
   }
 
-  if (packageName === "graphql" || packageName === "cm6-graphql") {
+  if (packageName === "graphql") {
     return "graphql";
   }
 

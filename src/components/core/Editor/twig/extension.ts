@@ -2,17 +2,19 @@ import type { LanguageSupport } from "@codemirror/language";
 import { LRLanguage } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { parseMixed } from "@lezer/common";
+import type { LRParser } from "@lezer/lr";
 import type { WrappedEnvironmentVariable } from "../../../../hooks/useEnvironmentVariables";
 import type { GenericCompletionConfig } from "../genericCompletion";
 import { genericCompletion } from "../genericCompletion";
-import { textLanguage } from "../text/extension";
 import type { TwigCompletionOption } from "./completion";
 import { twigCompletion } from "./completion";
 import { templateTagsPlugin } from "./templateTags";
-import { parser as twigParser } from "./twig";
+
+var mixedLanguagesCache: Record<string, LRLanguage> | undefined;
 
 export function twig({
   base,
+  twigParser,
   environmentVariables,
   completionOptions,
   autocomplete,
@@ -21,6 +23,7 @@ export function twig({
   extraExtensions,
 }: {
   base: LanguageSupport;
+  twigParser: LRParser;
   environmentVariables: WrappedEnvironmentVariable[];
   completionOptions: TwigCompletionOption[];
   autocomplete?: GenericCompletionConfig;
@@ -29,7 +32,7 @@ export function twig({
   onClickPathParameter: (name: string) => void;
   extraExtensions: Extension[];
 }) {
-  const language = mixLanguage(base);
+  const language = mixLanguage(base, twigParser);
 
   const variableOptions: TwigCompletionOption[] =
     environmentVariables.map((v) => ({
@@ -56,11 +59,10 @@ export function twig({
   ];
 }
 
-const mixedLanguagesCache: Record<string, LRLanguage> = {};
-
-function mixLanguage(base: LanguageSupport): LRLanguage {
+function mixLanguage(base: LanguageSupport, twigParser: LRParser): LRLanguage {
   // It can be slow to mix languages when there are hundreds of editors, so we'll cache them to speed it up
-  const cached = mixedLanguagesCache[base.language.name];
+  const cache = (mixedLanguagesCache ??= {});
+  const cached = cache[base.language.name];
   if (cached != null) {
     return cached;
   }
@@ -68,7 +70,7 @@ function mixLanguage(base: LanguageSupport): LRLanguage {
   const parser = twigParser.configure({
     wrap: parseMixed((node) => {
       // If the base language is text, we can overwrite at the top
-      if (base.language.name !== textLanguage.name && !node.type.isTop) {
+      if (base.language.name !== "text" && !node.type.isTop) {
         return null;
       }
 
@@ -80,6 +82,6 @@ function mixLanguage(base: LanguageSupport): LRLanguage {
   });
 
   const language = LRLanguage.define({ name: "twig", parser });
-  mixedLanguagesCache[base.language.name] = language;
+  cache[base.language.name] = language;
   return language;
 }

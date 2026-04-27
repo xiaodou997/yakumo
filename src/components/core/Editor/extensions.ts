@@ -1,17 +1,5 @@
-import {
-  autocompletion,
-  closeBrackets,
-  closeBracketsKeymap,
-  completionKeymap,
-} from "@codemirror/autocomplete";
+import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { history, historyKeymap } from "@codemirror/commands";
-import { go } from "@codemirror/lang-go";
-import { java } from "@codemirror/lang-java";
-import { javascript } from "@codemirror/lang-javascript";
-import { markdown } from "@codemirror/lang-markdown";
-import { php } from "@codemirror/lang-php";
-import { python } from "@codemirror/lang-python";
-import { xml } from "@codemirror/lang-xml";
 import {
   bracketMatching,
   codeFolding,
@@ -19,22 +7,10 @@ import {
   foldKeymap,
   HighlightStyle,
   indentOnInput,
-  LanguageSupport,
-  StreamLanguage,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { c, csharp, kotlin, objectiveC } from "@codemirror/legacy-modes/mode/clike";
-import { clojure } from "@codemirror/legacy-modes/mode/clojure";
-import { http } from "@codemirror/legacy-modes/mode/http";
-import { oCaml } from "@codemirror/legacy-modes/mode/mllike";
-import { powerShell } from "@codemirror/legacy-modes/mode/powershell";
-import { r } from "@codemirror/legacy-modes/mode/r";
-import { ruby } from "@codemirror/legacy-modes/mode/ruby";
-import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { swift } from "@codemirror/legacy-modes/mode/swift";
-import { linter, lintGutter, lintKeymap } from "@codemirror/lint";
+import { lintKeymap } from "@codemirror/lint";
 import { search, searchKeymap } from "@codemirror/search";
-import type { Extension } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import {
   crosshairCursor,
@@ -48,25 +24,8 @@ import {
   rectangularSelection,
 } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
-import { jsonc, jsoncLanguage } from "@shopify/lang-jsonc";
-import { graphql } from "cm6-graphql";
-import type { GraphQLSchema } from "graphql";
-import { activeRequestIdAtom } from "../../../hooks/useActiveRequestId";
-import type { WrappedEnvironmentVariable } from "../../../hooks/useEnvironmentVariables";
-import { jotaiStore } from "../../../lib/jotai";
-import { renderMarkdown } from "../../../lib/markdown";
 import { pluralizeCount } from "../../../lib/pluralize";
-import { showGraphQLDocExplorerAtom } from "../../graphql/graphqlAtoms";
-import type { EditorProps } from "./Editor";
-import { jsonParseLinter } from "./json-lint";
-import { pairs } from "./pairs/extension";
 import { searchMatchCount } from "./searchMatchCount";
-import { text } from "./text/extension";
-import { timeline } from "./timeline/extension";
-import type { TwigCompletionOption } from "./twig/completion";
-import { twig } from "./twig/extension";
-import { pathParametersPlugin } from "./twig/pathParameters";
-import { url } from "./url/extension";
 
 export const syntaxHighlightStyle = HighlightStyle.define([
   {
@@ -94,137 +53,6 @@ export const syntaxHighlightStyle = HighlightStyle.define([
 ]);
 
 const syntaxTheme = EditorView.theme({}, { dark: true });
-
-const closeBracketsExtensions: Extension = [closeBrackets(), keymap.of([...closeBracketsKeymap])];
-
-const legacyLang = (mode: Parameters<typeof StreamLanguage.define>[0]) => {
-  return () => new LanguageSupport(StreamLanguage.define(mode));
-};
-
-const syntaxExtensions: Record<
-  NonNullable<EditorProps["language"]>,
-  null | (() => LanguageSupport)
-> = {
-  graphql: null,
-  json: jsonc,
-  javascript: javascript,
-  // HTML as XML because HTML is oddly slow
-  html: xml,
-  xml: xml,
-  url: url,
-  pairs: pairs,
-  text: text,
-  timeline: timeline,
-  markdown: markdown,
-  c: legacyLang(c),
-  clojure: legacyLang(clojure),
-  csharp: legacyLang(csharp),
-  go: go,
-  http: legacyLang(http),
-  java: java,
-  kotlin: legacyLang(kotlin),
-  objective_c: legacyLang(objectiveC),
-  ocaml: legacyLang(oCaml),
-  php: php,
-  powershell: legacyLang(powerShell),
-  python: python,
-  r: legacyLang(r),
-  ruby: legacyLang(ruby),
-  shell: legacyLang(shell),
-  swift: legacyLang(swift),
-};
-
-const closeBracketsFor: (keyof typeof syntaxExtensions)[] = ["json", "javascript", "graphql"];
-
-export function getLanguageExtension({
-  useTemplating,
-  language = "text",
-  lintExtension,
-  environmentVariables,
-  autocomplete,
-  hideGutter,
-  onClickVariable,
-  onClickMissingVariable,
-  onClickPathParameter,
-  completionOptions,
-  graphQLSchema,
-}: {
-  useTemplating: boolean;
-  environmentVariables: WrappedEnvironmentVariable[];
-  onClickVariable: (option: WrappedEnvironmentVariable, tagValue: string, startPos: number) => void;
-  onClickMissingVariable: (name: string, tagValue: string, startPos: number) => void;
-  onClickPathParameter: (name: string) => void;
-  completionOptions: TwigCompletionOption[];
-  graphQLSchema: GraphQLSchema | null;
-} & Pick<EditorProps, "language" | "autocomplete" | "hideGutter" | "lintExtension">) {
-  const extraExtensions: Extension[] = [];
-
-  if (language === "url") {
-    extraExtensions.push(pathParametersPlugin(onClickPathParameter));
-  }
-
-  // Only close brackets on languages that need it
-  if (language && closeBracketsFor.includes(language)) {
-    extraExtensions.push(closeBracketsExtensions);
-  }
-
-  // GraphQL is a special exception
-  if (language === "graphql") {
-    return [
-      graphql(graphQLSchema ?? undefined, {
-        async onCompletionInfoRender(gqlCompletionItem): Promise<Node | null> {
-          if (!gqlCompletionItem.documentation) return null;
-          const innerHTML = await renderMarkdown(gqlCompletionItem.documentation);
-          const span = document.createElement("span");
-          span.innerHTML = innerHTML;
-          return span;
-        },
-        onShowInDocs(field, type, parentType) {
-          const activeRequestId = jotaiStore.get(activeRequestIdAtom);
-          if (activeRequestId == null) return;
-          jotaiStore.set(showGraphQLDocExplorerAtom, (v) => ({
-            ...v,
-            [activeRequestId]: { field, type, parentType },
-          }));
-        },
-      }),
-      extraExtensions,
-    ];
-  }
-
-  if (language === "json") {
-    extraExtensions.push(lintExtension ?? linter(jsonParseLinter()));
-    extraExtensions.push(
-      jsoncLanguage.data.of({
-        commentTokens: { line: "//", block: { open: "/*", close: "*/" } },
-      }),
-    );
-    if (!hideGutter) {
-      extraExtensions.push(lintGutter());
-    }
-  }
-
-  const maybeBase = language ? syntaxExtensions[language] : null;
-  const base = typeof maybeBase === "function" ? maybeBase() : null;
-  if (base == null) {
-    return [];
-  }
-
-  if (!useTemplating) {
-    return [base, extraExtensions];
-  }
-
-  return twig({
-    base,
-    environmentVariables,
-    completionOptions,
-    autocomplete,
-    onClickVariable,
-    onClickMissingVariable,
-    onClickPathParameter,
-    extraExtensions,
-  });
-}
 
 // Filter out autocomplete start triggers from completionKeymap since we handle it via configurable hotkeys.
 // Keep navigation keys (ArrowUp/Down, Enter, Escape, etc.) but remove startCompletion bindings.

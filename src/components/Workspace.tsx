@@ -12,11 +12,9 @@ import {
   activeEnvironmentAtom,
   useSubscribeActiveEnvironmentId,
 } from "../hooks/useActiveEnvironment";
-import { activeFolderAtom } from "../hooks/useActiveFolder";
 import { useSubscribeActiveFolderId } from "../hooks/useActiveFolderId";
 import { activeRequestAtom } from "../hooks/useActiveRequest";
 import { useSubscribeActiveRequestId } from "../hooks/useActiveRequestId";
-import { activeWorkspaceAtom } from "../hooks/useActiveWorkspace";
 import { useFloatingSidebarHidden } from "../hooks/useFloatingSidebarHidden";
 import { useHotKey } from "../hooks/useHotKey";
 import { useSubscribeRecentCookieJars } from "../hooks/useRecentCookieJars";
@@ -28,25 +26,15 @@ import { useSidebarHidden } from "../hooks/useSidebarHidden";
 import { useSidebarWidth } from "../hooks/useSidebarWidth";
 import { useSyncWorkspaceRequestTitle } from "../hooks/useSyncWorkspaceRequestTitle";
 import { duplicateRequestOrFolderAndNavigate } from "../lib/duplicateRequestOrFolderAndNavigate";
-import { importData } from "../lib/importData";
 import { jotaiStore } from "../lib/jotai";
-import { CreateDropdown } from "./CreateDropdown";
-import { Banner } from "./core/Banner";
-import { Button } from "./core/Button";
-import { HotkeyList } from "./core/HotkeyList";
-import { FeedbackLink } from "./core/Link";
-import { HStack } from "./core/Stacks";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { FolderLayout } from "./FolderLayout";
-import { GrpcConnectionLayout } from "./GrpcConnectionLayout";
 import { HeaderSize } from "./HeaderSize";
-import { HttpRequestLayout } from "./HttpRequestLayout";
 import { Overlay } from "./Overlay";
 import type { ResizeHandleEvent } from "./ResizeHandle";
 import { ResizeHandle } from "./ResizeHandle";
 import Sidebar from "./Sidebar";
 import { SidebarActions } from "./SidebarActions";
-import { WebsocketRequestLayout } from "./WebsocketRequestLayout";
+import { WorkspaceBody } from "./WorkspaceBody";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
 const side = { gridArea: "side" };
@@ -195,60 +183,6 @@ export function Workspace() {
         <WorkspaceBody />
       </ErrorBoundary>
     </div>
-  );
-}
-
-function WorkspaceBody() {
-  const activeRequest = useAtomValue(activeRequestAtom);
-  const activeFolder = useAtomValue(activeFolderAtom);
-  const activeWorkspace = useAtomValue(activeWorkspaceAtom);
-
-  if (activeWorkspace == null) {
-    return (
-      <m.div
-        className="m-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        // Delay the entering because the workspaces might load after a slight delay
-        transition={{ delay: 0.5 }}
-      >
-        <Banner color="warning" className="max-w-[30rem]">
-          The active workspace was not found. Select a workspace from the header menu or report this
-          bug to <FeedbackLink />
-        </Banner>
-      </m.div>
-    );
-  }
-
-  if (activeRequest?.model === "grpc_request") {
-    return <GrpcConnectionLayout style={body} />;
-  }
-  if (activeRequest?.model === "websocket_request") {
-    return <WebsocketRequestLayout style={body} activeRequest={activeRequest} />;
-  }
-  if (activeRequest?.model === "http_request") {
-    return <HttpRequestLayout activeRequest={activeRequest} style={body} />;
-  }
-  if (activeFolder != null) {
-    return <FolderLayout folder={activeFolder} style={body} />;
-  }
-
-  return (
-    <HotkeyList
-      hotkeys={["model.create", "sidebar.focus", "settings.show"]}
-      bottomSlot={
-        <HStack space={1} justifyContent="center" className="mt-3">
-          <Button variant="border" size="sm" onClick={() => importData.mutate()}>
-            Import
-          </Button>
-          <CreateDropdown hideFolder>
-            <Button variant="border" forDropdown size="sm">
-              New Request
-            </Button>
-          </CreateDropdown>
-        </HStack>
-      }
-    />
   );
 }
 

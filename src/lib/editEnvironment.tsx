@@ -3,7 +3,6 @@ import { updateModel } from "@yakumo-internal/models";
 import { openFolderSettings } from "../commands/openFolderSettings";
 import type { PairEditorHandle } from "../components/core/PairEditor";
 import { ensurePairId } from "../components/core/PairEditor.util";
-import { EnvironmentEditDialog } from "../components/EnvironmentEditDialog";
 import { environmentsBreakdownAtom } from "../hooks/useEnvironmentsBreakdown";
 import { toggleDialog } from "./dialog";
 import { jotaiStore } from "./jotai";
@@ -40,6 +39,7 @@ export async function editEnvironment(
     }
 
     let didFocusVariable = false;
+    const { EnvironmentEditDialog } = await import("../components/EnvironmentEditDialog");
 
     toggleDialog({
       id: "environment-editor",

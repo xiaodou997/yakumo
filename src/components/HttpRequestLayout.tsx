@@ -1,15 +1,19 @@
 import type { HttpRequest } from "@yakumo-internal/models";
-import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties } from "react";
-import { useCurrentGraphQLSchema } from "../hooks/useIntrospectGraphQL";
+import { lazy, Suspense } from "react";
 import { workspaceLayoutAtom } from "../lib/atoms";
-import type { SlotProps } from "./core/SplitLayout";
+import type { SlotProps, SplitLayoutLayout } from "./core/SplitLayout";
 import { SplitLayout } from "./core/SplitLayout";
-import { GraphQLDocsExplorer } from "./graphql/GraphQLDocsExplorer";
 import { showGraphQLDocExplorerAtom } from "./graphql/graphqlAtoms";
 import { HttpRequestPane } from "./HttpRequestPane";
 import { HttpResponsePane } from "./HttpResponsePane";
+
+const GraphQLHttpRequestLayout = lazy(() =>
+  import("./graphql/GraphQLHttpRequestLayout").then((m) => ({
+    default: m.GraphQLHttpRequestLayout,
+  })),
+);
 
 interface Props {
   activeRequest: HttpRequest;
@@ -18,9 +22,37 @@ interface Props {
 
 export function HttpRequestLayout({ activeRequest, style }: Props) {
   const showGraphQLDocExplorer = useAtomValue(showGraphQLDocExplorerAtom);
-  const graphQLSchema = useCurrentGraphQLSchema(activeRequest);
   const workspaceLayout = useAtomValue(workspaceLayoutAtom);
 
+  if (
+    activeRequest.bodyType === "graphql" &&
+    showGraphQLDocExplorer[activeRequest.id] !== undefined
+  ) {
+    return (
+      <Suspense fallback={<HttpRequestResponseSplit activeRequest={activeRequest} style={style} />}>
+        <GraphQLHttpRequestLayout
+          activeRequest={activeRequest}
+          style={style}
+          workspaceLayout={workspaceLayout}
+        />
+      </Suspense>
+    );
+  }
+
+  return (
+    <HttpRequestResponseSplit
+      activeRequest={activeRequest}
+      style={style}
+      workspaceLayout={workspaceLayout}
+    />
+  );
+}
+
+export function HttpRequestResponseSplit({
+  activeRequest,
+  style,
+  workspaceLayout,
+}: Props & { workspaceLayout?: SplitLayoutLayout }) {
   const requestResponseSplit = ({ style }: Pick<SlotProps, "style">) => (
     <SplitLayout
       name="http_layout"
@@ -39,28 +71,6 @@ export function HttpRequestLayout({ activeRequest, style }: Props) {
       )}
     />
   );
-
-  if (
-    activeRequest.bodyType === "graphql" &&
-    showGraphQLDocExplorer[activeRequest.id] !== undefined &&
-    graphQLSchema != null
-  ) {
-    return (
-      <SplitLayout
-        name="graphql_layout"
-        defaultRatio={1 / 3}
-        firstSlot={requestResponseSplit}
-        secondSlot={({ style, orientation }) => (
-          <GraphQLDocsExplorer
-            requestId={activeRequest.id}
-            schema={graphQLSchema}
-            className={classNames(orientation === "horizontal" && "!ml-0")}
-            style={style}
-          />
-        )}
-      />
-    );
-  }
 
   return requestResponseSplit({ style });
 }

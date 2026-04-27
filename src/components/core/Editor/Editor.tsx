@@ -32,7 +32,6 @@ import { useEnvironmentVariables } from "../../../hooks/useEnvironmentVariables"
 import { eventMatchesHotkey } from "../../../hooks/useHotKey";
 import { useRequestEditor } from "../../../hooks/useRequestEditor";
 import { useTemplateFunctionCompletionOptions } from "../../../hooks/useTemplateFunctions";
-import { editEnvironment } from "../../../lib/editEnvironment";
 import { tryFormatHtml, tryFormatJson, tryFormatXml } from "../../../lib/formatters";
 import { jotaiStore } from "../../../lib/jotai";
 import { withEncryptionEnabled } from "../../../lib/setupOrConfigureEncryption";
@@ -42,11 +41,12 @@ import { HStack } from "../Stacks";
 import "./Editor.css";
 import {
   baseExtensions,
-  getLanguageExtension,
   multiLineExtensions,
   readonlyExtensions,
 } from "./extensions";
 import type { GenericCompletionConfig } from "./genericCompletion";
+import type { LanguageExtensionConfig } from "./languageExtensions";
+import { createLanguageExtensionConfigurator } from "./languageExtensionLoader";
 import { singleLineExtensions } from "./singleLine";
 
 // VSCode's Tab actions mess with the single-line editor tab actions, so remove it.
@@ -182,6 +182,14 @@ function EditorInner({
   }
 
   const cm = useRef<{ view: EditorView; languageCompartment: Compartment } | null>(null);
+  const configureLanguageExtension = useMemo(
+    () =>
+      createLanguageExtensionConfigurator({
+        getCurrent: () => cm.current,
+        loadLanguageExtensions: () => import("./languageExtensions"),
+      }),
+    [],
+  );
 
   // Use ref so we can update the handler without re-initializing the editor
   const handleChange = useRef<EditorProps["onChange"]>(onChange);
@@ -303,6 +311,7 @@ function EditorInner({
   const onClickVariable = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (v: WrappedEnvironmentVariable, _tagValue: string, _startPos: number) => {
+      const { editEnvironment } = await import("../../../lib/editEnvironment");
       await editEnvironment(v.environment, { addOrFocusVariable: v.variable });
     },
     [],
@@ -310,6 +319,7 @@ function EditorInner({
 
   const onClickMissingVariable = useCallback(async (name: string) => {
     const activeEnvironment = jotaiStore.get(activeEnvironmentAtom);
+    const { editEnvironment } = await import("../../../lib/editEnvironment");
     await editEnvironment(activeEnvironment, {
       addOrFocusVariable: { name, value: "", enabled: true },
     });
@@ -328,12 +338,8 @@ function EditorInner({
     !!autocompleteFunctions,
   );
 
-  // Update the language extension when the language changes
-  // oxlint-disable-next-line react-hooks/exhaustive-deps -- intentionally limited deps
-  useEffect(() => {
-    if (cm.current === null) return;
-    const { view, languageCompartment } = cm.current;
-    const ext = getLanguageExtension({
+  const languageExtensionConfig = useMemo<LanguageExtensionConfig>(
+    () => ({
       useTemplating,
       language,
       lintExtension,
@@ -345,22 +351,31 @@ function EditorInner({
       onClickMissingVariable,
       onClickPathParameter,
       graphQLSchema: graphQLSchema ?? null,
-    });
-    view.dispatch({ effects: languageCompartment.reconfigure(ext) });
-  }, [
-    language,
-    lintExtension,
-    autocomplete,
-    environmentVariables,
-    onClickFunction,
-    onClickVariable,
-    onClickMissingVariable,
-    onClickPathParameter,
-    completionOptions,
-    useTemplating,
-    graphQLSchema,
-    hideGutter,
-  ]);
+    }),
+    [
+      useTemplating,
+      language,
+      lintExtension,
+      hideGutter,
+      environmentVariables,
+      autocomplete,
+      completionOptions,
+      onClickVariable,
+      onClickMissingVariable,
+      onClickPathParameter,
+      graphQLSchema,
+    ],
+  );
+
+  const languageExtensionConfigRef = useRef(languageExtensionConfig);
+  useEffect(() => {
+    languageExtensionConfigRef.current = languageExtensionConfig;
+  }, [languageExtensionConfig]);
+
+  // Update the language extension when the language changes
+  useEffect(() => {
+    void configureLanguageExtension(languageExtensionConfig);
+  }, [configureLanguageExtension, languageExtensionConfig]);
 
   // Initialize the editor when ref mounts
   // oxlint-disable-next-line react-hooks/exhaustive-deps -- only reinitialize when necessary
@@ -374,18 +389,7 @@ function EditorInner({
 
       try {
         const languageCompartment = new Compartment();
-        const langExt = getLanguageExtension({
-          useTemplating,
-          language,
-          lintExtension,
-          completionOptions,
-          autocomplete,
-          environmentVariables,
-          onClickVariable,
-          onClickMissingVariable,
-          onClickPathParameter,
-          graphQLSchema: graphQLSchema ?? null,
-        });
+        const langExt = emptyExtension;
         const extensions = [
           languageCompartment.of(langExt),
           placeholderCompartment.current.of(placeholderExt(placeholderElFromText(placeholder))),
@@ -440,6 +444,7 @@ function EditorInner({
           view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
         }
         setRef?.(view);
+        void configureLanguageExtension(languageExtensionConfigRef.current);
       } catch (e) {
         console.log("Failed to initialize Codemirror", e);
       }
