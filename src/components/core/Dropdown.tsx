@@ -22,7 +22,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useKey, useWindowSize } from "react-use";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { fireAndForget } from "../../lib/fireAndForget";
 import type { HotkeyAction } from "../../hooks/useHotKey";
@@ -95,6 +94,54 @@ export interface DropdownRef {
 // only one dropdown can be open at a time.
 // TODO: Also make ContextMenu use this
 const openAtom = atom<string | null>(null);
+
+function useDocumentKey(key: KeyboardEvent["key"], handler: (event: KeyboardEvent) => void) {
+  const handlerRef = useRef(handler);
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if (event.key === key) {
+        handlerRef.current(event);
+      }
+    };
+
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, [key]);
+}
+
+function useViewportRevision() {
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    let frame: number | null = null;
+
+    const handleResize = () => {
+      if (frame != null) {
+        cancelAnimationFrame(frame);
+      }
+
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        setRevision((r) => r + 1);
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (frame != null) {
+        cancelAnimationFrame(frame);
+      }
+    };
+  }, []);
+
+  return revision;
+}
 
 export const Dropdown = forwardRef<DropdownRef, DropdownProps>(function Dropdown(
   { children, items, hotKeyAction, fullWidth, onOpen }: DropdownProps,
@@ -206,12 +253,11 @@ export const Dropdown = forwardRef<DropdownRef, DropdownProps>(function Dropdown
     buttonRef.current?.setAttribute("aria-expanded", isOpen.toString());
   }, [isOpen]);
 
-  const windowSize = useWindowSize();
+  const viewportRevision = useViewportRevision();
   const triggerRect = useMemo(() => {
-    if (!windowSize) return null; // No-op to TS happy with this dep
     if (!isOpen) return null;
     return buttonRef.current?.getBoundingClientRect();
-  }, [isOpen, windowSize]);
+  }, [isOpen, viewportRevision]);
 
   return (
     <>
@@ -362,7 +408,7 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
       }
     };
 
-    useKey(
+    useDocumentKey(
       "Escape",
       () => {
         if (!isOpen) return;
@@ -370,8 +416,6 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
         else if (filter !== "") setFilter("");
         else handleClose();
       },
-      {},
-      [isOpen, filter, setFilter, handleClose, activeSubmenu],
     );
 
     const handlePrev = useCallback(
@@ -422,29 +466,25 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
       }
     }, [selectedIndex, items, handleNext]);
 
-    useKey(
+    useDocumentKey(
       "ArrowUp",
       (e) => {
         if (!isOpen || activeSubmenu) return;
         e.preventDefault();
         handlePrev();
       },
-      {},
-      [isOpen, activeSubmenu],
     );
 
-    useKey(
+    useDocumentKey(
       "ArrowDown",
       (e) => {
         if (!isOpen || activeSubmenu) return;
         e.preventDefault();
         handleNext();
       },
-      {},
-      [isOpen, activeSubmenu],
     );
 
-    useKey(
+    useDocumentKey(
       "ArrowLeft",
       (e) => {
         if (!isOpen) return;
@@ -457,8 +497,6 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
           onClose();
         }
       },
-      {},
-      [isOpen, isSubmenu, activeSubmenu, onClose],
     );
 
     const handleSelect = useCallback(
@@ -584,7 +622,7 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
       [filteredItems, setSelectedIndex],
     );
 
-    useKey(
+    useDocumentKey(
       "ArrowRight",
       (e) => {
         if (!isOpen || activeSubmenu) return;
@@ -597,11 +635,9 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
           }
         }
       },
-      {},
-      [isOpen, activeSubmenu, filteredItems, selectedIndex],
     );
 
-    useKey(
+    useDocumentKey(
       "Enter",
       (e) => {
         if (!isOpen || activeSubmenu) return;
@@ -617,8 +653,6 @@ const Menu = forwardRef<Omit<DropdownRef, "open" | "isOpen" | "toggle" | "items"
           fireAndForget(handleSelect(item));
         }
       },
-      {},
-      [isOpen, activeSubmenu, filteredItems, selectedIndex, handleSelect],
     );
 
     const handleItemHover = useCallback(
