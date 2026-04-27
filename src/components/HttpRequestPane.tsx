@@ -1,12 +1,16 @@
 import type { HttpRequest } from "@yakumo-internal/models";
-import { patchModel } from "@yakumo-internal/models";
+import {
+  grpcRequestsAtom,
+  httpRequestsAtom,
+  patchModel,
+  websocketRequestsAtom,
+} from "@yakumo-internal/models";
 import type { GenericCompletionOption } from "@yakumo/features";
 import classNames from "classnames";
 import { atom, useAtomValue } from "jotai";
 import type { CSSProperties } from "react";
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { activeRequestIdAtom } from "../hooks/useActiveRequestId";
-import { allRequestsAtom } from "../hooks/useAllRequests";
 import { useAuthTab } from "../hooks/useAuthTab";
 import { useCancelHttpResponse } from "../hooks/useCancelHttpResponse";
 import { useHeadersTab } from "../hooks/useHeadersTab";
@@ -96,10 +100,23 @@ const TABS_STORAGE_KEY = "http_request_tabs";
 
 const nonActiveRequestUrlsAtom = atom((get) => {
   const activeRequestId = get(activeRequestIdAtom);
-  const requests = get(allRequestsAtom);
-  return requests
-    .filter((r) => r.id !== activeRequestId)
-    .map((r): GenericCompletionOption => ({ type: "constant", label: r.url }));
+  const options: GenericCompletionOption[] = [];
+  for (const request of get(httpRequestsAtom)) {
+    if (request.id !== activeRequestId) {
+      options.push({ type: "constant", label: request.url });
+    }
+  }
+  for (const request of get(grpcRequestsAtom)) {
+    if (request.id !== activeRequestId) {
+      options.push({ type: "constant", label: request.url });
+    }
+  }
+  for (const request of get(websocketRequestsAtom)) {
+    if (request.id !== activeRequestId) {
+      options.push({ type: "constant", label: request.url });
+    }
+  }
+  return options;
 });
 
 const memoNotActiveRequestUrlsAtom = deepEqualAtom(nonActiveRequestUrlsAtom);

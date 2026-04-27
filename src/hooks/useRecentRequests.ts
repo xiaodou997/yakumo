@@ -1,8 +1,14 @@
+import {
+  grpcRequestsAtom,
+  httpRequestsAtom,
+  websocketRequestsAtom,
+} from "@yakumo-internal/models";
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { jotaiStore } from "../lib/jotai";
 import { getKeyValue, setKeyValue } from "../lib/keyValueStore";
 import { activeRequestAtom } from "./useActiveRequest";
-import { useAllRequests } from "./useAllRequests";
+import { activeWorkspaceIdAtom } from "./useActiveWorkspace";
 import { useKeyValue } from "./useKeyValue";
 
 const kvKey = (workspaceId: string) => `recent_requests::${workspaceId}`;
@@ -10,17 +16,34 @@ const namespace = "global";
 const fallback: string[] = [];
 
 export function useRecentRequests() {
-  const requests = useAllRequests();
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
+  const httpRequests = useAtomValue(httpRequestsAtom);
+  const grpcRequests = useAtomValue(grpcRequestsAtom);
+  const websocketRequests = useAtomValue(websocketRequestsAtom);
 
   const { set: setRecentRequests, value: recentRequests } = useKeyValue<string[]>({
-    key: kvKey(requests[0]?.workspaceId ?? "n/a"),
+    key: kvKey(activeWorkspaceId ?? "n/a"),
     namespace,
     fallback,
   });
 
+  const validRequestIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const request of httpRequests) {
+      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
+    }
+    for (const request of grpcRequests) {
+      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
+    }
+    for (const request of websocketRequests) {
+      if (request.workspaceId === activeWorkspaceId) ids.add(request.id);
+    }
+    return ids;
+  }, [activeWorkspaceId, grpcRequests, httpRequests, websocketRequests]);
+
   const onlyValidIds = useMemo(
-    () => recentRequests?.filter((id) => requests.some((r) => r.id === id)) ?? [],
-    [recentRequests, requests],
+    () => recentRequests?.filter((id) => validRequestIds.has(id)) ?? [],
+    [recentRequests, validRequestIds],
   );
 
   return [onlyValidIds, setRecentRequests] as const;
