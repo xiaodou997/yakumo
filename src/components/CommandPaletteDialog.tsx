@@ -249,9 +249,10 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   }, [grpcRequests, httpRequests, recentRequests, websocketRequests]);
 
   const sortedEnvironments = useMemo(() => {
+    const recentRank = new Map(recentEnvironments.map((id, index) => [id, index]));
     return [...subEnvironments].sort((a, b) => {
-      const aRecentIndex = recentEnvironments.indexOf(a.id);
-      const bRecentIndex = recentEnvironments.indexOf(b.id);
+      const aRecentIndex = recentRank.get(a.id) ?? -1;
+      const bRecentIndex = recentRank.get(b.id) ?? -1;
 
       if (aRecentIndex >= 0 && bRecentIndex >= 0) {
         return aRecentIndex - bRecentIndex;
@@ -272,9 +273,10 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
       return workspaces;
     }
 
+    const recentRank = new Map(recentWorkspaces.map((id, index) => [id, index]));
     return [...workspaces].sort((a, b) => {
-      const aRecentIndex = recentWorkspaces?.indexOf(a.id);
-      const bRecentIndex = recentWorkspaces?.indexOf(b.id);
+      const aRecentIndex = recentRank.get(a.id) ?? -1;
+      const bRecentIndex = recentRank.get(b.id) ?? -1;
 
       if (aRecentIndex >= 0 && bRecentIndex >= 0) {
         return aRecentIndex - bRecentIndex;
