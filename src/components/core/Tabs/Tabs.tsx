@@ -12,7 +12,9 @@ import {
 import classNames from "classnames";
 import type { ReactNode, Ref } from "react";
 import {
+  Children,
   forwardRef,
+  isValidElement,
   memo,
   useCallback,
   useEffect,
@@ -73,6 +75,8 @@ interface Props {
   storageKey?: string | string[];
   /** Key to identify which context this tab belongs to (e.g., request ID). Used for per-context active tab persistence. */
   activeTabKey?: string;
+  /** Render only the active TabContent. Keeps the default eager behavior for existing callers. */
+  renderActiveContentOnly?: boolean;
 }
 
 export const Tabs = forwardRef<TabsRef, Props>(function Tabs(
@@ -88,6 +92,7 @@ export const Tabs = forwardRef<TabsRef, Props>(function Tabs(
     layout = "vertical",
     storageKey,
     activeTabKey,
+    renderActiveContentOnly = false,
   }: Props,
   forwardedRef: Ref<TabsRef>,
 ) {
@@ -356,6 +361,10 @@ export const Tabs = forwardRef<TabsRef, Props>(function Tabs(
     </div>
   );
 
+  const renderedChildren = renderActiveContentOnly
+    ? Children.toArray(children).filter((child) => getTabContentValue(child) === value)
+    : children;
+
   return (
     <div
       ref={ref}
@@ -396,10 +405,15 @@ export const Tabs = forwardRef<TabsRef, Props>(function Tabs(
       ) : (
         tabList
       )}
-      {children}
+      {renderedChildren}
     </div>
   );
 });
+
+function getTabContentValue(child: ReactNode): string | null {
+  if (!isValidElement<{ value?: unknown }>(child)) return null;
+  return typeof child.props.value === "string" ? child.props.value : null;
+}
 
 interface TabButtonProps {
   tab: TabItem;

@@ -32,22 +32,64 @@ import { TabContent, Tabs } from "./core/Tabs/Tabs";
 import { Tooltip } from "./core/Tooltip";
 import { EmptyStateText } from "./EmptyStateText";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { HttpResponseTimeline } from "./HttpResponseTimeline";
 import { RecentHttpResponsesDropdown } from "./RecentHttpResponsesDropdown";
-import { RequestBodyViewer } from "./RequestBodyViewer";
-import { ResponseCookies } from "./ResponseCookies";
-import { ResponseHeaders } from "./ResponseHeaders";
-import { AudioViewer } from "./responseViewers/AudioViewer";
-import { CsvViewer } from "./responseViewers/CsvViewer";
-import { EventStreamViewer } from "./responseViewers/EventStreamViewer";
-import { HTMLOrTextViewer } from "./responseViewers/HTMLOrTextViewer";
-import { ImageViewer } from "./responseViewers/ImageViewer";
-import { MultipartViewer } from "./responseViewers/MultipartViewer";
-import { SvgViewer } from "./responseViewers/SvgViewer";
-import { VideoViewer } from "./responseViewers/VideoViewer";
+
+const AudioViewer = lazy(() =>
+  import("./responseViewers/AudioViewer").then((m) => ({ default: m.AudioViewer })),
+);
+
+const CsvViewer = lazy(() =>
+  import("./responseViewers/CsvViewer").then((m) => ({ default: m.CsvViewer })),
+);
+
+const EventStreamViewer = lazy(() =>
+  import("./responseViewers/EventStreamViewer").then((m) => ({
+    default: m.EventStreamViewer,
+  })),
+);
+
+const HTMLOrTextViewer = lazy(() =>
+  import("./responseViewers/HTMLOrTextViewer").then((m) => ({
+    default: m.HTMLOrTextViewer,
+  })),
+);
+
+const HttpResponseTimeline = lazy(() =>
+  import("./HttpResponseTimeline").then((m) => ({ default: m.HttpResponseTimeline })),
+);
+
+const ImageViewer = lazy(() =>
+  import("./responseViewers/ImageViewer").then((m) => ({ default: m.ImageViewer })),
+);
+
+const MultipartViewer = lazy(() =>
+  import("./responseViewers/MultipartViewer").then((m) => ({
+    default: m.MultipartViewer,
+  })),
+);
 
 const PdfViewer = lazy(() =>
   import("./responseViewers/PdfViewer").then((m) => ({ default: m.PdfViewer })),
+);
+
+const RequestBodyViewer = lazy(() =>
+  import("./RequestBodyViewer").then((m) => ({ default: m.RequestBodyViewer })),
+);
+
+const ResponseCookies = lazy(() =>
+  import("./ResponseCookies").then((m) => ({ default: m.ResponseCookies })),
+);
+
+const ResponseHeaders = lazy(() =>
+  import("./ResponseHeaders").then((m) => ({ default: m.ResponseHeaders })),
+);
+
+const SvgViewer = lazy(() =>
+  import("./responseViewers/SvgViewer").then((m) => ({ default: m.SvgViewer })),
+);
+
+const VideoViewer = lazy(() =>
+  import("./responseViewers/VideoViewer").then((m) => ({ default: m.VideoViewer })),
 );
 
 interface Props {
@@ -318,6 +360,7 @@ export function HttpResponsePane({ style, className, activeRequestId }: Props) {
               tabListClassName="mt-0.5 -mb-1.5"
               storageKey="http_response_tabs"
               activeTabKey={activeRequestId}
+              renderActiveContentOnly
             >
               <TabContent value={TAB_BODY}>
                 <ErrorBoundary name="Http Response Viewer">
@@ -388,21 +431,29 @@ export function HttpResponsePane({ style, className, activeRequestId }: Props) {
                 </ErrorBoundary>
               </TabContent>
               <TabContent value={TAB_REQUEST}>
-                <ConfirmLargeResponseRequest response={activeResponse}>
-                  <RequestBodyViewer response={activeResponse} />
-                </ConfirmLargeResponseRequest>
+                <Suspense>
+                  <ConfirmLargeResponseRequest response={activeResponse}>
+                    <RequestBodyViewer response={activeResponse} />
+                  </ConfirmLargeResponseRequest>
+                </Suspense>
               </TabContent>
               <TabContent value={TAB_HEADERS}>
-                <ResponseHeaders response={activeResponse} />
+                <Suspense>
+                  <ResponseHeaders response={activeResponse} />
+                </Suspense>
               </TabContent>
               <TabContent value={TAB_COOKIES}>
-                <ResponseCookies response={activeResponse} />
+                <Suspense>
+                  <ResponseCookies response={activeResponse} />
+                </Suspense>
               </TabContent>
               <TabContent value={TAB_TIMELINE}>
-                <HttpResponseTimeline
-                  response={activeResponse}
-                  viewMode={timelineViewMode}
-                />
+                <Suspense>
+                  <HttpResponseTimeline
+                    response={activeResponse}
+                    viewMode={timelineViewMode}
+                  />
+                </Suspense>
               </TabContent>
             </Tabs>
           </div>
