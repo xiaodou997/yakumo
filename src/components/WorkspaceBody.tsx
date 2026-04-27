@@ -11,13 +11,15 @@ import { activeFolderAtom } from "../hooks/useActiveFolder";
 import { activeRequestAtom } from "../hooks/useActiveRequest";
 import { activeWorkspaceAtom } from "../hooks/useActiveWorkspace";
 import { importData } from "../lib/importData";
-import { CreateDropdown } from "./CreateDropdown";
 import { Banner } from "./core/Banner";
 import { Button } from "./core/Button";
 import { HotkeyList } from "./core/HotkeyList";
 import { FeedbackLink } from "./core/Link";
 import { HStack } from "./core/Stacks";
 
+const CreateDropdown = lazy(() =>
+  import("./CreateDropdown").then((m) => ({ default: m.CreateDropdown })),
+);
 const FolderLayout = lazy(() =>
   import("./FolderLayout").then((m) => ({ default: m.FolderLayout })),
 );
@@ -106,11 +108,19 @@ export function WorkspaceBodyContent({
           <Button variant="border" size="sm" onClick={() => importData.mutate()}>
             Import
           </Button>
-          <CreateDropdown hideFolder>
-            <Button variant="border" forDropdown size="sm">
-              New Request
-            </Button>
-          </CreateDropdown>
+          <Suspense
+            fallback={
+              <Button disabled variant="border" forDropdown size="sm">
+                New Request
+              </Button>
+            }
+          >
+            <CreateDropdown hideFolder>
+              <Button variant="border" forDropdown size="sm">
+                New Request
+              </Button>
+            </CreateDropdown>
+          </Suspense>
         </HStack>
       }
     />
