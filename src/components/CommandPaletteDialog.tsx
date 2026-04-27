@@ -387,9 +387,8 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
 
     const filteredGroups = groups
       .map((g) => {
-        const items = result
-          .filter((i) => g.items.find((i2) => i2.key === i.key))
-          .slice(0, MAX_PER_GROUP);
+        const groupItemKeys = new Set(g.items.map((i) => i.key));
+        const items = result.filter((i) => groupItemKeys.has(i.key)).slice(0, MAX_PER_GROUP);
         return { ...g, items };
       })
       .filter((g) => g.items.length > 0);
