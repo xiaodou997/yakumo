@@ -1,8 +1,9 @@
+import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import { getAnyModel } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useMemo, useRef } from "react";
 import { useActiveRequest } from "../hooks/useActiveRequest";
 import { activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
-import { allRequestsAtom } from "../hooks/useAllRequests";
 import { useHotKey } from "../hooks/useHotKey";
 import { useKeyboardEvent } from "../hooks/useKeyboardEvent";
 import { useRecentRequests } from "../hooks/useRecentRequests";
@@ -17,6 +18,8 @@ import { HttpMethodTag } from "./core/HttpMethodTag";
 interface Props {
   className?: string;
 }
+
+type RequestModel = HttpRequest | GrpcRequest | WebsocketRequest;
 
 export function RecentRequestsDropdown({ className }: Props) {
   const activeRequest = useActiveRequest();
@@ -50,11 +53,10 @@ export function RecentRequestsDropdown({ className }: Props) {
     const activeWorkspaceId = jotaiStore.get(activeWorkspaceIdAtom);
     if (activeWorkspaceId === null) return [];
 
-    const requests = jotaiStore.get(allRequestsAtom);
     const recentRequestItems: DropdownItem[] = [];
     for (const id of recentRequestIds) {
-      const request = requests.find((r) => r.id === id);
-      if (request === undefined) continue;
+      const request = getAnyModel(id);
+      if (!isRequestModel(request)) continue;
 
       recentRequestItems.push({
         label: resolvedModelName(request),
@@ -97,5 +99,16 @@ export function RecentRequestsDropdown({ className }: Props) {
         {resolvedModelName(activeRequest)}
       </Button>
     </Dropdown>
+  );
+}
+
+function isRequestModel(model: unknown): model is RequestModel {
+  return (
+    typeof model === "object" &&
+    model != null &&
+    "model" in model &&
+    (model.model === "http_request" ||
+      model.model === "grpc_request" ||
+      model.model === "websocket_request")
   );
 }

@@ -1,12 +1,22 @@
 import type { GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
+import {
+  grpcRequestsAtom,
+  httpRequestsAtom,
+  websocketRequestsAtom,
+} from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { activeRequestIdAtom } from "./useActiveRequestId";
-import { allRequestsAtom } from "./useAllRequests";
 
 export const activeRequestAtom = atom((get) => {
   const activeRequestId = get(activeRequestIdAtom);
-  const requests = get(allRequestsAtom);
-  return requests.find((r) => r.id === activeRequestId) ?? null;
+  if (activeRequestId == null) return null;
+
+  return (
+    get(httpRequestsAtom).find((r) => r.id === activeRequestId) ??
+    get(grpcRequestsAtom).find((r) => r.id === activeRequestId) ??
+    get(websocketRequestsAtom).find((r) => r.id === activeRequestId) ??
+    null
+  );
 });
 
 interface TypeMap {
