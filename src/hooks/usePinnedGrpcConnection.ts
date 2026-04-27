@@ -1,16 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { GrpcConnection, GrpcEvent } from "@yakumo-internal/models";
 import {
-  grpcConnectionsAtom,
   grpcEventsAtom,
   mergeModelsInStore,
   replaceModelsInStore,
 } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { fireAndForget } from "../lib/fireAndForget";
 import { atomWithKVStorage } from "../lib/atoms/atomWithKVStorage";
 import { activeRequestIdAtom } from "./useActiveRequestId";
+import { grpcConnectionsByRequestIdAtom } from "./useLatestGrpcConnection";
 
 const pinnedGrpcConnectionIdsAtom = atomWithKVStorage<Record<string, string | null>>(
   "pinned-grpc-connection-ids",
@@ -47,7 +47,7 @@ function recordKey(activeRequestId: string | null, latestConnection: GrpcConnect
 
 export const activeGrpcConnections = atom<GrpcConnection[]>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
-  return get(grpcConnectionsAtom).filter((c) => c.requestId === activeRequestId) ?? [];
+  return get(grpcConnectionsByRequestIdAtom).get(activeRequestId) ?? [];
 });
 
 export const activeGrpcConnectionAtom = atom<GrpcConnection | null>((get) => {
@@ -60,8 +60,21 @@ export const activeGrpcConnectionAtom = atom<GrpcConnection | null>((get) => {
   return activeConnections.find((c) => c.id === pinnedConnectionId) ?? activeConnections[0] ?? null;
 });
 
+const grpcEventsByConnectionIdAtom = atom((get) => {
+  const eventsByConnectionId = new Map<string, GrpcEvent[]>();
+  for (const event of get(grpcEventsAtom)) {
+    const events = eventsByConnectionId.get(event.connectionId);
+    if (events == null) {
+      eventsByConnectionId.set(event.connectionId, [event]);
+    } else {
+      events.push(event);
+    }
+  }
+  return eventsByConnectionId;
+});
+
 export function useGrpcEvents(connectionId: string | null) {
-  const allEvents = useAtomValue(grpcEventsAtom);
+  const eventsByConnectionId = useAtomValue(grpcEventsByConnectionIdAtom);
 
   useEffect(() => {
     if (connectionId == null) {
@@ -77,8 +90,5 @@ export function useGrpcEvents(connectionId: string | null) {
     );
   }, [connectionId]);
 
-  return useMemo(
-    () => allEvents.filter((e) => e.connectionId === connectionId),
-    [allEvents, connectionId],
-  );
+  return connectionId == null ? [] : (eventsByConnectionId.get(connectionId) ?? []);
 }

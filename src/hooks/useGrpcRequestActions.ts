@@ -5,7 +5,6 @@ import type {
   GetGrpcRequestActionsResponse,
   GrpcRequestAction,
 } from "@yakumo/features";
-import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 import { getGrpcProtoFiles } from "./useGrpcProtoFiles";
 
@@ -13,20 +12,15 @@ export type CallableGrpcRequestAction = Pick<GrpcRequestAction, "label" | "icon"
   call: (grpcRequest: GrpcRequest) => Promise<void>;
 };
 
+const emptyActions: CallableGrpcRequestAction[] = [];
+
 export function useGrpcRequestActions() {
   const actionsResult = useQuery<CallableGrpcRequestAction[]>({
     queryKey: ["grpc_request_actions"],
-    queryFn: async () => {
-      return getGrpcRequestActions();
-    },
+    queryFn: () => getGrpcRequestActions(),
   });
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => {
-    return actionsResult.data ?? [];
-  }, [JSON.stringify(actionsResult.data)]);
-
-  return actions;
+  return actionsResult.data ?? emptyActions;
 }
 
 export async function getGrpcRequestActions() {

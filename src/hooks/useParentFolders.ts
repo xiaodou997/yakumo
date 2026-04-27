@@ -1,26 +1,24 @@
 import type { Folder, GrpcRequest, HttpRequest, WebsocketRequest } from "@yakumo-internal/models";
-import { foldersAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { foldersByIdAtom } from "./useModelLookupMaps";
 
 export function useParentFolders(m: Folder | HttpRequest | GrpcRequest | WebsocketRequest | null) {
-  const folders = useAtomValue(foldersAtom);
+  const foldersById = useAtomValue(foldersByIdAtom);
 
-  return useMemo(() => getParentFolders(folders, m), [folders, m]);
+  return useMemo(() => getParentFolders(foldersById, m), [foldersById, m]);
 }
 
 function getParentFolders(
-  folders: Folder[],
+  foldersById: Map<string, Folder>,
   currentModel: Folder | HttpRequest | GrpcRequest | WebsocketRequest | null,
 ): Folder[] {
   if (currentModel == null) return [];
 
-  const parentFolder = currentModel.folderId
-    ? folders.find((f) => f.id === currentModel.folderId)
-    : null;
+  const parentFolder = currentModel.folderId ? foldersById.get(currentModel.folderId) : null;
   if (parentFolder == null) {
     return [];
   }
 
-  return [parentFolder, ...getParentFolders(folders, parentFolder)];
+  return [parentFolder, ...getParentFolders(foldersById, parentFolder)];
 }

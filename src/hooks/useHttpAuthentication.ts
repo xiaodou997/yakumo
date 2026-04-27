@@ -7,7 +7,7 @@ import { invokeCmd } from "../lib/tauri";
 
 const httpAuthenticationSummariesAtom = atom<GetHttpAuthenticationSummaryResponse[]>([]);
 const orderedHttpAuthenticationAtom = atom((get) =>
-  get(httpAuthenticationSummariesAtom)?.sort((a, b) => a.name.localeCompare(b.name)),
+  [...get(httpAuthenticationSummariesAtom)].sort((a, b) => a.name.localeCompare(b.name)),
 );
 
 export function useHttpAuthenticationSummaries() {

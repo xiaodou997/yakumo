@@ -5,12 +5,13 @@ import type {
   GetHttpRequestActionsResponse,
   HttpRequestAction,
 } from "@yakumo/features";
-import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 
 export type CallableHttpRequestAction = Pick<HttpRequestAction, "label" | "icon"> & {
   call: (httpRequest: HttpRequest) => Promise<void>;
 };
+
+const emptyActions: CallableHttpRequestAction[] = [];
 
 export function useHttpRequestActions() {
   const actionsResult = useQuery<CallableHttpRequestAction[]>({
@@ -18,12 +19,7 @@ export function useHttpRequestActions() {
     queryFn: () => getHttpRequestActions(),
   });
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => {
-    return actionsResult.data ?? [];
-  }, [JSON.stringify(actionsResult.data)]);
-
-  return actions;
+  return actionsResult.data ?? emptyActions;
 }
 
 export async function getHttpRequestActions() {

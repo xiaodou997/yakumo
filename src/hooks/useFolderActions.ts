@@ -5,12 +5,13 @@ import type {
   FolderAction,
   GetFolderActionsResponse,
 } from "@yakumo/features";
-import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 
 export type CallableFolderAction = Pick<FolderAction, "label" | "icon"> & {
   call: (folder: Folder) => Promise<void>;
 };
+
+const emptyActions: CallableFolderAction[] = [];
 
 export function useFolderActions() {
   const actionsResult = useQuery<CallableFolderAction[]>({
@@ -18,12 +19,7 @@ export function useFolderActions() {
     queryFn: () => getFolderActions(),
   });
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => {
-    return actionsResult.data ?? [];
-  }, [JSON.stringify(actionsResult.data)]);
-
-  return actions;
+  return actionsResult.data ?? emptyActions;
 }
 
 export async function getFolderActions() {

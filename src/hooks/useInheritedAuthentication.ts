@@ -5,15 +5,13 @@ import type {
   WebsocketRequest,
   Workspace,
 } from "@yakumo-internal/models";
-import { foldersAtom, workspacesAtom } from "@yakumo-internal/models";
-import { atom, useAtomValue } from "jotai";
-
-const ancestorsAtom = atom((get) => [...get(foldersAtom), ...get(workspacesAtom)]);
+import { useAtomValue } from "jotai";
+import { ancestorModelsByIdAtom } from "./useModelLookupMaps";
 
 export type AuthenticatedModel = HttpRequest | GrpcRequest | WebsocketRequest | Folder | Workspace;
 
 export function useInheritedAuthentication(baseModel: AuthenticatedModel | null) {
-  const parents = useAtomValue(ancestorsAtom);
+  const parentsById = useAtomValue(ancestorModelsByIdAtom);
 
   if (baseModel == null) return null;
 
@@ -29,10 +27,9 @@ export function useInheritedAuthentication(baseModel: AuthenticatedModel | null)
     }
 
     // Recurse up the tree
-    const parent = parents.find((p) => {
-      if (child.folderId) return p.id === child.folderId;
-      return p.id === child.workspaceId;
-    });
+    const parent = child.folderId
+      ? parentsById.get(child.folderId)
+      : parentsById.get(child.workspaceId);
 
     // Failed to find parent (should never happen)
     if (parent == null) {

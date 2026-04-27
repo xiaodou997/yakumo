@@ -1,27 +1,38 @@
 import type { Environment, EnvironmentVariable } from "@yakumo-internal/models";
-import { foldersAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { jotaiStore } from "../lib/jotai";
 import { isBaseEnvironment, isFolderEnvironment } from "../lib/model_util";
 import { useActiveEnvironment } from "./useActiveEnvironment";
 import { useActiveRequest } from "./useActiveRequest";
-import { useEnvironmentsBreakdown } from "./useEnvironmentsBreakdown";
+import { environmentsByIdAtom, useEnvironmentsBreakdown } from "./useEnvironmentsBreakdown";
+import { foldersByIdAtom } from "./useModelLookupMaps";
 import { useParentFolders } from "./useParentFolders";
 
 export function useEnvironmentVariables(targetEnvironmentId: string | null) {
-  const { baseEnvironment, folderEnvironments, allEnvironments } = useEnvironmentsBreakdown();
+  const { baseEnvironment, folderEnvironments } = useEnvironmentsBreakdown();
+  const environmentsById = useAtomValue(environmentsByIdAtom);
   const activeEnvironment = useActiveEnvironment();
-  const targetEnvironment = allEnvironments.find((e) => e.id === targetEnvironmentId) ?? null;
+  const targetEnvironment =
+    targetEnvironmentId == null ? null : (environmentsById.get(targetEnvironmentId) ?? null);
   const activeRequest = useActiveRequest();
-  const folders = useAtomValue(foldersAtom);
-  const activeFolder = folders.find((f) => f.id === targetEnvironment?.parentId) ?? null;
+  const foldersById = useAtomValue(foldersByIdAtom);
+  const activeFolder =
+    targetEnvironment?.parentId == null
+      ? null
+      : (foldersById.get(targetEnvironment.parentId) ?? null);
   const parentFolders = useParentFolders(activeFolder ?? activeRequest);
 
   return useMemo(() => {
     const varMap: Record<string, WrappedEnvironmentVariable> = {};
-    const folderVariables = parentFolders.flatMap((f) =>
-      wrapVariables(folderEnvironments.find((fe) => fe.parentId === f.id) ?? null),
+    const folderEnvironmentsByParentId = new Map<string, Environment>();
+    for (const folderEnvironment of folderEnvironments) {
+      if (folderEnvironment.parentId != null) {
+        folderEnvironmentsByParentId.set(folderEnvironment.parentId, folderEnvironment);
+      }
+    }
+
+    const folderVariables = parentFolders.flatMap((folder) =>
+      wrapVariables(folderEnvironmentsByParentId.get(folder.id) ?? null, foldersById),
     );
 
     // Add active environment variables to everything except sub environments
@@ -29,13 +40,13 @@ export function useEnvironmentVariables(targetEnvironmentId: string | null) {
       targetEnvironment == null || // Editing request
       isFolderEnvironment(targetEnvironment) || // Editing folder variables
       isBaseEnvironment(targetEnvironment) // Editing global variables
-        ? wrapVariables(activeEnvironment)
-        : wrapVariables(targetEnvironment); // Add own variables for sub environments
+        ? wrapVariables(activeEnvironment, foldersById)
+        : wrapVariables(targetEnvironment, foldersById); // Add own variables for sub environments
 
     const allVariables = [
       ...folderVariables,
       ...activeEnvironmentVariables,
-      ...wrapVariables(baseEnvironment),
+      ...wrapVariables(baseEnvironment, foldersById),
     ];
 
     for (const v of allVariables) {
@@ -46,7 +57,14 @@ export function useEnvironmentVariables(targetEnvironmentId: string | null) {
     }
 
     return Object.values(varMap);
-  }, [activeEnvironment, baseEnvironment, folderEnvironments, parentFolders, targetEnvironment]);
+  }, [
+    activeEnvironment,
+    baseEnvironment,
+    folderEnvironments,
+    foldersById,
+    parentFolders,
+    targetEnvironment,
+  ]);
 }
 
 export interface WrappedEnvironmentVariable {
@@ -55,11 +73,14 @@ export interface WrappedEnvironmentVariable {
   source: string;
 }
 
-function wrapVariables(e: Environment | null): WrappedEnvironmentVariable[] {
+function wrapVariables(
+  e: Environment | null,
+  foldersById: Map<string, { name: string }>,
+): WrappedEnvironmentVariable[] {
   if (e == null) return [];
-  const folders = jotaiStore.get(foldersAtom);
   return e.variables.map((v) => {
-    const folder = e.parentModel === "folder" ? folders.find((f) => f.id === e.parentId) : null;
+    const folder =
+      e.parentModel === "folder" && e.parentId != null ? foldersById.get(e.parentId) : null;
     const source = folder?.name ?? e.name;
     return { variable: v, environment: e, source };
   });

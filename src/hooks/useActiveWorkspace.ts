@@ -1,15 +1,17 @@
 import { useParams } from "@tanstack/react-router";
-import { workspaceMetasAtom, workspacesAtom } from "@yakumo-internal/models";
+import { workspaceMetasAtom } from "@yakumo-internal/models";
 import { atom } from "jotai";
 import { useEffect } from "react";
 import { jotaiStore } from "../lib/jotai";
+import { workspacesByIdAtom } from "./useModelLookupMaps";
 
 export const activeWorkspaceIdAtom = atom<string | null>(null);
 
 export const activeWorkspaceAtom = atom((get) => {
   const activeWorkspaceId = get(activeWorkspaceIdAtom);
-  const workspaces = get(workspacesAtom);
-  return workspaces.find((w) => w.id === activeWorkspaceId) ?? null;
+  return activeWorkspaceId == null
+    ? null
+    : (get(workspacesByIdAtom).get(activeWorkspaceId) ?? null);
 });
 
 export const activeWorkspaceMetaAtom = atom((get) => {

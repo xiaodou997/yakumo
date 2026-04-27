@@ -5,12 +5,13 @@ import type {
   GetWorkspaceActionsResponse,
   WorkspaceAction,
 } from "@yakumo/features";
-import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 
 export type CallableWorkspaceAction = Pick<WorkspaceAction, "label" | "icon"> & {
   call: (workspace: Workspace) => Promise<void>;
 };
+
+const emptyActions: CallableWorkspaceAction[] = [];
 
 export function useWorkspaceActions() {
   const actionsResult = useQuery<CallableWorkspaceAction[]>({
@@ -18,12 +19,7 @@ export function useWorkspaceActions() {
     queryFn: () => getWorkspaceActions(),
   });
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => {
-    return actionsResult.data ?? [];
-  }, [JSON.stringify(actionsResult.data)]);
-
-  return actions;
+  return actionsResult.data ?? emptyActions;
 }
 
 export async function getWorkspaceActions() {

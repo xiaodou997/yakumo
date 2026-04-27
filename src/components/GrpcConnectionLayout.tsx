@@ -6,10 +6,9 @@ import { lazy, Suspense, useEffect, useMemo } from "react";
 import { useActiveRequest } from "../hooks/useActiveRequest";
 import { useGrpc } from "../hooks/useGrpc";
 import { useGrpcProtoFiles } from "../hooks/useGrpcProtoFiles";
-import { activeGrpcConnectionAtom, useGrpcEvents } from "../hooks/usePinnedGrpcConnection";
+import { activeGrpcConnectionAtom } from "../hooks/usePinnedGrpcConnection";
 import { workspaceLayoutAtom } from "../lib/atoms";
 import { Banner } from "./core/Banner";
-import { HotkeyList } from "./core/HotkeyList";
 import { LoadingIcon } from "./core/LoadingIcon";
 import { SplitLayout } from "./core/SplitLayout";
 
@@ -31,7 +30,6 @@ export function GrpcConnectionLayout({ style }: Props) {
   const workspaceLayout = useAtomValue(workspaceLayoutAtom);
   const activeRequest = useActiveRequest("grpc_request");
   const activeConnection = useAtomValue(activeGrpcConnectionAtom);
-  const grpcEvents = useGrpcEvents(activeConnection?.id ?? null);
   const protoFilesKv = useGrpcProtoFiles(activeRequest?.id ?? null);
   const protoFiles = protoFilesKv.value ?? emptyArray;
   const grpc = useGrpc(activeRequest, activeConnection, protoFiles);
@@ -123,12 +121,10 @@ export function GrpcConnectionLayout({ style }: Props) {
               <Banner color="danger" className="m-2">
                 {grpc.go.error}
               </Banner>
-            ) : grpcEvents.length >= 0 ? (
+            ) : (
               <Suspense fallback={<GrpcPaneFallback />}>
                 <GrpcResponsePane activeRequest={activeRequest} methodType={methodType} />
               </Suspense>
-            ) : (
-              <HotkeyList hotkeys={["request.send", "sidebar.focus", "url_bar.focus"]} />
             )}
           </div>
         )

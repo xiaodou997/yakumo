@@ -6,16 +6,14 @@ import type {
   WebsocketRequest,
   Workspace,
 } from "@yakumo-internal/models";
-import { foldersAtom, workspacesAtom } from "@yakumo-internal/models";
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { defaultHeaders } from "../lib/defaultHeaders";
-
-const ancestorsAtom = atom((get) => [...get(foldersAtom), ...get(workspacesAtom)]);
+import { ancestorModelsByIdAtom } from "./useModelLookupMaps";
 
 export type HeaderModel = HttpRequest | GrpcRequest | WebsocketRequest | Folder | Workspace;
 
 export function useInheritedHeaders(baseModel: HeaderModel | null) {
-  const parents = useAtomValue(ancestorsAtom);
+  const parentsById = useAtomValue(ancestorModelsByIdAtom);
 
   if (baseModel == null) return [];
   if (baseModel.model === "workspace") return defaultHeaders;
@@ -27,10 +25,9 @@ export function useInheritedHeaders(baseModel: HeaderModel | null) {
     }
 
     // Recurse up the tree
-    const parent = parents.find((p) => {
-      if (child.folderId) return p.id === child.folderId;
-      return p.id === child.workspaceId;
-    });
+    const parent = child.folderId
+      ? parentsById.get(child.folderId)
+      : parentsById.get(child.workspaceId);
 
     // Failed to find parent (should never happen)
     if (parent == null) {

@@ -5,12 +5,25 @@ import {
   mergeModelsInStore,
   replaceModelsInStore,
 } from "@yakumo-internal/models";
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { fireAndForget } from "../lib/fireAndForget";
 
+const httpResponseEventsByResponseIdAtom = atom((get) => {
+  const eventsByResponseId = new Map<string, HttpResponseEvent[]>();
+  for (const event of get(httpResponseEventsAtom)) {
+    const events = eventsByResponseId.get(event.responseId);
+    if (events == null) {
+      eventsByResponseId.set(event.responseId, [event]);
+    } else {
+      events.push(event);
+    }
+  }
+  return eventsByResponseId;
+});
+
 export function useHttpResponseEvents(response: HttpResponse | null) {
-  const allEvents = useAtomValue(httpResponseEventsAtom);
+  const eventsByResponseId = useAtomValue(httpResponseEventsByResponseIdAtom);
 
   useEffect(() => {
     if (response?.id == null) {
@@ -27,6 +40,6 @@ export function useHttpResponseEvents(response: HttpResponse | null) {
     );
   }, [response?.id]);
 
-  const events = allEvents.filter((e) => e.responseId === response?.id);
+  const events = response?.id == null ? [] : (eventsByResponseId.get(response.id) ?? []);
   return { data: events, error: null, isLoading: false };
 }

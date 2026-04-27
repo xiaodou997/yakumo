@@ -1,15 +1,17 @@
 import { useSearch } from "@tanstack/react-router";
 import type { Environment } from "@yakumo-internal/models";
-import { environmentsAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { jotaiStore } from "../lib/jotai";
+import { environmentsByIdAtom } from "./useEnvironmentsBreakdown";
 
 export const activeEnvironmentIdAtom = atom<string>();
 
 export const activeEnvironmentAtom = atom<Environment | null>((get) => {
   const activeEnvironmentId = get(activeEnvironmentIdAtom);
-  return get(environmentsAtom).find((e) => e.id === activeEnvironmentId) ?? null;
+  return activeEnvironmentId == null
+    ? null
+    : (get(environmentsByIdAtom).get(activeEnvironmentId) ?? null);
 });
 
 export function useActiveEnvironment() {

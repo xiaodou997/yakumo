@@ -5,12 +5,13 @@ import type {
   GetWebsocketRequestActionsResponse,
   WebsocketRequestAction,
 } from "@yakumo/features";
-import { useMemo } from "react";
 import { invokeCmd } from "../lib/tauri";
 
 export type CallableWebSocketRequestAction = Pick<WebsocketRequestAction, "label" | "icon"> & {
   call: (request: WebsocketRequest) => Promise<void>;
 };
+
+const emptyActions: CallableWebSocketRequestAction[] = [];
 
 export function useWebsocketRequestActions() {
   const actionsResult = useQuery<CallableWebSocketRequestAction[]>({
@@ -18,12 +19,7 @@ export function useWebsocketRequestActions() {
     queryFn: () => getWebsocketRequestActions(),
   });
 
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => {
-    return actionsResult.data ?? [];
-  }, [JSON.stringify(actionsResult.data)]);
-
-  return actions;
+  return actionsResult.data ?? emptyActions;
 }
 
 export async function getWebsocketRequestActions() {

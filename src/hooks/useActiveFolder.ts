@@ -1,9 +1,8 @@
-import { foldersAtom } from "@yakumo-internal/models";
 import { atom } from "jotai";
 import { activeFolderIdAtom } from "./useActiveFolderId";
+import { foldersByIdAtom } from "./useModelLookupMaps";
 
 export const activeFolderAtom = atom((get) => {
   const activeFolderId = get(activeFolderIdAtom);
-  const folders = get(foldersAtom);
-  return folders.find((r) => r.id === activeFolderId) ?? null;
+  return activeFolderId == null ? null : (get(foldersByIdAtom).get(activeFolderId) ?? null);
 });

@@ -7,7 +7,7 @@ import {
   websocketEventsAtom,
 } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { fireAndForget } from "../lib/fireAndForget";
 import { atomWithKVStorage } from "../lib/atoms/atomWithKVStorage";
 import { jotaiStore } from "../lib/jotai";
@@ -22,9 +22,22 @@ function recordKey(activeRequestId: string | null, latestConnection: WebsocketCo
   return `${activeRequestId}-${latestConnection?.id ?? "none"}`;
 }
 
+const websocketConnectionsByRequestIdAtom = atom((get) => {
+  const connectionsByRequestId = new Map<string, WebsocketConnection[]>();
+  for (const connection of get(websocketConnectionsAtom)) {
+    const connections = connectionsByRequestId.get(connection.requestId);
+    if (connections == null) {
+      connectionsByRequestId.set(connection.requestId, [connection]);
+    } else {
+      connections.push(connection);
+    }
+  }
+  return connectionsByRequestId;
+});
+
 export const activeWebsocketConnectionsAtom = atom<WebsocketConnection[]>((get) => {
   const activeRequestId = get(activeRequestIdAtom) ?? "n/a";
-  return get(websocketConnectionsAtom).filter((c) => c.requestId === activeRequestId) ?? [];
+  return get(websocketConnectionsByRequestIdAtom).get(activeRequestId) ?? [];
 });
 
 export const activeWebsocketConnectionAtom = atom<WebsocketConnection | null>((get) => {
@@ -47,8 +60,21 @@ export function setPinnedWebsocketConnectionId(id: string | null) {
   });
 }
 
+const websocketEventsByConnectionIdAtom = atom((get) => {
+  const eventsByConnectionId = new Map<string, WebsocketEvent[]>();
+  for (const event of get(websocketEventsAtom)) {
+    const events = eventsByConnectionId.get(event.connectionId);
+    if (events == null) {
+      eventsByConnectionId.set(event.connectionId, [event]);
+    } else {
+      events.push(event);
+    }
+  }
+  return eventsByConnectionId;
+});
+
 export function useWebsocketEvents(connectionId: string | null) {
-  const allEvents = useAtomValue(websocketEventsAtom);
+  const eventsByConnectionId = useAtomValue(websocketEventsByConnectionIdAtom);
 
   useEffect(() => {
     if (connectionId == null) {
@@ -64,8 +90,5 @@ export function useWebsocketEvents(connectionId: string | null) {
     );
   }, [connectionId]);
 
-  return useMemo(
-    () => allEvents.filter((e) => e.connectionId === connectionId),
-    [allEvents, connectionId],
-  );
+  return connectionId == null ? [] : (eventsByConnectionId.get(connectionId) ?? []);
 }
