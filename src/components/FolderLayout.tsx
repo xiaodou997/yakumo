@@ -4,12 +4,17 @@ import type {
   HttpRequest,
   WebsocketRequest,
 } from "@yakumo-internal/models";
-import { foldersAtom, websocketConnectionsAtom } from "@yakumo-internal/models";
+import {
+  foldersAtom,
+  grpcRequestsAtom,
+  httpRequestsAtom,
+  websocketConnectionsAtom,
+  websocketRequestsAtom,
+} from "@yakumo-internal/models";
 import classNames from "classnames";
 import { useAtomValue } from "jotai";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
-import { allRequestsAtom } from "../hooks/useAllRequests";
 import { useFolderActions } from "../hooks/useFolderActions";
 import { useLatestGrpcConnection } from "../hooks/useLatestGrpcConnection";
 import { useLatestHttpResponse } from "../hooks/useLatestHttpResponse";
@@ -38,7 +43,9 @@ interface Props {
 
 export function FolderLayout({ folder, style }: Props) {
   const folders = useAtomValue(foldersAtom);
-  const requests = useAtomValue(allRequestsAtom);
+  const httpRequests = useAtomValue(httpRequestsAtom);
+  const grpcRequests = useAtomValue(grpcRequestsAtom);
+  const websocketRequests = useAtomValue(websocketRequestsAtom);
   const folderActions = useFolderActions();
   const sendAllAction = useMemo(
     () => folderActions.find((a) => a.label === "Send All"),
@@ -48,9 +55,11 @@ export function FolderLayout({ folder, style }: Props) {
   const children = useMemo(() => {
     return [
       ...folders.filter((f) => f.folderId === folder.id),
-      ...requests.filter((r) => r.folderId === folder.id),
+      ...httpRequests.filter((r) => r.folderId === folder.id),
+      ...grpcRequests.filter((r) => r.folderId === folder.id),
+      ...websocketRequests.filter((r) => r.folderId === folder.id),
     ];
-  }, [folder.id, folders, requests]);
+  }, [folder.id, folders, grpcRequests, httpRequests, websocketRequests]);
 
   const handleSendAll = useCallback(() => {
     if (sendAllAction) fireAndForget(sendAllAction.call(folder));

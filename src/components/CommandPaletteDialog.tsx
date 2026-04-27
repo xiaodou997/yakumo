@@ -1,4 +1,9 @@
-import { workspacesAtom } from "@yakumo-internal/models";
+import {
+  grpcRequestsAtom,
+  httpRequestsAtom,
+  websocketRequestsAtom,
+  workspacesAtom,
+} from "@yakumo-internal/models";
 import classNames from "classnames";
 import { fuzzyFilter } from "fuzzbunny";
 import { useAtomValue } from "jotai";
@@ -19,7 +24,6 @@ import { useActiveCookieJar } from "../hooks/useActiveCookieJar";
 import { useActiveEnvironment } from "../hooks/useActiveEnvironment";
 import { useActiveRequest } from "../hooks/useActiveRequest";
 import { activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
-import { useAllRequests } from "../hooks/useAllRequests";
 import { useCreateWorkspace } from "../hooks/useCreateWorkspace";
 import { useDebouncedState } from "../hooks/useDebouncedState";
 import { useEnvironmentsBreakdown } from "../hooks/useEnvironmentsBreakdown";
@@ -75,11 +79,13 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const grpcRequestActions = useGrpcRequestActions();
   const workspaceId = useAtomValue(activeWorkspaceIdAtom);
   const workspaces = useAtomValue(workspacesAtom);
+  const httpRequests = useAtomValue(httpRequestsAtom);
+  const grpcRequests = useAtomValue(grpcRequestsAtom);
+  const websocketRequests = useAtomValue(websocketRequestsAtom);
   const { baseEnvironment, subEnvironments } = useEnvironmentsBreakdown();
   const createWorkspace = useCreateWorkspace();
   const recentEnvironments = useRecentEnvironments();
   const recentWorkspaces = useRecentWorkspaces();
-  const requests = useAllRequests();
   const activeRequest = useActiveRequest();
   const activeCookieJar = useActiveCookieJar();
   const [recentRequests] = useRecentRequests();
@@ -224,9 +230,10 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   ]);
 
   const sortedRequests = useMemo(() => {
-    return [...requests].sort((a, b) => {
-      const aRecentIndex = recentRequests.indexOf(a.id);
-      const bRecentIndex = recentRequests.indexOf(b.id);
+    const recentRank = new Map(recentRequests.map((id, index) => [id, index]));
+    return [...httpRequests, ...grpcRequests, ...websocketRequests].sort((a, b) => {
+      const aRecentIndex = recentRank.get(a.id) ?? -1;
+      const bRecentIndex = recentRank.get(b.id) ?? -1;
 
       if (aRecentIndex >= 0 && bRecentIndex >= 0) {
         return aRecentIndex - bRecentIndex;
@@ -239,7 +246,7 @@ export function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
       }
       return a.createdAt.localeCompare(b.createdAt);
     });
-  }, [recentRequests, requests]);
+  }, [grpcRequests, httpRequests, recentRequests, websocketRequests]);
 
   const sortedEnvironments = useMemo(() => {
     return [...subEnvironments].sort((a, b) => {

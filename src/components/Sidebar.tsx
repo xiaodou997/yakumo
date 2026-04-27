@@ -14,8 +14,11 @@ import {
   getAnyModel,
   getModel,
   grpcConnectionsAtom,
+  grpcRequestsAtom,
+  httpRequestsAtom,
   httpResponsesAtom,
   patchModel,
+  websocketRequestsAtom,
   websocketConnectionsAtom,
   workspacesAtom,
 } from "@yakumo-internal/models";
@@ -39,7 +42,6 @@ import {
   activeWorkspaceAtom,
   activeWorkspaceIdAtom,
 } from "../hooks/useActiveWorkspace";
-import { allRequestsAtom } from "../hooks/useAllRequests";
 import { useDeferredMount } from "../hooks/useDeferredMount";
 import { useHotKey } from "../hooks/useHotKey";
 import { useListenToTauriEvent } from "../hooks/useListenToTauriEvent";
@@ -690,9 +692,13 @@ async function getSidebarFolderActions() {
 }
 
 const allPotentialChildrenAtom = atom<SidebarModel[]>((get) => {
-  const requests = get(allRequestsAtom);
   const folders = get(foldersAtom);
-  return [...requests, ...folders];
+  return [
+    ...get(httpRequestsAtom),
+    ...get(grpcRequestsAtom),
+    ...get(websocketRequestsAtom),
+    ...folders,
+  ];
 });
 
 const memoAllPotentialChildrenAtom = deepEqualAtom(allPotentialChildrenAtom);
