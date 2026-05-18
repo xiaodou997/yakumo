@@ -439,6 +439,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
+dependencies = [
+ "axum-core",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "itoa",
+ "matchit",
+ "memchr",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "serde_core",
+ "sync_wrapper",
+ "tower",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum-core"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08c78f31d7b1291f7ee735c1c6780ccde7785daae9a9206026862dab7d8792d1"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "http-body-util",
+ "mime",
+ "pin-project-lite",
+ "sync_wrapper",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
 name = "base32"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3635,6 +3678,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
+name = "matchit"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5442,6 +5491,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -7442,6 +7492,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fec7c61a0695dc1887c1b53952990f3ad2e3a31453e1f49f10e75424943a93ec"
 dependencies = [
  "async-trait",
+ "axum",
  "base64 0.22.1",
  "bytes",
  "h2",
@@ -9057,16 +9108,19 @@ dependencies = [
  "arboard",
  "assert_cmd",
  "base64 0.22.1",
+ "chrono",
  "clap",
  "console",
  "dirs",
  "env_logger",
  "futures",
+ "futures-util",
  "hex",
  "inquire",
  "keyring",
  "log 0.4.29",
  "predicates",
+ "prost",
  "rand 0.8.6",
  "reqwest",
  "schemars 0.8.22",
@@ -9075,11 +9129,19 @@ dependencies = [
  "sha2",
  "tempfile",
  "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tonic",
+ "tonic-prost",
+ "tonic-reflection",
  "yakumo",
  "yakumo-crypto",
+ "yakumo-domain",
+ "yakumo-engine",
  "yakumo-features",
  "yakumo-http",
  "yakumo-models",
+ "yakumo-store",
 ]
 
 [[package]]
@@ -9200,6 +9262,40 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "yakumo-models",
+]
+
+[[package]]
+name = "yakumo-domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "ts-rs",
+]
+
+[[package]]
+name = "yakumo-engine"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "prost",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tonic",
+ "tonic-prost",
+ "tonic-reflection",
+ "yakumo-domain",
+ "yakumo-grpc",
+ "yakumo-store",
 ]
 
 [[package]]
@@ -9386,6 +9482,20 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "ts-rs",
+]
+
+[[package]]
+name = "yakumo-store"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.18",
+ "yakumo-domain",
 ]
 
 [[package]]

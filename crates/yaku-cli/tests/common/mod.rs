@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
+pub mod grpc_server;
 pub mod http_server;
+pub mod websocket_server;
 
 use assert_cmd::Command;
 use assert_cmd::cargo::cargo_bin_cmd;

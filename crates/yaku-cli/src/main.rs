@@ -124,6 +124,20 @@ async fn main() {
             context.shutdown().await;
             exit_code
         }
+        Commands::V2(args) => {
+            let environment = environment.clone();
+            match tokio::task::spawn_blocking(move || {
+                commands::v2::run(data_dir, args, environment)
+            })
+            .await
+            {
+                Ok(exit_code) => exit_code,
+                Err(error) => {
+                    eprintln!("Error: v2 command failed to join blocking task: {error}");
+                    1
+                }
+            }
+        }
     };
 
     if exit_code != 0 {

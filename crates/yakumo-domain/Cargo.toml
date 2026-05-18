@@ -1,0 +1,12 @@
+[package]
+name = "yakumo-domain"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+chrono = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ts-rs = { workspace = true, features = ["chrono-impl", "serde-json-impl"] }

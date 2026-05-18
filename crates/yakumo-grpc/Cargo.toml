@@ -18,8 +18,8 @@ protox = "0.9.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tokio-stream = "0.1.14"
-tonic = { version = "0.14.5", default-features = false, features = ["transport"] }
+tokio-stream = { version = "0.1.14", features = ["net"] }
+tonic = { version = "0.14.5", default-features = false, features = ["transport", "server", "router"] }
 tonic-reflection = "0.14.5"
 yakumo-tls = { workspace = true }
 thiserror = "2.0.17"

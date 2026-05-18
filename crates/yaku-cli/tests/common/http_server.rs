@@ -19,13 +19,20 @@ impl TestHttpServer {
     }
 
     pub fn spawn_with_headers(body: &'static str, headers: &[&'static str]) -> Self {
+        Self::spawn_with_body_and_headers(body.as_bytes().to_vec(), headers)
+    }
+
+    pub fn spawn_with_body(body: Vec<u8>) -> Self {
+        Self::spawn_with_body_and_headers(body, &[])
+    }
+
+    pub fn spawn_with_body_and_headers(body_bytes: Vec<u8>, headers: &[&'static str]) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind test HTTP server");
         let addr = listener.local_addr().expect("Failed to get local addr");
         let url = format!("http://{addr}/test");
 
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_signal = Arc::clone(&shutdown);
-        let body_bytes = body.as_bytes().to_vec();
         let headers = headers.to_vec();
         let request = Arc::new(Mutex::new(String::new()));
         let request_capture = Arc::clone(&request);
