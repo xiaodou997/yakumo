@@ -320,78 +320,81 @@ async fn send_http_request_inner<R: Runtime>(
             let content_length = http_response.content_length;
             let is_event_stream = is_event_stream_response(&resp_headers);
 
-            let (_body_bytes, body_path, content_length_compressed) =
-                if response_ctx.is_persisted() && is_event_stream {
-                    let body_id = format!("{}.body", og_response.id);
-                    let mut body_stream =
-                        http_response.into_body_stream().map_err(|e| GenericError(e.to_string()))?;
-                    let mut chunk_index = 0;
-                    let mut total_bytes = 0usize;
-                    let mut collected = Vec::new();
-                    let mut buf = [0u8; 8192];
+            let (_body_bytes, body_path, content_length_compressed) = if response_ctx.is_persisted()
+                && is_event_stream
+            {
+                let body_id = format!("{}.body", og_response.id);
+                let mut body_stream =
+                    http_response.into_body_stream().map_err(|e| GenericError(e.to_string()))?;
+                let mut chunk_index = 0;
+                let mut total_bytes = 0usize;
+                let mut collected = Vec::new();
+                let mut buf = [0u8; 8192];
 
-                    let _ = response_ctx.update(|r| {
-                        r.state = HttpResponseState::Connected;
-                        r.elapsed_headers = start.elapsed().as_millis() as i32;
-                        r.status = status as i32;
-                        r.url = url.clone();
-                        r.remote_addr = remote_addr.clone();
-                        r.version = version.clone();
-                        r.content_length = content_length.map(|n| n as i32);
-                        r.headers = resp_headers
-                            .iter()
-                            .map(|(name, value)| yakumo_models::models::HttpResponseHeader {
-                                name: name.clone(),
-                                value: value.clone(),
-                            })
-                            .collect();
-                    });
+                let _ = response_ctx.update(|r| {
+                    r.state = HttpResponseState::Connected;
+                    r.elapsed_headers = start.elapsed().as_millis() as i32;
+                    r.status = status as i32;
+                    r.url = url.clone();
+                    r.remote_addr = remote_addr.clone();
+                    r.version = version.clone();
+                    r.content_length = content_length.map(|n| n as i32);
+                    r.headers = resp_headers
+                        .iter()
+                        .map(|(name, value)| yakumo_models::models::HttpResponseHeader {
+                            name: name.clone(),
+                            value: value.clone(),
+                        })
+                        .collect();
+                });
 
-                    loop {
-                        let n = body_stream
-                            .read(&mut buf)
-                            .await
-                            .map_err(|e| GenericError(e.to_string()))?;
-                        if n == 0 {
-                            break;
-                        }
-
-                        let chunk_bytes = buf[..n].to_vec();
-                        total_bytes += n;
-                        collected.extend_from_slice(&chunk_bytes);
-                        app_handle
-                            .blobs()
-                            .insert_chunk(&BodyChunk::new(&body_id, chunk_index, chunk_bytes))?;
-                        chunk_index += 1;
-
-                        let next_body_path = Some(body_id.clone());
-                        let _ = response_ctx.update(|r| {
-                            r.state = HttpResponseState::Connected;
-                            r.body_path = next_body_path.clone();
-                            r.content_length_compressed = Some(total_bytes as i32);
-                        });
+                loop {
+                    let n = body_stream
+                        .read(&mut buf)
+                        .await
+                        .map_err(|e| GenericError(e.to_string()))?;
+                    if n == 0 {
+                        break;
                     }
 
-                    let path = if collected.is_empty() { None } else { Some(body_id) };
-                    (collected, path, Some(total_bytes as i32))
+                    let chunk_bytes = buf[..n].to_vec();
+                    total_bytes += n;
+                    collected.extend_from_slice(&chunk_bytes);
+                    app_handle.blobs().insert_chunk(&BodyChunk::new(
+                        &body_id,
+                        chunk_index,
+                        chunk_bytes,
+                    ))?;
+                    chunk_index += 1;
+
+                    let next_body_path = Some(body_id.clone());
+                    let _ = response_ctx.update(|r| {
+                        r.state = HttpResponseState::Connected;
+                        r.body_path = next_body_path.clone();
+                        r.content_length_compressed = Some(total_bytes as i32);
+                    });
+                }
+
+                let path = if collected.is_empty() { None } else { Some(body_id) };
+                (collected, path, Some(total_bytes as i32))
+            } else {
+                // Read the response body (consumes http_response)
+                let (bytes, body_stats) =
+                    http_response.bytes().await.map_err(|e| GenericError(e.to_string()))?;
+
+                // Store response body in blob storage if this is a persisted response
+                let path = if response_ctx.is_persisted() && !bytes.is_empty() {
+                    let blobs = app_handle.blobs();
+                    let body_id = format!("{}.body", og_response.id);
+                    let chunk = BodyChunk::new(&body_id, 0, bytes.clone());
+                    blobs.insert_chunk(&chunk)?;
+                    Some(body_id)
                 } else {
-                    // Read the response body (consumes http_response)
-                    let (bytes, body_stats) =
-                        http_response.bytes().await.map_err(|e| GenericError(e.to_string()))?;
-
-                    // Store response body in blob storage if this is a persisted response
-                    let path = if response_ctx.is_persisted() && !bytes.is_empty() {
-                        let blobs = app_handle.blobs();
-                        let body_id = format!("{}.body", og_response.id);
-                        let chunk = BodyChunk::new(&body_id, 0, bytes.clone());
-                        blobs.insert_chunk(&chunk)?;
-                        Some(body_id)
-                    } else {
-                        None
-                    };
-
-                    (bytes, path, Some(body_stats.size_compressed as i32))
+                    None
                 };
+
+                (bytes, path, Some(body_stats.size_compressed as i32))
+            };
 
             let elapsed = start.elapsed().as_millis() as i32;
 
