@@ -45,7 +45,7 @@ The runtime architecture must not preserve compatibility layers.
 - `crates/yakumo-domain` -> `crates/yaku-domain`.
 - `crates/yakumo-store` -> `crates/yaku-store`.
 - `crates/yakumo-engine` -> `crates/yaku-engine`.
-- `src-tauri/src/v2_commands.rs` -> `src-tauri/src/yaku_commands.rs`.
+- `src-tauri/src/yaku_commands.rs`.
 - `src/lib/v2.ts` -> split under `src/lib/yaku-client`.
 - `src/routes/v2.tsx` -> temporary source material for
   `src/features/yaku-workspace`.
@@ -208,7 +208,7 @@ import `@yakumo-internal/models`.
 
 ## Send Runtime
 
-Current `cmd_v2_send_request` is blocking. Replace it with:
+Current `cmd_yaku_send_request` is blocking. Replace it with:
 
 - `cmd_yaku_run_start(requestId, environmentId?) -> Run`
 - `cmd_yaku_run_cancel(runId) -> Run`
@@ -244,8 +244,8 @@ Required changes:
 
 - User-facing docs and new code: `Yaku`.
 - `src/lib/v2.ts` split to `src/lib/yaku-client/*`.
-- `src-tauri/src/v2_commands.rs` to `src-tauri/src/yaku_commands.rs`.
-- Tauri commands from `cmd_v2_*` to `cmd_yaku_*`.
+- `src-tauri/src/yaku_commands.rs`.
+- Tauri commands use `cmd_yaku_*`.
 - Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
 - `/v2` route to `/debug/yaku`, then remove once `/workspaces` is Yaku.
 

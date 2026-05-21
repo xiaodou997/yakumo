@@ -19,27 +19,27 @@ import type {
 } from "./types";
 
 export async function listV2Workspaces(limit = 500) {
-  return invokeCmd<V2PageResponse<V2WorkspacePageItem>>("cmd_v2_workspace_list", { limit });
+  return invokeCmd<V2PageResponse<V2WorkspacePageItem>>("cmd_yaku_workspace_list", { limit });
 }
 
 export async function getV2Workspace(workspaceId: string) {
-  return invokeCmd<V2Workspace | null>("cmd_v2_workspace_get", { workspaceId });
+  return invokeCmd<V2Workspace | null>("cmd_yaku_workspace_get", { workspaceId });
 }
 
 export async function createV2Workspace(name: string, description = "") {
-  return invokeCmd<V2Workspace>("cmd_v2_workspace_create", { name, description });
+  return invokeCmd<V2Workspace>("cmd_yaku_workspace_create", { name, description });
 }
 
 export async function deleteV2Workspace(workspaceId: string) {
-  return invokeCmd<V2DeleteResponse>("cmd_v2_workspace_delete", { workspaceId });
+  return invokeCmd<V2DeleteResponse>("cmd_yaku_workspace_delete", { workspaceId });
 }
 
 export async function listV2Environments(workspaceId: string) {
-  return invokeCmd<V2Environment[]>("cmd_v2_environment_list", { workspaceId });
+  return invokeCmd<V2Environment[]>("cmd_yaku_environment_list", { workspaceId });
 }
 
 export async function getV2Environment(environmentId: string) {
-  return invokeCmd<V2Environment | null>("cmd_v2_environment_get", { environmentId });
+  return invokeCmd<V2Environment | null>("cmd_yaku_environment_get", { environmentId });
 }
 
 export async function createV2Environment(
@@ -47,14 +47,14 @@ export async function createV2Environment(
   name: string,
   variables: Record<string, unknown> = {},
 ) {
-  return invokeCmd<V2Environment>("cmd_v2_environment_create", { workspaceId, name, variables });
+  return invokeCmd<V2Environment>("cmd_yaku_environment_create", { workspaceId, name, variables });
 }
 
 export async function updateV2Environment(
   environmentId: string,
   input: { name?: string; variables?: Record<string, unknown> },
 ) {
-  return invokeCmd<V2Environment>("cmd_v2_environment_update", {
+  return invokeCmd<V2Environment>("cmd_yaku_environment_update", {
     environmentId,
     name: input.name,
     variables: input.variables,
@@ -62,18 +62,18 @@ export async function updateV2Environment(
 }
 
 export async function deleteV2Environment(environmentId: string) {
-  return invokeCmd<V2DeleteResponse>("cmd_v2_environment_delete", { environmentId });
+  return invokeCmd<V2DeleteResponse>("cmd_yaku_environment_delete", { environmentId });
 }
 
 export async function listV2Requests(workspaceId: string, limit = 500) {
-  return invokeCmd<V2PageResponse<V2RequestNodePageItem>>("cmd_v2_request_list", {
+  return invokeCmd<V2PageResponse<V2RequestNodePageItem>>("cmd_yaku_request_list", {
     workspaceId,
     limit,
   });
 }
 
 export async function getV2Request(requestId: string) {
-  return invokeCmd<V2Request | null>("cmd_v2_request_get", { requestId });
+  return invokeCmd<V2Request | null>("cmd_yaku_request_get", { requestId });
 }
 
 export async function createV2Folder(input: {
@@ -82,11 +82,11 @@ export async function createV2Folder(input: {
   parentId?: string | null;
   sortKey?: string | null;
 }) {
-  return invokeCmd<V2RequestNode>("cmd_v2_folder_create", input);
+  return invokeCmd<V2RequestNode>("cmd_yaku_folder_create", input);
 }
 
 export async function updateV2Folder(folderId: string, input: { name?: string }) {
-  return invokeCmd<V2RequestNode>("cmd_v2_folder_update", { folderId, name: input.name });
+  return invokeCmd<V2RequestNode>("cmd_yaku_folder_update", { folderId, name: input.name });
 }
 
 export async function createV2Request(input: {
@@ -98,7 +98,7 @@ export async function createV2Request(input: {
   sortKey?: string | null;
   description?: string | null;
 }) {
-  return invokeCmd<V2Request>("cmd_v2_request_create", input);
+  return invokeCmd<V2Request>("cmd_yaku_request_create", input);
 }
 
 export async function updateV2Request(
@@ -109,7 +109,7 @@ export async function updateV2Request(
     config?: Record<string, unknown>;
   },
 ) {
-  return invokeCmd<V2Request>("cmd_v2_request_update", { requestId, ...input });
+  return invokeCmd<V2Request>("cmd_yaku_request_update", { requestId, ...input });
 }
 
 export async function moveV2RequestNode(input: {
@@ -117,23 +117,23 @@ export async function moveV2RequestNode(input: {
   parentId?: string | null;
   sortKey?: string | null;
 }) {
-  return invokeCmd<V2RequestNode>("cmd_v2_request_node_move", input);
+  return invokeCmd<V2RequestNode>("cmd_yaku_request_node_move", input);
 }
 
 export async function deleteV2RequestNode(nodeId: string) {
-  return invokeCmd<V2DeleteResponse>("cmd_v2_request_node_delete", { nodeId });
+  return invokeCmd<V2DeleteResponse>("cmd_yaku_request_node_delete", { nodeId });
 }
 
 export async function listV2RunsForRequest(requestId: string, limit = 100) {
-  return invokeCmd<V2PageResponse<V2RunPageItem>>("cmd_v2_run_list", { requestId, limit });
+  return invokeCmd<V2PageResponse<V2RunPageItem>>("cmd_yaku_run_list", { requestId, limit });
 }
 
 export async function listV2RunsForWorkspace(workspaceId: string, limit = 100) {
-  return invokeCmd<V2PageResponse<V2RunPageItem>>("cmd_v2_run_list", { workspaceId, limit });
+  return invokeCmd<V2PageResponse<V2RunPageItem>>("cmd_yaku_run_list", { workspaceId, limit });
 }
 
 export async function getV2Run(runId: string) {
-  return invokeCmd<V2Run | null>("cmd_v2_run_get", { runId });
+  return invokeCmd<V2Run | null>("cmd_yaku_run_get", { runId });
 }
 
 export async function listV2RunEvents(
@@ -141,7 +141,7 @@ export async function listV2RunEvents(
   kind: V2RunEventKind | null = null,
   limit = 300,
 ) {
-  return invokeCmd<V2PageResponse<V2RunEvent>>("cmd_v2_run_events", {
+  return invokeCmd<V2PageResponse<V2RunEvent>>("cmd_yaku_run_events", {
     runId,
     kind,
     limit,
@@ -149,15 +149,15 @@ export async function listV2RunEvents(
 }
 
 export async function listV2RunBodies(runId: string) {
-  return invokeCmd<V2RunBody[]>("cmd_v2_run_bodies", { runId });
+  return invokeCmd<V2RunBody[]>("cmd_yaku_run_bodies", { runId });
 }
 
 export async function getV2RunBodyBytes(bodyId: string) {
-  return invokeCmd<number[]>("cmd_v2_run_body_bytes", { bodyId });
+  return invokeCmd<number[]>("cmd_yaku_run_body_bytes", { bodyId });
 }
 
 export async function deleteV2Run(runId: string) {
-  return invokeCmd<V2DeleteResponse>("cmd_v2_run_delete", { runId });
+  return invokeCmd<V2DeleteResponse>("cmd_yaku_run_delete", { runId });
 }
 
 export async function pruneV2Runs(input: {
@@ -165,27 +165,27 @@ export async function pruneV2Runs(input: {
   requestId?: string | null;
   workspaceId?: string | null;
 }) {
-  return invokeCmd<V2GcReport>("cmd_v2_run_prune", input);
+  return invokeCmd<V2GcReport>("cmd_yaku_run_prune", input);
 }
 
 export async function getV2RunRetention(workspaceId: string) {
-  return invokeCmd<number | null>("cmd_v2_run_retention_get", { workspaceId });
+  return invokeCmd<number | null>("cmd_yaku_run_retention_get", { workspaceId });
 }
 
 export async function setV2RunRetention(workspaceId: string, keepLast: number) {
-  return invokeCmd<V2Setting>("cmd_v2_run_retention_set", { workspaceId, keepLast });
+  return invokeCmd<V2Setting>("cmd_yaku_run_retention_set", { workspaceId, keepLast });
 }
 
 export async function clearV2RunRetention(workspaceId: string) {
-  return invokeCmd<V2DeleteResponse>("cmd_v2_run_retention_clear", { workspaceId });
+  return invokeCmd<V2DeleteResponse>("cmd_yaku_run_retention_clear", { workspaceId });
 }
 
 export async function gcV2Bodies(dryRun = false) {
-  return invokeCmd<V2GcReport>("cmd_v2_gc_bodies", { dryRun });
+  return invokeCmd<V2GcReport>("cmd_yaku_gc_bodies", { dryRun });
 }
 
 export async function sendV2Request(requestId: string, environmentId?: string | null) {
-  return invokeCmd<V2Run>("cmd_v2_send_request", {
+  return invokeCmd<V2Run>("cmd_yaku_send_request", {
     requestId,
     environmentId: environmentId ?? null,
   });

@@ -43,11 +43,11 @@ mod template_commands;
 mod update_commands;
 mod updates;
 mod uri_scheme;
-mod v2_commands;
 mod window;
 mod window_commands;
 mod window_menu;
 mod ws_ext;
+mod yaku_commands;
 
 /// Built-in template callback that implements TemplateCallback trait
 /// using native Rust implementations.
@@ -363,37 +363,37 @@ pub fn run() {
             crate::commands::cmd_websocket_request_actions,
             crate::commands::cmd_workspace_actions,
             //
-            // V2 commands
-            v2_commands::cmd_v2_workspace_list,
-            v2_commands::cmd_v2_workspace_get,
-            v2_commands::cmd_v2_workspace_create,
-            v2_commands::cmd_v2_workspace_delete,
-            v2_commands::cmd_v2_environment_list,
-            v2_commands::cmd_v2_environment_get,
-            v2_commands::cmd_v2_environment_create,
-            v2_commands::cmd_v2_environment_update,
-            v2_commands::cmd_v2_environment_delete,
-            v2_commands::cmd_v2_request_list,
-            v2_commands::cmd_v2_request_get,
-            v2_commands::cmd_v2_request_node_get,
-            v2_commands::cmd_v2_folder_create,
-            v2_commands::cmd_v2_folder_update,
-            v2_commands::cmd_v2_request_create,
-            v2_commands::cmd_v2_request_update,
-            v2_commands::cmd_v2_request_node_move,
-            v2_commands::cmd_v2_request_node_delete,
-            v2_commands::cmd_v2_run_list,
-            v2_commands::cmd_v2_run_get,
-            v2_commands::cmd_v2_run_events,
-            v2_commands::cmd_v2_run_bodies,
-            v2_commands::cmd_v2_run_body_bytes,
-            v2_commands::cmd_v2_run_delete,
-            v2_commands::cmd_v2_run_prune,
-            v2_commands::cmd_v2_run_retention_get,
-            v2_commands::cmd_v2_run_retention_set,
-            v2_commands::cmd_v2_run_retention_clear,
-            v2_commands::cmd_v2_gc_bodies,
-            v2_commands::cmd_v2_send_request,
+            // Yaku commands
+            yaku_commands::cmd_yaku_workspace_list,
+            yaku_commands::cmd_yaku_workspace_get,
+            yaku_commands::cmd_yaku_workspace_create,
+            yaku_commands::cmd_yaku_workspace_delete,
+            yaku_commands::cmd_yaku_environment_list,
+            yaku_commands::cmd_yaku_environment_get,
+            yaku_commands::cmd_yaku_environment_create,
+            yaku_commands::cmd_yaku_environment_update,
+            yaku_commands::cmd_yaku_environment_delete,
+            yaku_commands::cmd_yaku_request_list,
+            yaku_commands::cmd_yaku_request_get,
+            yaku_commands::cmd_yaku_request_node_get,
+            yaku_commands::cmd_yaku_folder_create,
+            yaku_commands::cmd_yaku_folder_update,
+            yaku_commands::cmd_yaku_request_create,
+            yaku_commands::cmd_yaku_request_update,
+            yaku_commands::cmd_yaku_request_node_move,
+            yaku_commands::cmd_yaku_request_node_delete,
+            yaku_commands::cmd_yaku_run_list,
+            yaku_commands::cmd_yaku_run_get,
+            yaku_commands::cmd_yaku_run_events,
+            yaku_commands::cmd_yaku_run_bodies,
+            yaku_commands::cmd_yaku_run_body_bytes,
+            yaku_commands::cmd_yaku_run_delete,
+            yaku_commands::cmd_yaku_run_prune,
+            yaku_commands::cmd_yaku_run_retention_get,
+            yaku_commands::cmd_yaku_run_retention_set,
+            yaku_commands::cmd_yaku_run_retention_clear,
+            yaku_commands::cmd_yaku_gc_bodies,
+            yaku_commands::cmd_yaku_send_request,
             //
             // Models commands
             models_ext::models_delete,

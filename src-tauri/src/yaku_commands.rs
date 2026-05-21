@@ -300,7 +300,7 @@ fn send_request_inner(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_workspace_list<R: Runtime>(
+pub(crate) fn cmd_yaku_workspace_list<R: Runtime>(
     app_handle: AppHandle<R>,
     cursor: Option<i64>,
     limit: Option<u32>,
@@ -313,7 +313,7 @@ pub(crate) fn cmd_v2_workspace_list<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_workspace_get<R: Runtime>(
+pub(crate) fn cmd_yaku_workspace_get<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
 ) -> Result<Option<Workspace>> {
@@ -322,7 +322,7 @@ pub(crate) fn cmd_v2_workspace_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_workspace_create<R: Runtime>(
+pub(crate) fn cmd_yaku_workspace_create<R: Runtime>(
     app_handle: AppHandle<R>,
     name: String,
     description: Option<String>,
@@ -340,7 +340,7 @@ pub(crate) fn cmd_v2_workspace_create<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_workspace_delete<R: Runtime>(
+pub(crate) fn cmd_yaku_workspace_delete<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
 ) -> Result<DeleteResponse> {
@@ -353,7 +353,7 @@ pub(crate) fn cmd_v2_workspace_delete<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_environment_list<R: Runtime>(
+pub(crate) fn cmd_yaku_environment_list<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
 ) -> Result<Vec<yakumo_domain::Environment>> {
@@ -362,7 +362,7 @@ pub(crate) fn cmd_v2_environment_list<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_environment_get<R: Runtime>(
+pub(crate) fn cmd_yaku_environment_get<R: Runtime>(
     app_handle: AppHandle<R>,
     environment_id: String,
 ) -> Result<Option<yakumo_domain::Environment>> {
@@ -371,7 +371,7 @@ pub(crate) fn cmd_v2_environment_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_environment_create<R: Runtime>(
+pub(crate) fn cmd_yaku_environment_create<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
     name: String,
@@ -391,7 +391,7 @@ pub(crate) fn cmd_v2_environment_create<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_environment_update<R: Runtime>(
+pub(crate) fn cmd_yaku_environment_update<R: Runtime>(
     app_handle: AppHandle<R>,
     environment_id: String,
     name: Option<String>,
@@ -410,7 +410,7 @@ pub(crate) fn cmd_v2_environment_update<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_environment_delete<R: Runtime>(
+pub(crate) fn cmd_yaku_environment_delete<R: Runtime>(
     app_handle: AppHandle<R>,
     environment_id: String,
 ) -> Result<DeleteResponse> {
@@ -421,7 +421,7 @@ pub(crate) fn cmd_v2_environment_delete<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_list<R: Runtime>(
+pub(crate) fn cmd_yaku_request_list<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
     cursor: Option<i64>,
@@ -435,7 +435,7 @@ pub(crate) fn cmd_v2_request_list<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_get<R: Runtime>(
+pub(crate) fn cmd_yaku_request_get<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: String,
 ) -> Result<Option<Request>> {
@@ -444,7 +444,7 @@ pub(crate) fn cmd_v2_request_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_node_get<R: Runtime>(
+pub(crate) fn cmd_yaku_request_node_get<R: Runtime>(
     app_handle: AppHandle<R>,
     node_id: String,
 ) -> Result<Option<yakumo_domain::RequestNode>> {
@@ -453,7 +453,7 @@ pub(crate) fn cmd_v2_request_node_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_folder_create<R: Runtime>(
+pub(crate) fn cmd_yaku_folder_create<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
     name: String,
@@ -475,7 +475,7 @@ pub(crate) fn cmd_v2_folder_create<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_folder_update<R: Runtime>(
+pub(crate) fn cmd_yaku_folder_update<R: Runtime>(
     app_handle: AppHandle<R>,
     folder_id: String,
     name: Option<String>,
@@ -488,7 +488,7 @@ pub(crate) fn cmd_v2_folder_update<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_create<R: Runtime>(
+pub(crate) fn cmd_yaku_request_create<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
     name: String,
@@ -517,7 +517,7 @@ pub(crate) fn cmd_v2_request_create<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_update<R: Runtime>(
+pub(crate) fn cmd_yaku_request_update<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: String,
     name: Option<String>,
@@ -538,7 +538,7 @@ pub(crate) fn cmd_v2_request_update<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_node_move<R: Runtime>(
+pub(crate) fn cmd_yaku_request_node_move<R: Runtime>(
     app_handle: AppHandle<R>,
     node_id: String,
     parent_id: Option<String>,
@@ -557,7 +557,7 @@ pub(crate) fn cmd_v2_request_node_move<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_request_node_delete<R: Runtime>(
+pub(crate) fn cmd_yaku_request_node_delete<R: Runtime>(
     app_handle: AppHandle<R>,
     node_id: String,
 ) -> Result<DeleteResponse> {
@@ -570,7 +570,7 @@ pub(crate) fn cmd_v2_request_node_delete<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_list<R: Runtime>(
+pub(crate) fn cmd_yaku_run_list<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: Option<String>,
     workspace_id: Option<String>,
@@ -597,7 +597,7 @@ pub(crate) fn cmd_v2_run_list<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_get<R: Runtime>(
+pub(crate) fn cmd_yaku_run_get<R: Runtime>(
     app_handle: AppHandle<R>,
     run_id: String,
 ) -> Result<Option<Run>> {
@@ -606,7 +606,7 @@ pub(crate) fn cmd_v2_run_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_events<R: Runtime>(
+pub(crate) fn cmd_yaku_run_events<R: Runtime>(
     app_handle: AppHandle<R>,
     run_id: String,
     kind: Option<RunEventKind>,
@@ -624,7 +624,7 @@ pub(crate) fn cmd_v2_run_events<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_bodies<R: Runtime>(
+pub(crate) fn cmd_yaku_run_bodies<R: Runtime>(
     app_handle: AppHandle<R>,
     run_id: String,
 ) -> Result<Vec<RunBody>> {
@@ -633,7 +633,7 @@ pub(crate) fn cmd_v2_run_bodies<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_body_bytes<R: Runtime>(
+pub(crate) fn cmd_yaku_run_body_bytes<R: Runtime>(
     app_handle: AppHandle<R>,
     body_id: String,
 ) -> Result<Vec<u8>> {
@@ -647,7 +647,7 @@ pub(crate) fn cmd_v2_run_body_bytes<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_delete<R: Runtime>(
+pub(crate) fn cmd_yaku_run_delete<R: Runtime>(
     app_handle: AppHandle<R>,
     run_id: String,
 ) -> Result<DeleteResponse> {
@@ -662,7 +662,7 @@ pub(crate) fn cmd_v2_run_delete<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_prune<R: Runtime>(
+pub(crate) fn cmd_yaku_run_prune<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: Option<String>,
     workspace_id: Option<String>,
@@ -687,7 +687,7 @@ pub(crate) fn cmd_v2_run_prune<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_retention_get<R: Runtime>(
+pub(crate) fn cmd_yaku_run_retention_get<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
 ) -> Result<Option<u32>> {
@@ -696,7 +696,7 @@ pub(crate) fn cmd_v2_run_retention_get<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_retention_set<R: Runtime>(
+pub(crate) fn cmd_yaku_run_retention_set<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
     keep_last: u32,
@@ -712,7 +712,7 @@ pub(crate) fn cmd_v2_run_retention_set<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_run_retention_clear<R: Runtime>(
+pub(crate) fn cmd_yaku_run_retention_clear<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
 ) -> Result<DeleteResponse> {
@@ -724,7 +724,7 @@ pub(crate) fn cmd_v2_run_retention_clear<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) fn cmd_v2_gc_bodies<R: Runtime>(
+pub(crate) fn cmd_yaku_gc_bodies<R: Runtime>(
     app_handle: AppHandle<R>,
     dry_run: Option<bool>,
 ) -> Result<GcReport> {
@@ -734,7 +734,7 @@ pub(crate) fn cmd_v2_gc_bodies<R: Runtime>(
 }
 
 #[tauri::command]
-pub(crate) async fn cmd_v2_send_request<R: Runtime>(
+pub(crate) async fn cmd_yaku_send_request<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: String,
     environment_id: Option<String>,
