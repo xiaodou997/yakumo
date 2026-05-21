@@ -1,5 +1,5 @@
 use crate::cli::{
-    YakuArgs, YakuBackupCommands, YakuCommands, YakuEnvironmentCommands, YakuFolderCommands,
+    YakuBackupCommands, YakuCommands, YakuEnvironmentCommands, YakuFolderCommands,
     YakuRequestCommands, YakuRunCommands, YakuWorkspaceCommands,
 };
 use crate::utils::output::print_json;
@@ -23,8 +23,8 @@ use yaku_engine::{
 };
 use yaku_store::{BackupManifest, Store, WorkspaceBackup};
 
-pub fn run(data_dir: PathBuf, args: YakuArgs, environment_id: Option<String>) -> i32 {
-    match run_inner(data_dir, args, environment_id) {
+pub fn run(data_dir: PathBuf, command: YakuCommands, environment_id: Option<String>) -> i32 {
+    match run_inner(data_dir, command, environment_id) {
         Ok(()) => 0,
         Err(error) => {
             eprintln!("Error: {error}");
@@ -35,14 +35,14 @@ pub fn run(data_dir: PathBuf, args: YakuArgs, environment_id: Option<String>) ->
 
 fn run_inner(
     data_dir: PathBuf,
-    args: YakuArgs,
+    command: YakuCommands,
     environment_id: Option<String>,
 ) -> Result<(), String> {
     let bodies_dir = data_dir.join("yaku-bodies");
     let store = open_store(data_dir)?;
     let service = DomainService::new(store);
 
-    match args.command {
+    match command {
         YakuCommands::Workspace(args) => match args.command {
             YakuWorkspaceCommands::List { cursor, limit } => {
                 let workspaces = service

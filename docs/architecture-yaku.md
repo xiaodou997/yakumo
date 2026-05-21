@@ -343,7 +343,7 @@ Phase 6: Rebuild optional capabilities.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
   the Yaku-native command path. Top-level `workspace`, `request`, `folder`,
   `environment`, `run`, `backup`, and `send` commands now use Yaku-native
-  argument types; `v2` remains only as a hidden compatibility alias.
+  argument types; the old hidden `v2` compatibility alias has been removed.
 
 ## Proposed Commit Sequence
 

@@ -11,7 +11,7 @@
 | gRPC | 已实现 | 桌面 App 保留反射、连接、发送、事件落库和状态清理入口；CLI send 暂不支持。 |
 | WebSocket | 已实现 | 桌面 App 保留连接、发送、关闭、事件列表和状态清理入口；CLI send 暂不支持。 |
 | SSE | 已实现 | 桌面 App 保留事件读取和展示入口；已修复 blob-backed response body 读取并补事件解析回归。 |
-| Cookie jar | 已实现 | 模型和 UI 存在；CLI `cookie-jar list`、默认 jar 解析、发送携带和响应后持久化已补回归。 |
+| Cookie jar | 待实现 | 旧模型路径已移除；Yaku-native cookie jar 需要重新设计存储、发送集成和 UI。 |
 
 ## 数据组织
 

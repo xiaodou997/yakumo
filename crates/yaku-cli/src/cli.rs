@@ -10,7 +10,7 @@ use std::path::PathBuf;
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
   - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
-  - The default CLI path is Yaku-native; `v2` remains as a hidden temporary compatibility alias
+  - The default CLI path is Yaku-native; legacy `v2` commands are no longer exposed
   "#)]
 pub struct Cli {
     /// Use a custom data directory
@@ -20,10 +20,6 @@ pub struct Cli {
     /// Environment ID to use for variable substitution
     #[arg(long, short, global = true)]
     pub environment: Option<String>,
-
-    /// Cookie jar ID to use when sending requests
-    #[arg(long = "cookie-jar", global = true, value_name = "COOKIE_JAR_ID")]
-    pub cookie_jar: Option<String>,
 
     /// Enable verbose send output (events and streamed response body)
     #[arg(long, short, global = true)]
@@ -42,9 +38,6 @@ pub enum Commands {
     /// Send a request by ID
     Send(SendArgs),
 
-    /// Cookie jar commands
-    CookieJar(CookieJarArgs),
-
     /// Workspace commands
     Workspace(YakuWorkspaceArgs),
 
@@ -62,17 +55,6 @@ pub enum Commands {
 
     /// Backup commands
     Backup(YakuBackupArgs),
-
-    /// Hidden compatibility alias for older Yaku V2 commands
-    #[command(hide = true)]
-    V2(YakuArgs),
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct YakuArgs {
-    #[command(subcommand)]
-    pub command: YakuCommands,
 }
 
 #[derive(Subcommand)]
@@ -1045,22 +1027,6 @@ pub struct SendArgs {
     /// Stop on first request failure when sending folders/workspaces
     #[arg(long, conflicts_with = "parallel")]
     pub fail_fast: bool,
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct CookieJarArgs {
-    #[command(subcommand)]
-    pub command: CookieJarCommands,
-}
-
-#[derive(Subcommand)]
-pub enum CookieJarCommands {
-    /// List cookie jars in a workspace
-    List {
-        /// Workspace ID (optional when exactly one workspace exists)
-        workspace_id: Option<String>,
-    },
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

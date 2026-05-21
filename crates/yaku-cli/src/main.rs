@@ -5,14 +5,12 @@ mod version;
 mod version_check;
 
 use clap::Parser;
-use cli::{Cli, Commands, CookieJarArgs, CookieJarCommands, SendArgs, YakuArgs, YakuCommands};
-use serde_json::Value;
+use cli::{Cli, Commands, SendArgs, YakuCommands};
 use std::path::PathBuf;
-use utils::output::print_json;
 
 #[tokio::main]
 async fn main() {
-    let Cli { data_dir, environment, cookie_jar, verbose, log, command } = Cli::parse();
+    let Cli { data_dir, environment, verbose, log, command } = Cli::parse();
 
     if let Some(log_level) = log {
         match log_level {
@@ -42,9 +40,6 @@ async fn main() {
 
     version_check::maybe_check_for_updates().await;
 
-    if cookie_jar.is_some() {
-        eprintln!("Warning: --cookie-jar is ignored by the Yaku-native CLI path");
-    }
     if verbose {
         eprintln!(
             "Warning: --verbose is currently only honored by detailed run inspection commands"
@@ -53,30 +48,18 @@ async fn main() {
 
     let exit_code = match command {
         Commands::Send(args) => run_yaku_send(data_dir, args, environment),
-        Commands::CookieJar(args) => run_cookie_jar(args),
-        Commands::Workspace(args) => run_yaku_core(
-            data_dir,
-            YakuArgs { command: YakuCommands::Workspace(args) },
-            environment,
-        ),
+        Commands::Workspace(args) => {
+            run_yaku_core(data_dir, YakuCommands::Workspace(args), environment)
+        }
         Commands::Request(args) => {
-            run_yaku_core(data_dir, YakuArgs { command: YakuCommands::Request(args) }, environment)
+            run_yaku_core(data_dir, YakuCommands::Request(args), environment)
         }
-        Commands::Folder(args) => {
-            run_yaku_core(data_dir, YakuArgs { command: YakuCommands::Folder(args) }, environment)
+        Commands::Folder(args) => run_yaku_core(data_dir, YakuCommands::Folder(args), environment),
+        Commands::Environment(args) => {
+            run_yaku_core(data_dir, YakuCommands::Environment(args), environment)
         }
-        Commands::Environment(args) => run_yaku_core(
-            data_dir,
-            YakuArgs { command: YakuCommands::Environment(args) },
-            environment,
-        ),
-        Commands::Run(args) => {
-            run_yaku_core(data_dir, YakuArgs { command: YakuCommands::Run(args) }, environment)
-        }
-        Commands::Backup(args) => {
-            run_yaku_core(data_dir, YakuArgs { command: YakuCommands::Backup(args) }, environment)
-        }
-        Commands::V2(args) => run_yaku_core(data_dir, args, environment),
+        Commands::Run(args) => run_yaku_core(data_dir, YakuCommands::Run(args), environment),
+        Commands::Backup(args) => run_yaku_core(data_dir, YakuCommands::Backup(args), environment),
     };
 
     if exit_code != 0 {
@@ -84,8 +67,8 @@ async fn main() {
     }
 }
 
-fn run_yaku_core(data_dir: PathBuf, args: YakuArgs, environment: Option<String>) -> i32 {
-    match std::thread::spawn(move || commands::yaku::run(data_dir, args, environment)).join() {
+fn run_yaku_core(data_dir: PathBuf, command: YakuCommands, environment: Option<String>) -> i32 {
+    match std::thread::spawn(move || commands::yaku::run(data_dir, command, environment)).join() {
         Ok(exit_code) => exit_code,
         Err(_) => {
             eprintln!("Error: command failed to join blocking task");
@@ -100,24 +83,7 @@ fn run_yaku_send(data_dir: PathBuf, args: SendArgs, environment: Option<String>)
             "Warning: --parallel and --fail-fast are not supported by the Yaku-native send path yet"
         );
     }
-    run_yaku_core(
-        data_dir,
-        YakuArgs { command: YakuCommands::Send { request_id: args.id } },
-        environment,
-    )
-}
-
-fn run_cookie_jar(args: CookieJarArgs) -> i32 {
-    match args.command {
-        CookieJarCommands::List { .. } => match print_json(&Vec::<Value>::new(), "cookie jar list")
-        {
-            Ok(()) => 0,
-            Err(error) => {
-                eprintln!("Error: {error}");
-                1
-            }
-        },
-    }
+    run_yaku_core(data_dir, YakuCommands::Send { request_id: args.id }, environment)
 }
 
 fn resolve_data_dir(app_id: &str) -> Result<PathBuf, String> {

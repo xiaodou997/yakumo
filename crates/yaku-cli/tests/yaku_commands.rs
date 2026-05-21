@@ -26,22 +26,6 @@ fn backup_core(value: &serde_json::Value) -> serde_json::Value {
 }
 
 #[test]
-fn hidden_v2_alias_routes_to_yaku_store() {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
-    let data_dir = temp_dir.path();
-
-    cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Alias Workspace"])
-        .assert()
-        .success()
-        .stdout(contains("\"name\":\"Alias Workspace\""));
-
-    assert!(data_dir.join("yaku.sqlite").exists());
-    assert!(!data_dir.join("db.sqlite").exists());
-    assert!(!data_dir.join("blobs.sqlite").exists());
-}
-
-#[test]
 fn yaku_workspace_and_request_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
