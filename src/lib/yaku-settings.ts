@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { getYakuSetting, setYakuSetting, yakuQueryKeys, type YakuAppSettings } from "./yaku-client";
+import {
+  getYakuSetting,
+  setYakuSetting,
+  yakuQueryKeys,
+  type YakuAppSettings,
+  type YakuClientCertificate,
+  type YakuProxySetting,
+} from "./yaku-client";
 import { jotaiStore } from "./jotai";
 
 export const YAKU_APP_SETTINGS_KEY = "app.settings";
@@ -48,9 +55,7 @@ export function normalizeYakuAppSettings(value: unknown): YakuAppSettings {
       typeof input.checkNotifications === "boolean"
         ? input.checkNotifications
         : defaultYakuAppSettings.checkNotifications,
-    clientCertificates: Array.isArray(input.clientCertificates)
-      ? input.clientCertificates
-      : defaultYakuAppSettings.clientCertificates,
+    clientCertificates: normalizeClientCertificates(input.clientCertificates),
     coloredMethods:
       typeof input.coloredMethods === "boolean"
         ? input.coloredMethods
@@ -79,7 +84,7 @@ export function normalizeYakuAppSettings(value: unknown): YakuAppSettings {
     language: typeof input.language === "string" ? input.language : defaultYakuAppSettings.language,
     openWorkspaceNewWindow:
       typeof input.openWorkspaceNewWindow === "boolean" ? input.openWorkspaceNewWindow : null,
-    proxy: isRecord(input.proxy) ? (input.proxy as YakuAppSettings["proxy"]) : null,
+    proxy: normalizeProxy(input.proxy),
     themeDark: typeof input.themeDark === "string" ? input.themeDark : defaultYakuAppSettings.themeDark,
     themeLight:
       typeof input.themeLight === "string" ? input.themeLight : defaultYakuAppSettings.themeLight,
@@ -141,12 +146,63 @@ function normalizeHotkeys(value: Record<string, unknown>) {
   );
 }
 
+function normalizeClientCertificates(value: unknown): YakuClientCertificate[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item) => ({
+      host: stringOr(item.host, ""),
+      port: numberOrNull(item.port),
+      crtFile: stringOrNull(item.crtFile),
+      keyFile: stringOrNull(item.keyFile),
+      pfxFile: stringOrNull(item.pfxFile),
+      passphrase: stringOrNull(item.passphrase),
+      enabled: typeof item.enabled === "boolean" ? item.enabled : true,
+    }));
+}
+
+function normalizeProxy(value: unknown): YakuProxySetting | null {
+  if (!isRecord(value)) return null;
+  if (value.type === "disabled") {
+    return { type: "disabled" };
+  }
+  if (value.type !== "enabled") {
+    return null;
+  }
+  const auth = isRecord(value.auth)
+    ? {
+        user: stringOr(value.auth.user, ""),
+        password: stringOr(value.auth.password, ""),
+      }
+    : null;
+  return {
+    type: "enabled",
+    http: stringOr(value.http, ""),
+    https: stringOr(value.https, ""),
+    auth,
+    bypass: stringOr(value.bypass, ""),
+    disabled: typeof value.disabled === "boolean" ? value.disabled : false,
+  };
+}
+
 function isEditorKeymap(value: unknown): value is YakuAppSettings["editorKeymap"] {
   return value === "default" || value === "vim" || value === "vscode" || value === "emacs";
 }
 
 function numberOr(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function numberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function stringOr(value: unknown, fallback: string) {
+  return typeof value === "string" ? value : fallback;
+}
+
+function stringOrNull(value: unknown) {
+  return typeof value === "string" ? value : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

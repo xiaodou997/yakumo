@@ -31,6 +31,14 @@ vi.mock("./SettingsHotkeys", () => ({
   SettingsHotkeys: () => <div data-testid="settings-hotkeys">Hotkeys</div>,
 }));
 
+vi.mock("./SettingsCertificates", () => ({
+  SettingsCertificates: () => <div data-testid="settings-certificates">Certificates</div>,
+}));
+
+vi.mock("./SettingsProxy", () => ({
+  SettingsProxy: () => <div data-testid="settings-proxy">Proxy</div>,
+}));
+
 vi.mock("./SettingsLicense", () => ({
   SettingsLicense: () => <div data-testid="settings-license">License</div>,
 }));

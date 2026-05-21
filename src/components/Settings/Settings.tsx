@@ -22,8 +22,17 @@ interface Props {
 const TAB_GENERAL = "general";
 const TAB_INTERFACE = "interface";
 const TAB_SHORTCUTS = "shortcuts";
+const TAB_CERTIFICATES = "certificates";
+const TAB_PROXY = "proxy";
 const TAB_LICENSE = "license";
-const tabs = [TAB_GENERAL, TAB_INTERFACE, TAB_SHORTCUTS, TAB_LICENSE] as const;
+const tabs = [
+  TAB_GENERAL,
+  TAB_INTERFACE,
+  TAB_SHORTCUTS,
+  TAB_CERTIFICATES,
+  TAB_PROXY,
+  TAB_LICENSE,
+] as const;
 export type SettingsTab = (typeof tabs)[number];
 
 const SettingsGeneral = lazy(() =>
@@ -35,6 +44,12 @@ const SettingsInterface = lazy(() =>
 const SettingsHotkeys = lazy(() =>
   import("./SettingsHotkeys").then((m) => ({ default: m.SettingsHotkeys })),
 );
+const SettingsCertificates = lazy(() =>
+  import("./SettingsCertificates").then((m) => ({ default: m.SettingsCertificates })),
+);
+const SettingsProxy = lazy(() =>
+  import("./SettingsProxy").then((m) => ({ default: m.SettingsProxy })),
+);
 const SettingsLicense = lazy(() =>
   import("./SettingsLicense").then((m) => ({ default: m.SettingsLicense })),
 );
@@ -43,6 +58,8 @@ const tabLabels: Record<SettingsTab, MessageKey> = {
   [TAB_GENERAL]: "settings.general",
   [TAB_INTERFACE]: "settings.interface",
   [TAB_SHORTCUTS]: "settings.shortcuts",
+  [TAB_CERTIFICATES]: "settings.certificates",
+  [TAB_PROXY]: "settings.proxy",
   [TAB_LICENSE]: "settings.license",
 };
 
@@ -130,11 +147,19 @@ export default function Settings({ hide }: Props) {
                 <Icon icon="columns_2" className="text-secondary" />
               ) : value === TAB_SHORTCUTS ? (
                 <Icon icon="keyboard" className="text-secondary" />
+              ) : value === TAB_CERTIFICATES ? (
+                <Icon icon="shield_check" className="text-secondary" />
+              ) : value === TAB_PROXY ? (
+                <Icon icon="wifi" className="text-secondary" />
               ) : value === TAB_LICENSE ? (
                 <Icon icon="key_round" className="text-secondary" />
               ) : null,
             rightSlot:
-              value === TAB_LICENSE && licenseCheck.check.data?.status === "personal_use" ? (
+              value === TAB_CERTIFICATES ? (
+                <CountBadge count={settings.clientCertificates.length} />
+              ) : value === TAB_PROXY && settings.proxy?.type === "enabled" ? (
+                <CountBadge count />
+              ) : value === TAB_LICENSE && licenseCheck.check.data?.status === "personal_use" ? (
                 <CountBadge count color="notice" />
               ) : null,
           }),
@@ -156,6 +181,10 @@ export function SettingsTabContent({ value }: { value: SettingsTab }) {
           <SettingsInterface />
         ) : value === TAB_SHORTCUTS ? (
           <SettingsHotkeys />
+        ) : value === TAB_CERTIFICATES ? (
+          <SettingsCertificates />
+        ) : value === TAB_PROXY ? (
+          <SettingsProxy />
         ) : (
           <SettingsLicense />
         )}
