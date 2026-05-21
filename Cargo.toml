@@ -26,19 +26,15 @@ ts-rs = "11.1.0"
 
 # Internal crates - shared
 yakumo-core = { path = "crates/yakumo-core" }
-yakumo = { path = "crates/yakumo" }
 yakumo-common = { path = "crates/yakumo-common" }
 yakumo-crypto = { path = "crates/yakumo-crypto" }
 yaku-domain = { path = "crates/yaku-domain" }
 yaku-engine = { path = "crates/yaku-engine" }
-yakumo-git = { path = "crates/yakumo-git" }
 yakumo-grpc = { path = "crates/yakumo-grpc" }
 yakumo-http = { path = "crates/yakumo-http" }
 yakumo-models = { path = "crates/yakumo-models" }
-yakumo-features = { path = "crates/yakumo-features" }
 yakumo-sse = { path = "crates/yakumo-sse" }
 yaku-store = { path = "crates/yaku-store" }
-yakumo-sync = { path = "crates/yakumo-sync" }
 yakumo-templates = { path = "crates/yakumo-templates" }
 yakumo-tls = { path = "crates/yakumo-tls" }
 yakumo-ws = { path = "crates/yakumo-ws" }

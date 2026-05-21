@@ -64,10 +64,11 @@ The runtime architecture must not preserve compatibility layers.
 - `src-tauri/src/models_ext.rs` has been removed. Desktop startup, updater,
   notification dismissal, launch analytics, and titlebar configuration now use
   Yaku `settings` records instead of the legacy `db.sqlite` model store.
-- `crates/yakumo-models/guest-js` provides old frontend atoms and mutable model
-  helpers.
-- `crates/yakumo-sync` is old model-sync oriented and should not stay on the
-  main Yaku path.
+- `crates/yakumo-models` remains as an old data-model crate for now, but it is no
+  longer part of the app or CLI runtime path.
+- Old umbrella/optional crates `crates/yakumo`, `crates/yakumo-features`,
+  `crates/yakumo-git`, `crates/yakumo-sync`, and `crates/yakumo-license` have
+  been removed from the workspace.
 
 ### Keep Versus Rewrite
 
@@ -324,8 +325,12 @@ Phase 5: Delete old app surface.
   commands, old CLI command modules plus legacy integration tests were removed,
   and the `yaku-cli` dependency tree no longer includes `yakumo-models`.
   `yakumo-app` no longer depends on `yakumo-features` for toast events either;
-  the small `show_toast` payload type lives inside `src-tauri`. Remaining
-  `yakumo-models` usage is isolated to old non-runtime crates.
+  the small `show_toast` payload type lives inside `src-tauri`. Frontend UI-only
+  contracts have moved to `src/lib/yaku-ui-types.ts`.
+- Delete unused legacy crates once no runtime path references them. Done for the
+  old umbrella and optional feature chain: `crates/yakumo`,
+  `crates/yakumo-features`, `crates/yakumo-git`, `crates/yakumo-sync`, and
+  `crates/yakumo-license` were removed.
 
 Phase 6: Rebuild optional capabilities.
 

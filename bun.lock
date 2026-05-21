@@ -19,20 +19,8 @@
       "name": "@yakumo-internal/crypto",
       "version": "1.0.0",
     },
-    "crates/yakumo-features": {
-      "name": "@yakumo/features",
-      "version": "1.0.0",
-    },
     "crates/yakumo-fonts": {
       "name": "@yakumo-internal/fonts",
-      "version": "1.0.0",
-    },
-    "crates/yakumo-git": {
-      "name": "@yakumo-internal/git",
-      "version": "1.0.0",
-    },
-    "crates/yakumo-license": {
-      "name": "@yakumo-internal/license",
       "version": "1.0.0",
     },
     "crates/yakumo-mac-window": {
@@ -45,10 +33,6 @@
     },
     "crates/yakumo-sse": {
       "name": "@yakumo-internal/sse",
-      "version": "1.0.0",
-    },
-    "crates/yakumo-sync": {
-      "name": "@yakumo-internal/sync",
       "version": "1.0.0",
     },
     "crates/yakumo-templates": {
@@ -710,17 +694,11 @@
 
     "@yakumo-internal/fonts": ["@yakumo-internal/fonts@workspace:crates/yakumo-fonts"],
 
-    "@yakumo-internal/git": ["@yakumo-internal/git@workspace:crates/yakumo-git"],
-
-    "@yakumo-internal/license": ["@yakumo-internal/license@workspace:crates/yakumo-license"],
-
     "@yakumo-internal/mac-window": ["@yakumo-internal/mac-window@workspace:crates/yakumo-mac-window"],
 
     "@yakumo-internal/models": ["@yakumo-internal/models@workspace:crates/yakumo-models"],
 
     "@yakumo-internal/sse": ["@yakumo-internal/sse@workspace:crates/yakumo-sse"],
-
-    "@yakumo-internal/sync": ["@yakumo-internal/sync@workspace:crates/yakumo-sync"],
 
     "@yakumo-internal/tauri": ["@yakumo-internal/tauri@workspace:src-tauri"],
 
@@ -729,8 +707,6 @@
     "@yakumo-internal/ws": ["@yakumo-internal/ws@workspace:crates/yakumo-ws"],
 
     "@yakumo/app": ["@yakumo/app@workspace:src"],
-
-    "@yakumo/features": ["@yakumo/features@workspace:crates/yakumo-features"],
 
     "agent-base": ["agent-base@6.0.2", "https://registry.npmmirror.com/agent-base/-/agent-base-6.0.2.tgz", { "dependencies": { "debug": "4" } }, "sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ=="],
 
