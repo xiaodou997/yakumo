@@ -43,6 +43,13 @@ pub struct CreateFolder {
 }
 
 #[derive(Debug, Clone)]
+pub struct UpdateFolder {
+    pub id: String,
+    pub name: Option<String>,
+    pub now: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateEnvironment {
     pub id: String,
     pub workspace_id: String,
@@ -251,6 +258,25 @@ where
             created_at: input.now,
             updated_at: input.now,
         };
+        self.repository.upsert_request_node(&node)?;
+        Ok(node)
+    }
+
+    pub fn update_folder(&self, input: UpdateFolder) -> Result<RequestNode> {
+        validate_id("folder id", &input.id)?;
+        let mut node = self
+            .repository
+            .get_request_node(&input.id)?
+            .ok_or_else(|| Error::NotFound(format!("request node {}", input.id)))?;
+
+        if node.kind != RequestNodeKind::Folder {
+            return Err(Error::InvalidInput("request node must be a folder".to_string()));
+        }
+        if let Some(name) = input.name {
+            validate_name("folder name", &name)?;
+            node.name = name.trim().to_string();
+        }
+        node.updated_at = input.now;
         self.repository.upsert_request_node(&node)?;
         Ok(node)
     }
@@ -1119,6 +1145,49 @@ mod tests {
 
         service.delete_request_node(&moved.id).expect("node deleted");
         assert!(service.repository().get_request(&request.id).expect("request read").is_none());
+    }
+
+    #[test]
+    fn updates_folder_name() {
+        let service = DomainService::new(MemoryRepository::default());
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_v2".to_string(),
+                name: "Yakumo".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace created");
+        let folder = service
+            .create_folder(CreateFolder {
+                id: "folder_v2".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                name: " Old Name ".to_string(),
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("folder created");
+
+        let updated = service
+            .update_folder(UpdateFolder {
+                id: folder.id.clone(),
+                name: Some(" New Name ".to_string()),
+                now,
+            })
+            .expect("folder updated");
+
+        assert_eq!(updated.name, "New Name");
+        assert_eq!(
+            service
+                .repository()
+                .get_request_node(&folder.id)
+                .expect("folder read")
+                .expect("folder node")
+                .name,
+            "New Name"
+        );
     }
 
     #[test]

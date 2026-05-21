@@ -11,5 +11,5 @@ pub use repository::{
 pub use service::{
     AppendRunEvent, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,
     DomainService, DuplicateRequest, FinishRun, MoveRequestNode, PruneRuns, PruneRunsScope,
-    RecordRunBody, UpdateEnvironment, UpdateRequest,
+    RecordRunBody, UpdateEnvironment, UpdateFolder, UpdateRequest,
 };

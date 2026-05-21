@@ -43,6 +43,7 @@ mod template_commands;
 mod update_commands;
 mod updates;
 mod uri_scheme;
+mod v2_commands;
 mod window;
 mod window_commands;
 mod window_menu;
@@ -361,6 +362,38 @@ pub fn run() {
             crate::commands::cmd_template_function_summaries,
             crate::commands::cmd_websocket_request_actions,
             crate::commands::cmd_workspace_actions,
+            //
+            // V2 commands
+            v2_commands::cmd_v2_workspace_list,
+            v2_commands::cmd_v2_workspace_get,
+            v2_commands::cmd_v2_workspace_create,
+            v2_commands::cmd_v2_workspace_delete,
+            v2_commands::cmd_v2_environment_list,
+            v2_commands::cmd_v2_environment_get,
+            v2_commands::cmd_v2_environment_create,
+            v2_commands::cmd_v2_environment_update,
+            v2_commands::cmd_v2_environment_delete,
+            v2_commands::cmd_v2_request_list,
+            v2_commands::cmd_v2_request_get,
+            v2_commands::cmd_v2_request_node_get,
+            v2_commands::cmd_v2_folder_create,
+            v2_commands::cmd_v2_folder_update,
+            v2_commands::cmd_v2_request_create,
+            v2_commands::cmd_v2_request_update,
+            v2_commands::cmd_v2_request_node_move,
+            v2_commands::cmd_v2_request_node_delete,
+            v2_commands::cmd_v2_run_list,
+            v2_commands::cmd_v2_run_get,
+            v2_commands::cmd_v2_run_events,
+            v2_commands::cmd_v2_run_bodies,
+            v2_commands::cmd_v2_run_body_bytes,
+            v2_commands::cmd_v2_run_delete,
+            v2_commands::cmd_v2_run_prune,
+            v2_commands::cmd_v2_run_retention_get,
+            v2_commands::cmd_v2_run_retention_set,
+            v2_commands::cmd_v2_run_retention_clear,
+            v2_commands::cmd_v2_gc_bodies,
+            v2_commands::cmd_v2_send_request,
             //
             // Models commands
             models_ext::models_delete,

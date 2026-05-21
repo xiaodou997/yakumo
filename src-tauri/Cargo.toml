@@ -74,6 +74,7 @@ yakumo-tauri-utils = { workspace = true }
 yakumo-core = { workspace = true }
 yakumo = { workspace = true }
 yakumo-crypto = { workspace = true }
+yakumo-domain = { workspace = true }
 yakumo-fonts = { workspace = true }
 yakumo-git = { workspace = true }
 yakumo-grpc = { workspace = true }
@@ -87,3 +88,5 @@ yakumo-sync = { workspace = true }
 yakumo-templates = { workspace = true }
 yakumo-tls = { workspace = true }
 yakumo-ws = { workspace = true }
+yakumo-engine = { workspace = true }
+yakumo-store = { workspace = true }
