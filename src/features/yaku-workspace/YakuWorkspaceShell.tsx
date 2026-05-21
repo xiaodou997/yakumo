@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import classNames from "classnames";
 import {
   useCallback,
@@ -13,7 +14,6 @@ import { Button } from "../../components/core/Button";
 import type { DropdownItem } from "../../components/core/Dropdown";
 import { FormattedError } from "../../components/core/FormattedError";
 import { Heading } from "../../components/core/Heading";
-import { Link } from "../../components/core/Link";
 import { Select } from "../../components/core/Select";
 import { HStack, VStack } from "../../components/core/Stacks";
 import type { TreeHandle, TreeProps } from "../../components/core/tree/Tree";
@@ -30,11 +30,13 @@ import {
   decodeV2Body,
   deleteV2Environment,
   deleteV2RequestNode,
+  exportYakuWorkspaceBackup,
   formatJsonIfPossible,
   getV2Request,
   getV2RunBodyBytes,
   getV2RunRetention,
   gcV2Bodies,
+  importYakuWorkspaceBackup,
   listV2Environments,
   listV2Requests,
   listV2RunBodies,
@@ -791,6 +793,55 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     },
   });
 
+  const exportBackupMutation = useMutation({
+    mutationFn: async () => {
+      if (selectedWorkspace == null) {
+        throw new Error("No Yaku workspace selected");
+      }
+      const exportPath = await save({
+        title: "Export Yaku Workspace Backup",
+        defaultPath: `yaku.${slugFilePart(selectedWorkspace.name)}.json`,
+        filters: [{ name: "Yaku Workspace Backup", extensions: ["json"] }],
+      });
+      if (exportPath == null) {
+        return null;
+      }
+      return exportYakuWorkspaceBackup(selectedWorkspace.id, exportPath);
+    },
+  });
+
+  const importBackupMutation = useMutation({
+    mutationFn: async () => {
+      const filePath = await open({
+        title: "Import Yaku Workspace Backup",
+        multiple: false,
+        filters: [{ name: "Yaku Workspace Backup", extensions: ["json"] }],
+      });
+      if (typeof filePath !== "string") {
+        return null;
+      }
+      return importYakuWorkspaceBackup(filePath, true);
+    },
+    onSuccess: async (response) => {
+      if (response == null) {
+        return;
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["v2", "workspaces"] }),
+        queryClient.invalidateQueries({ queryKey: ["v2", "requests", response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ["v2", "environments", response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ["v2", "run-retention", response.workspace.id] }),
+      ]);
+      setSearch({
+        workspaceId: response.workspace.id,
+        folderId: undefined,
+        requestId: undefined,
+        runId: undefined,
+        environmentId: undefined,
+      });
+    },
+  });
+
   return (
     <div className="h-full overflow-auto bg-surface">
       <div className="mx-auto flex min-h-full w-full max-w-[1600px] flex-col gap-6 px-5 py-5">
@@ -803,22 +854,16 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
             <HStack justifyContent="between" alignItems="start" className="gap-4 max-md:flex-col">
               <VStack space={2} className="max-w-3xl">
                 <div className="text-xs uppercase tracking-[0.28em] text-text-subtlest">
-                  Yakumo V2
+                  Yaku
                 </div>
-                <Heading level={1}>Core Inspector</Heading>
+                <Heading level={1}>Workspace</Heading>
                 <p className="max-w-2xl text-sm leading-6 text-text-subtle">
-                  这页直接走新加的 Tauri V2 bridge，用来检查 `v2.sqlite` 的 workspace/request/run
-                  数据和统一 send 生命周期，不再依赖旧的 `AnyModel` 仓库。
+                  Yaku-first workspace shell backed by yaku.sqlite, domain services, and the
+                  event-driven run lifecycle. This path no longer depends on the legacy AnyModel
+                  workspace surface.
                 </p>
               </VStack>
               <HStack space={2} wrap className="shrink-0">
-                <Link
-                  href="/workspaces"
-                  noUnderline
-                  className="rounded-md border border-border-subtle px-3 py-2 text-sm text-text-subtle"
-                >
-                  Back To Legacy UI
-                </Link>
                 <Button
                   color="default"
                   isLoading={startRunMutation.isPending}
@@ -1029,6 +1074,49 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                         {gcBodiesMutation.data.retained}
                       </div>
                     ) : null}
+                  </div>
+                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
+                    <VStack space={2}>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">
+                          Backup
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-text-subtle">
+                          Yaku native JSON only. Import replaces an existing workspace with the same
+                          id.
+                        </div>
+                      </div>
+                      <HStack space={2} wrap>
+                        <Button
+                          size="xs"
+                          variant="border"
+                          disabled={selectedWorkspaceId == null}
+                          isLoading={exportBackupMutation.isPending}
+                          onClick={() => exportBackupMutation.mutate()}
+                        >
+                          Export Workspace
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="border"
+                          isLoading={importBackupMutation.isPending}
+                          onClick={() => importBackupMutation.mutate()}
+                        >
+                          Import Backup
+                        </Button>
+                      </HStack>
+                      {exportBackupMutation.data != null ? (
+                        <div className="text-xs text-text-subtle">
+                          Exported hash {exportBackupMutation.data.contentHash.slice(0, 12)}
+                        </div>
+                      ) : null}
+                      {importBackupMutation.data != null ? (
+                        <div className="text-xs text-text-subtle">
+                          Imported {importBackupMutation.data.workspace.name}
+                          {importBackupMutation.data.replacedExisting ? " and replaced existing data" : ""}
+                        </div>
+                      ) : null}
+                    </VStack>
                   </div>
                 </VStack>
               </Panel>
@@ -1687,6 +1775,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
             setRetentionMutation.error,
             clearRetentionMutation.error,
             gcBodiesMutation.error,
+            exportBackupMutation.error,
+            importBackupMutation.error,
           ]}
         />
       </div>
@@ -2604,4 +2694,13 @@ function pairsFromQuery(value: unknown): ConfigPair[] {
 
 function asOptionalString(value: unknown) {
   return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+function slugFilePart(value: string) {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "workspace";
 }

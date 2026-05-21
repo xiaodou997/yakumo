@@ -19,4 +19,5 @@ export const yakuQueryKeys = {
     [...yakuQueryKeys.all, "run-body-bytes", bodyId] as const,
   runRetention: (workspaceId: string | null | undefined) =>
     [...yakuQueryKeys.all, "run-retention", workspaceId] as const,
+  setting: (key: string) => [...yakuQueryKeys.all, "setting", key] as const,
 };

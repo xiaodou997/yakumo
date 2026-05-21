@@ -32,7 +32,6 @@ mod grpc;
 mod grpc_commands;
 mod history;
 mod http_request;
-mod import;
 mod metadata_commands;
 mod models_ext;
 mod notifications;
@@ -315,7 +314,6 @@ pub fn run() {
             history::cmd_delete_all_http_responses,
             history::cmd_delete_send_history,
             notifications::cmd_dismiss_notification,
-            file_commands::cmd_export_data,
             http_request::cmd_http_request_body,
             file_commands::cmd_http_response_body_bytes,
             file_commands::cmd_directory_is_empty,
@@ -328,7 +326,6 @@ pub fn run() {
             models_ext::models_get_workspace_meta,
             grpc_commands::cmd_grpc_go,
             grpc_commands::cmd_grpc_reflect,
-            file_commands::cmd_import_data,
             metadata_commands::cmd_metadata,
             window_commands::cmd_new_child_window,
             window_commands::cmd_new_main_window,
@@ -397,6 +394,10 @@ pub fn run() {
             yaku_commands::cmd_yaku_run_retention_get,
             yaku_commands::cmd_yaku_run_retention_set,
             yaku_commands::cmd_yaku_run_retention_clear,
+            yaku_commands::cmd_yaku_setting_get,
+            yaku_commands::cmd_yaku_setting_set,
+            yaku_commands::cmd_yaku_backup_export,
+            yaku_commands::cmd_yaku_backup_import,
             yaku_commands::cmd_yaku_gc_bodies,
             yaku_commands::cmd_yaku_send_request,
             //

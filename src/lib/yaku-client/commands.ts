@@ -16,6 +16,8 @@ import type {
   V2Setting,
   V2Workspace,
   V2WorkspacePageItem,
+  YakuBackupImportResponse,
+  YakuBackupManifest,
 } from "./types";
 
 export async function listV2Workspaces(limit = 500) {
@@ -189,6 +191,25 @@ export async function setV2RunRetention(workspaceId: string, keepLast: number) {
 
 export async function clearV2RunRetention(workspaceId: string) {
   return invokeCmd<V2DeleteResponse>("cmd_yaku_run_retention_clear", { workspaceId });
+}
+
+export async function getYakuSetting(key: string) {
+  return invokeCmd<V2Setting | null>("cmd_yaku_setting_get", { key });
+}
+
+export async function setYakuSetting(key: string, value: unknown) {
+  return invokeCmd<V2Setting>("cmd_yaku_setting_set", { key, value });
+}
+
+export async function exportYakuWorkspaceBackup(workspaceId: string, exportPath: string) {
+  return invokeCmd<YakuBackupManifest>("cmd_yaku_backup_export", { workspaceId, exportPath });
+}
+
+export async function importYakuWorkspaceBackup(filePath: string, replaceExisting = true) {
+  return invokeCmd<YakuBackupImportResponse>("cmd_yaku_backup_import", {
+    filePath,
+    replaceExisting,
+  });
 }
 
 export async function gcV2Bodies(dryRun = false) {

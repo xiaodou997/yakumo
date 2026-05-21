@@ -1,10 +1,9 @@
-import { settingsAtom } from "@yakumo-internal/models";
-import { useAtomValue } from "jotai";
 import { resolveAppearance } from "../lib/theme/appearance";
+import { useYakuSettings } from "../lib/yaku-settings";
 import { usePreferredAppearance } from "./usePreferredAppearance";
 
 export function useResolvedAppearance() {
   const preferredAppearance = usePreferredAppearance();
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
   return resolveAppearance(preferredAppearance, settings.appearance);
 }

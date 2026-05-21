@@ -1,15 +1,10 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { settingsAtom } from "@yakumo-internal/models";
-import { useAtomValue } from "jotai";
 import { useEffect } from "react";
+import { useYakuSettings } from "../lib/yaku-settings";
 
 export function useSyncFontSizeSetting() {
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
   useEffect(() => {
-    if (settings == null) {
-      return;
-    }
-
     const { interfaceScale, editorFontSize } = settings;
     getCurrentWebviewWindow().setZoom(interfaceScale).catch(console.error);
     document.documentElement.style.setProperty("--editor-font-size", `${editorFontSize}px`);

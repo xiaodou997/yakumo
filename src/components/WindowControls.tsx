@@ -1,10 +1,9 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { type } from "@tauri-apps/plugin-os";
-import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { WINDOW_CONTROLS_WIDTH } from "../lib/constants";
+import { useYakuSettings } from "../lib/yaku-settings";
 import { Button } from "./core/Button";
 import { HStack } from "./core/Stacks";
 
@@ -16,7 +15,7 @@ interface Props {
 
 export function WindowControls({ className, onlyX }: Props) {
   const [maximized, setMaximized] = useState<boolean>(false);
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
   // Never show controls on macOS or if hideWindowControls is true
   if (type() === "macos" || settings.hideWindowControls || settings.useNativeTitlebar) {
     return null;

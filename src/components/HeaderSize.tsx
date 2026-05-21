@@ -1,11 +1,10 @@
 import { type } from "@tauri-apps/plugin-os";
-import { settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
-import { useAtomValue } from "jotai";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { useMemo } from "react";
 import { useIsFullscreen } from "../hooks/useIsFullscreen";
 import { HEADER_SIZE_LG, HEADER_SIZE_MD, WINDOW_CONTROLS_WIDTH } from "../lib/constants";
+import { useYakuSettings } from "../lib/yaku-settings";
 import { WindowControls } from "./WindowControls";
 
 interface HeaderSizeProps extends HTMLAttributes<HTMLDivElement> {
@@ -25,7 +24,7 @@ export function HeaderSize({
   children,
   hideControls,
 }: HeaderSizeProps) {
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
   const isFullscreen = useIsFullscreen();
   const nativeTitlebar = settings.useNativeTitlebar;
   const finalStyle = useMemo<CSSProperties>(() => {

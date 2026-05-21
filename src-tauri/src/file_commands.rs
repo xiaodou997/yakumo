@@ -1,16 +1,13 @@
 use crate::error::Error::GenericError;
 use crate::error::Result;
-use crate::import::import_data;
 use crate::models_ext::BlobManagerExt;
 use crate::models_ext::QueryManagerExt;
 use crate::path_guard;
 use eventsource_client::{EventParser, SSE};
 use std::fs;
-use std::fs::File;
 use std::path::PathBuf;
-use tauri::{AppHandle, Runtime, WebviewWindow, command};
+use tauri::{AppHandle, Runtime, command};
 use yakumo_models::models::HttpResponseEvent;
-use yakumo_models::util::{BatchUpsertResult, get_workspace_export_resources};
 use yakumo_sse::sse::ServerSentEvent;
 
 #[command]
@@ -72,42 +69,6 @@ pub(crate) async fn cmd_get_http_response_events<R: Runtime>(
 ) -> Result<Vec<HttpResponseEvent>> {
     let events: Vec<HttpResponseEvent> = app_handle.db().list_http_response_events(response_id)?;
     Ok(events)
-}
-
-#[command]
-pub(crate) async fn cmd_import_data<R: Runtime>(
-    window: WebviewWindow<R>,
-    file_path: &str,
-) -> Result<BatchUpsertResult> {
-    path_guard::existing_file(&PathBuf::from(file_path), "Import path")?;
-    import_data(&window, file_path).await
-}
-
-#[command]
-pub(crate) async fn cmd_export_data<R: Runtime>(
-    app_handle: AppHandle<R>,
-    export_path: &str,
-    workspace_ids: Vec<&str>,
-    include_private_environments: bool,
-) -> Result<()> {
-    path_guard::writable_parent(&PathBuf::from(export_path), "Export path")?;
-    let db = app_handle.db();
-    let version = app_handle.package_info().version.to_string();
-    let export_data =
-        get_workspace_export_resources(&db, &version, workspace_ids, include_private_environments)?;
-    let f = File::options()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(export_path)
-        .map_err(|e| GenericError(format!("Unable to create export file: {e}")))?;
-
-    serde_json::to_writer_pretty(&f, &export_data)
-        .map_err(|e| GenericError(format!("Failed to write export file: {e}")))?;
-
-    f.sync_all().map_err(|e| GenericError(format!("Failed to sync export file: {e}")))?;
-
-    Ok(())
 }
 
 #[command]

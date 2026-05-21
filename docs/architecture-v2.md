@@ -152,7 +152,8 @@ Required schema adjustments before main UI cutover:
 - Add explicit destructive schema reset policy during active Yaku development.
 - Add stable request config Rust enums for HTTP, GraphQL, gRPC, WebSocket, and
   SSE instead of exposing `BTreeMap<String, Value>` as the long-term domain API.
-- Add app-level settings records that replace old `Settings`.
+- Add app-level settings records that replace old `Settings`. Baseline Yaku app
+  settings now use the `settings` table under the `app.settings` key.
 - Add workspace UI state records for active environment, recent requests, and
   layout state.
 
@@ -315,8 +316,13 @@ Phase 5: Delete old app surface.
 Phase 6: Rebuild optional capabilities.
 
 - One-way legacy importer, if wanted.
-- Yaku backup/export/import.
-- Yaku settings/secrets UI.
+- Yaku backup/export/import. Baseline native workspace backup import/export is
+  implemented through `cmd_yaku_backup_export` and `cmd_yaku_backup_import`.
+  Legacy AnyModel import/export dialogs, commands, and the old importer module
+  are removed from the desktop surface; `import-data` deep links now fail closed
+  with guidance to use Yaku backup import.
+- Yaku settings/secrets UI. Baseline app settings are implemented; secrets,
+  proxy, and certificate UX remain follow-up work.
 - Yaku CLI parity for protocols beyond HTTP.
 
 ## Proposed Commit Sequence

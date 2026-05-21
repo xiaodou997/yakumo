@@ -1,10 +1,10 @@
 import { type } from "@tauri-apps/plugin-os";
 import { debounce } from "../lib/debounce";
-import { settingsAtom } from "@yakumo-internal/models";
 import { atom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { capitalize } from "../lib/capitalize";
 import { jotaiStore } from "../lib/jotai";
+import { yakuSettingsAtom } from "../lib/yaku-settings";
 
 const HOLD_KEYS = ["Shift", "Control", "Command", "Alt", "Meta"];
 const SINGLE_WHITELIST = ["Delete", "Enter", "Backspace"];
@@ -103,7 +103,7 @@ export const defaultHotkeys: Record<HotkeyAction, string[]> =
 
 /** Atom that provides the effective hotkeys by merging defaults with user settings */
 export const hotkeysAtom = atom((get) => {
-  const settings = get(settingsAtom);
+  const settings = get(yakuSettingsAtom);
   const customHotkeys = settings?.hotkeys ?? {};
 
   // Merge default hotkeys with custom hotkeys from settings

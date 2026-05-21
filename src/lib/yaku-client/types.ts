@@ -59,6 +59,69 @@ export type V2WorkspacePageItem = V2Workspace & { cursor: number };
 export type V2RequestNodePageItem = V2RequestNode & { cursor: number };
 export type V2RunPageItem = V2Run & { cursor: number };
 
+export interface YakuBackupManifest {
+  id: string;
+  workspaceId: string | null;
+  contentHash: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface YakuBackupImportResponse {
+  workspace: V2Workspace;
+  manifest: YakuBackupManifest;
+  replacedExisting: boolean;
+}
+
+export type YakuEditorKeymap = "default" | "vim" | "vscode" | "emacs";
+
+export type YakuProxySetting =
+  | {
+      type: "enabled";
+      http: string;
+      https: string;
+      auth: { user: string; password: string } | null;
+      bypass: string;
+      disabled?: boolean;
+    }
+  | { type: "disabled" };
+
+export interface YakuClientCertificate {
+  host: string;
+  port: number | null;
+  crtFile: string | null;
+  keyFile: string | null;
+  pfxFile: string | null;
+  passphrase: string | null;
+  enabled?: boolean;
+}
+
+export interface YakuAppSettings {
+  appearance: string;
+  autoupdate: boolean;
+  autoDownloadUpdates: boolean;
+  checkNotifications: boolean;
+  clientCertificates: YakuClientCertificate[];
+  coloredMethods: boolean;
+  editorFont: string | null;
+  editorFontSize: number;
+  editorKeymap: YakuEditorKeymap;
+  editorSoftWrap: boolean;
+  hideLicenseBadge: boolean;
+  hideWindowControls: boolean;
+  hotkeys: Record<string, string[]>;
+  interfaceFont: string | null;
+  interfaceFontSize: number;
+  interfaceScale: number;
+  language: string;
+  openWorkspaceNewWindow: boolean | null;
+  proxy: YakuProxySetting | null;
+  themeDark: string;
+  themeLight: string;
+  updateChannel: string;
+  useNativeTitlebar: boolean;
+}
+
 export type YakuRunLifecycleKind = "started" | "finished" | "failed" | "cancelled";
 
 export interface YakuRunLifecycleEvent {

@@ -1,4 +1,3 @@
-import { settingsAtom } from "@yakumo-internal/models";
 import { useAtomValue } from "jotai";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import {
@@ -8,6 +7,7 @@ import {
 } from "./locales";
 import { messages, type MessageKey } from "./messages";
 import { jotaiStore } from "../jotai";
+import { yakuSettingsAtom } from "../yaku-settings";
 
 type Translate = (
   key: MessageKey,
@@ -79,12 +79,12 @@ function resolvePreference(preference: string | undefined): LanguagePreference {
 }
 
 function currentLanguage(): SupportedLanguage {
-  const settings = jotaiStore.get(settingsAtom);
+  const settings = jotaiStore.get(yakuSettingsAtom);
   return resolveLanguage(resolvePreference(settings?.language));
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const settings = useAtomValue(settingsAtom);
+  const settings = useAtomValue(yakuSettingsAtom);
   const preference = resolvePreference(settings?.language);
   const language = resolveLanguage(preference);
 

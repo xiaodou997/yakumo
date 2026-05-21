@@ -1,4 +1,3 @@
-import { patchModel, settingsAtom } from "@yakumo-internal/models";
 import classNames from "classnames";
 import { fuzzyMatch } from "fuzzbunny";
 import { useAtomValue } from "jotai";
@@ -15,6 +14,7 @@ import {
 import { capitalize } from "../../lib/capitalize";
 import { showDialog } from "../../lib/dialog";
 import { useTranslate } from "../../lib/i18n";
+import { useUpdateYakuSettings, useYakuSettings } from "../../lib/yaku-settings";
 import { Button } from "../core/Button";
 import { Dropdown, type DropdownItem } from "../core/Dropdown";
 import { Heading } from "../core/Heading";
@@ -66,7 +66,8 @@ function eventToHotkeyString(e: KeyboardEvent): string | null {
 }
 
 export function SettingsHotkeys() {
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
+  const updateSettings = useUpdateYakuSettings();
   const hotkeys = useAtomValue(hotkeysAtom);
   const [filter, setFilter] = useState("");
   const t = useTranslate();
@@ -82,10 +83,6 @@ export function SettingsHotkeys() {
       return fuzzyMatch(searchText, filter) != null;
     });
   }, [filter]);
-
-  if (settings == null) {
-    return null;
-  }
 
   return (
     <VStack space={3} className="mb-4">
@@ -129,12 +126,12 @@ export function SettingsHotkeys() {
                   // Store the keys (including empty array to disable)
                   newHotkeys[action] = keys;
                 }
-                await patchModel(settings, { hotkeys: newHotkeys });
+                await updateSettings.mutateAsync({ hotkeys: newHotkeys });
               }}
               onReset={async () => {
                 const newHotkeys = { ...settings.hotkeys };
                 delete newHotkeys[action];
-                await patchModel(settings, { hotkeys: newHotkeys });
+                await updateSettings.mutateAsync({ hotkeys: newHotkeys });
               }}
             />
           ))}

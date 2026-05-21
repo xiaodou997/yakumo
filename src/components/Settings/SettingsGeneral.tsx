@@ -1,11 +1,9 @@
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { patchModel, settingsAtom } from "@yakumo-internal/models";
-import { useAtomValue } from "jotai";
-import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { useCheckForUpdates } from "../../hooks/useCheckForUpdates";
 import { appInfo } from "../../lib/appInfo";
 import { useTranslate } from "../../lib/i18n";
 import { revealInFinderText } from "../../lib/reveal";
+import { useUpdateYakuSettings, useYakuSettings } from "../../lib/yaku-settings";
 import { CargoFeature } from "../CargoFeature";
 import { Checkbox } from "../core/Checkbox";
 import { Heading } from "../core/Heading";
@@ -17,14 +15,10 @@ import { Separator } from "../core/Separator";
 import { VStack } from "../core/Stacks";
 
 export function SettingsGeneral() {
-  const workspace = useAtomValue(activeWorkspaceAtom);
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
+  const updateSettings = useUpdateYakuSettings();
   const checkForUpdates = useCheckForUpdates();
   const t = useTranslate();
-
-  if (settings == null || workspace == null) {
-    return null;
-  }
 
   return (
     <VStack space={1.5} className="mb-4">
@@ -41,7 +35,7 @@ export function SettingsGeneral() {
             labelClassName="w-[14rem]"
             size="sm"
             value={settings.updateChannel}
-            onChange={(updateChannel) => patchModel(settings, { updateChannel })}
+            onChange={(updateChannel) => updateSettings.mutate({ updateChannel })}
             options={[
               { label: t("settings.general.updateChannel.stable"), value: "stable" },
               { label: t("settings.general.updateChannel.beta"), value: "beta" },
@@ -64,7 +58,7 @@ export function SettingsGeneral() {
           labelPosition="left"
           size="sm"
           labelClassName="w-[14rem]"
-          onChange={(v) => patchModel(settings, { autoupdate: v === "auto" })}
+          onChange={(v) => updateSettings.mutate({ autoupdate: v === "auto" })}
           options={[
             { label: t("settings.general.updateBehavior.automatic"), value: "auto" },
             { label: t("settings.general.updateBehavior.manual"), value: "manual" },
@@ -76,7 +70,7 @@ export function SettingsGeneral() {
           disabled={!settings.autoupdate}
           help={t("settings.general.autoDownloadUpdatesHelp")}
           title={t("settings.general.autoDownloadUpdates")}
-          onChange={(autoDownloadUpdates) => patchModel(settings, { autoDownloadUpdates })}
+          onChange={(autoDownloadUpdates) => updateSettings.mutate({ autoDownloadUpdates })}
         />
 
         <Checkbox
@@ -84,7 +78,7 @@ export function SettingsGeneral() {
           checked={settings.checkNotifications}
           title={t("settings.general.checkNotifications")}
           help={t("settings.general.checkNotificationsHelp")}
-          onChange={(checkNotifications) => patchModel(settings, { checkNotifications })}
+          onChange={(checkNotifications) => updateSettings.mutate({ checkNotifications })}
         />
         <Checkbox
           disabled
@@ -92,54 +86,9 @@ export function SettingsGeneral() {
           checked={false}
           title={t("settings.general.sendAnonymousStats")}
           help={t("settings.general.sendAnonymousStatsHelp")}
-          onChange={(checkNotifications) => patchModel(settings, { checkNotifications })}
+          onChange={() => {}}
         />
       </CargoFeature>
-
-      <Separator className="my-4" />
-
-      <Heading level={2}>
-        {t("settings.general.workspaceTitle")}{" "}
-        <div className="inline-block ml-1 bg-surface-highlight px-2 py-0.5 rounded text text-shrink">
-          {workspace.name}
-        </div>
-      </Heading>
-      <VStack className="mt-1 w-full" space={3}>
-        <PlainInput
-          required
-          size="sm"
-          name="requestTimeout"
-          label={t("settings.general.requestTimeout")}
-          labelClassName="w-[14rem]"
-          placeholder="0"
-          labelPosition="left"
-          defaultValue={`${workspace.settingRequestTimeout}`}
-          validate={(value) => Number.parseInt(value, 10) >= 0}
-          onChange={(v) =>
-            patchModel(workspace, { settingRequestTimeout: Number.parseInt(v, 10) || 0 })
-          }
-          type="number"
-        />
-
-        <Checkbox
-          checked={workspace.settingValidateCertificates}
-          help={t("settings.general.validateCertificatesHelp")}
-          title={t("settings.general.validateCertificates")}
-          onChange={(settingValidateCertificates) =>
-            patchModel(workspace, { settingValidateCertificates })
-          }
-        />
-
-        <Checkbox
-          checked={workspace.settingFollowRedirects}
-          title={t("settings.general.followRedirects")}
-          onChange={(settingFollowRedirects) =>
-            patchModel(workspace, {
-              settingFollowRedirects,
-            })
-          }
-        />
-      </VStack>
 
       <Separator className="my-4" />
 

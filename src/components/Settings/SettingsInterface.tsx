@@ -1,15 +1,13 @@
 import { type } from "@tauri-apps/plugin-os";
 import { useFonts } from "@yakumo-internal/fonts";
-import type { EditorKeymap, Settings } from "@yakumo-internal/models";
-import { patchModel, settingsAtom } from "@yakumo-internal/models";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { clamp } from "../../lib/clamp";
 import { useTranslate } from "../../lib/i18n";
 import { languageOptions } from "../../lib/i18n/locales";
 import { invokeCmd } from "../../lib/tauri";
+import type { YakuAppSettings, YakuEditorKeymap } from "../../lib/yaku-client";
+import { useUpdateYakuSettings, useYakuSettings } from "../../lib/yaku-settings";
 import { Button } from "../core/Button";
 import { Checkbox } from "../core/Checkbox";
 import { Heading } from "../core/Heading";
@@ -24,7 +22,7 @@ const fontSizeOptions = [
   28, 29, 30,
 ].map((n) => ({ label: `${n}`, value: `${n}` }));
 
-const keymaps: { value: EditorKeymap; label: string }[] = [
+const keymaps: { value: YakuEditorKeymap; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "vim", label: "Vim" },
   { value: "vscode", label: "VSCode" },
@@ -33,13 +31,9 @@ const keymaps: { value: EditorKeymap; label: string }[] = [
 
 export function SettingsInterface() {
   const t = useTranslate();
-  const workspace = useAtomValue(activeWorkspaceAtom);
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
+  const updateSettings = useUpdateYakuSettings();
   const fonts = useFonts();
-
-  if (settings == null || workspace == null) {
-    return null;
-  }
 
   return (
     <VStack space={3} className="mb-4">
@@ -53,7 +47,7 @@ export function SettingsInterface() {
         label={t("settings.theme.appearance")}
         size="sm"
         value={settings.appearance}
-        onChange={(appearance) => patchModel(settings, { appearance })}
+        onChange={(appearance) => updateSettings.mutate({ appearance })}
         options={[
           { label: t("settings.theme.appearance.automatic"), value: "system" },
           { label: t("settings.theme.appearance.light"), value: "light" },
@@ -74,7 +68,7 @@ export function SettingsInterface() {
               ? t("common.systemDefault")
               : option.label,
         }))}
-        onChange={(language) => patchModel(settings, { language })}
+        onChange={(language) => updateSettings.mutate({ language })}
       />
       <Select
         name="switchWorkspaceBehavior"
@@ -89,11 +83,9 @@ export function SettingsInterface() {
               : "ask"
         }
         onChange={async (v) => {
-          if (v === "current")
-            await patchModel(settings, { openWorkspaceNewWindow: false });
-          else if (v === "new")
-            await patchModel(settings, { openWorkspaceNewWindow: true });
-          else await patchModel(settings, { openWorkspaceNewWindow: null });
+          if (v === "current") await updateSettings.mutateAsync({ openWorkspaceNewWindow: false });
+          else if (v === "new") await updateSettings.mutateAsync({ openWorkspaceNewWindow: true });
+          else await updateSettings.mutateAsync({ openWorkspaceNewWindow: null });
         }}
         options={[
           { label: t("settings.interface.optionAlwaysAsk"), value: "ask" },
@@ -125,7 +117,7 @@ export function SettingsInterface() {
             ]}
             onChange={async (v) => {
               const interfaceFont = v === NULL_FONT_VALUE ? null : v;
-              await patchModel(settings, { interfaceFont });
+              await updateSettings.mutateAsync({ interfaceFont });
             }}
           />
         )}
@@ -138,7 +130,7 @@ export function SettingsInterface() {
           value={`${settings.interfaceFontSize}`}
           options={fontSizeOptions}
           onChange={(v) =>
-            patchModel(settings, { interfaceFontSize: Number.parseInt(v, 10) })
+            updateSettings.mutate({ interfaceFontSize: Number.parseInt(v, 10) })
           }
         />
       </HStack>
@@ -158,7 +150,7 @@ export function SettingsInterface() {
             ]}
             onChange={async (v) => {
               const editorFont = v === NULL_FONT_VALUE ? null : v;
-              await patchModel(settings, { editorFont });
+              await updateSettings.mutateAsync({ editorFont });
             }}
           />
         )}
@@ -171,7 +163,7 @@ export function SettingsInterface() {
           value={`${settings.editorFontSize}`}
           options={fontSizeOptions}
           onChange={(v) =>
-            patchModel(settings, {
+            updateSettings.mutate({
               editorFontSize: clamp(Number.parseInt(v, 10) || 14, 8, 30),
             })
           }
@@ -184,17 +176,17 @@ export function SettingsInterface() {
         label={t("settings.interface.editorKeymap")}
         value={`${settings.editorKeymap}`}
         options={keymaps}
-        onChange={(v) => patchModel(settings, { editorKeymap: v })}
+        onChange={(editorKeymap) => updateSettings.mutate({ editorKeymap })}
       />
       <Checkbox
         checked={settings.editorSoftWrap}
         title={t("settings.interface.wrapEditorLines")}
-        onChange={(editorSoftWrap) => patchModel(settings, { editorSoftWrap })}
+        onChange={(editorSoftWrap) => updateSettings.mutate({ editorSoftWrap })}
       />
       <Checkbox
         checked={settings.coloredMethods}
         title={t("settings.interface.colorizeMethods")}
-        onChange={(coloredMethods) => patchModel(settings, { coloredMethods })}
+        onChange={(coloredMethods) => updateSettings.mutate({ coloredMethods })}
       />
 
       <NativeTitlebarSetting settings={settings} />
@@ -205,7 +197,7 @@ export function SettingsInterface() {
           title={t("settings.interface.hideWindowControls")}
           help={t("settings.interface.hideWindowControlsHelp")}
           onChange={(hideWindowControls) =>
-            patchModel(settings, { hideWindowControls })
+            updateSettings.mutate({ hideWindowControls })
           }
         />
       )}
@@ -213,8 +205,9 @@ export function SettingsInterface() {
   );
 }
 
-function NativeTitlebarSetting({ settings }: { settings: Settings }) {
+function NativeTitlebarSetting({ settings }: { settings: YakuAppSettings }) {
   const t = useTranslate();
+  const updateSettings = useUpdateYakuSettings();
   const [nativeTitlebar, setNativeTitlebar] = useState(
     settings.useNativeTitlebar,
   );
@@ -231,7 +224,7 @@ function NativeTitlebarSetting({ settings }: { settings: Settings }) {
           color="primary"
           size="2xs"
           onClick={async () => {
-            await patchModel(settings, { useNativeTitlebar: nativeTitlebar });
+            await updateSettings.mutateAsync({ useNativeTitlebar: nativeTitlebar });
             await invokeCmd("cmd_restart");
           }}
         >

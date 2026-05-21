@@ -1,8 +1,10 @@
 use crate::error::{Error, Result};
+use crate::path_guard;
 use chrono::Utc;
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, Mutex,
@@ -19,7 +21,9 @@ use yaku_engine::{
     SendHttp, SendSse, SendWebSocket, SseEngine, ThresholdBodyStore, TungsteniteWebSocketSender,
     WebSocketEngine, render_config,
 };
-use yaku_store::{RequestNodePageItem, RunPageItem, Store, WorkspacePageItem};
+use yaku_store::{
+    BackupManifest, RequestNodePageItem, RunPageItem, Store, WorkspaceBackup, WorkspacePageItem,
+};
 
 const DEFAULT_PAGE_LIMIT: u32 = 100;
 const YAKU_RUN_LIFECYCLE_EVENT: &str = "yaku_run_lifecycle";
@@ -52,6 +56,14 @@ pub struct YakuRunLifecycleEvent {
     workspace_id: String,
     run: Option<Run>,
     error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YakuBackupImportResponse {
+    workspace: Workspace,
+    manifest: BackupManifest,
+    replaced_existing: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -832,6 +844,96 @@ pub(crate) fn cmd_yaku_run_retention_clear<R: Runtime>(
         .delete_setting(&workspace_run_retention_key(&workspace_id))
         .map_err(|e| Error::GenericError(e.to_string()))?;
     Ok(DeleteResponse { deleted, body_gc: None })
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_setting_get<R: Runtime>(
+    app_handle: AppHandle<R>,
+    key: String,
+) -> Result<Option<Setting>> {
+    let store = open_store(&app_handle)?;
+    store.get_setting(&key).map_err(|e| Error::GenericError(e.to_string()))
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_setting_set<R: Runtime>(
+    app_handle: AppHandle<R>,
+    key: String,
+    value: Value,
+) -> Result<Setting> {
+    let store = open_store(&app_handle)?;
+    let setting = Setting { key, value, updated_at: Utc::now() };
+    store.upsert_setting(&setting).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(setting)
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_backup_export<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: String,
+    export_path: String,
+) -> Result<BackupManifest> {
+    path_guard::writable_parent(&PathBuf::from(&export_path), "Yaku backup export path")?;
+    let store = open_store(&app_handle)?;
+    let backup = store
+        .export_workspace_backup(&workspace_id)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+    let f = File::options()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&export_path)
+        .map_err(|e| Error::GenericError(format!("Unable to create Yaku backup: {e}")))?;
+    serde_json::to_writer_pretty(&f, &backup)
+        .map_err(|e| Error::GenericError(format!("Failed to write Yaku backup: {e}")))?;
+    f.sync_all().map_err(|e| Error::GenericError(format!("Failed to sync Yaku backup: {e}")))?;
+
+    let manifest = BackupManifest {
+        id: prefixed_id("backup"),
+        workspace_id: Some(backup.workspace.id),
+        content_hash: backup.content_hash,
+        created_at: Utc::now(),
+        metadata: BTreeMap::from([
+            ("path".to_string(), json!(export_path)),
+            ("operation".to_string(), json!("export")),
+        ]),
+    };
+    store.upsert_backup_manifest(&manifest).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(manifest)
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_backup_import<R: Runtime>(
+    app_handle: AppHandle<R>,
+    file_path: String,
+    replace_existing: bool,
+) -> Result<YakuBackupImportResponse> {
+    path_guard::existing_file(&PathBuf::from(&file_path), "Yaku backup import path")?;
+    let store = open_store(&app_handle)?;
+    let f = File::open(&file_path)
+        .map_err(|e| Error::GenericError(format!("Unable to open Yaku backup: {e}")))?;
+    let backup: WorkspaceBackup = serde_json::from_reader(f)
+        .map_err(|e| Error::GenericError(format!("Unable to parse Yaku backup: {e}")))?;
+    store.verify_workspace_backup(&backup).map_err(|e| Error::GenericError(e.to_string()))?;
+    let workspace = backup.workspace.clone();
+    let content_hash = backup.content_hash.clone();
+    let replaced_existing = store
+        .import_workspace_backup(&backup, replace_existing)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+
+    let manifest = BackupManifest {
+        id: prefixed_id("backup"),
+        workspace_id: Some(workspace.id.clone()),
+        content_hash,
+        created_at: Utc::now(),
+        metadata: BTreeMap::from([
+            ("path".to_string(), json!(file_path)),
+            ("operation".to_string(), json!("import")),
+            ("replacedExisting".to_string(), json!(replaced_existing)),
+        ]),
+    };
+    store.upsert_backup_manifest(&manifest).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(YakuBackupImportResponse { workspace, manifest, replaced_existing })
 }
 
 #[tauri::command]
