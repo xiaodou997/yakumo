@@ -18,7 +18,6 @@ import { HStack, VStack } from "../../components/core/Stacks";
 import type { TreeHandle, TreeProps } from "../../components/core/tree/Tree";
 import { Tree } from "../../components/core/tree/Tree";
 import {
-  YAKU_RUN_EVENT_KIND_OPTIONS,
   cancelYakuRun,
   clearYakuRunRetention,
   createYakuEnvironment,
@@ -59,6 +58,7 @@ import {
   RequestConfigSummary,
   RequestStructuredEditor,
 } from "./RequestEditor";
+import { RunEventTimelinePanel, RunHistoryPanel } from "./RunPanels";
 import {
   buildRequestConfigDraft,
   draftFromRequestConfig,
@@ -1607,82 +1607,21 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 )}
               </Panel>
 
-              <Panel title="Run History" subtitle="Newest runs for the selected request.">
-                {runsQuery.error ? (
-                  <FormattedError>{String(runsQuery.error)}</FormattedError>
-                ) : runs.length === 0 ? (
-                  <EmptyCopy>Send the selected request to create the first Yaku run.</EmptyCopy>
-                ) : (
-                  <div className="space-y-2">
-                    {runs.map((run) => {
-                      const isActive = run.id === selectedRunId;
-                      return (
-                        <button
-                          key={run.id}
-                          type="button"
-                          onClick={() => setSearch({ runId: run.id })}
-                          className={classNames(
-                            "grid w-full grid-cols-[1fr_auto] gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
-                            isActive
-                              ? "border-border-focus bg-surface text-text"
-                              : "border-border-subtle bg-surface-highlight/40 text-text-subtle hover:border-border hover:text-text",
-                          )}
-                        >
-                          <VStack space={1}>
-                            <div className="font-medium">
-                              {run.state}
-                              {run.statusCode != null && ` · ${run.statusCode}`}
-                            </div>
-                            <div className="truncate text-xs text-text-subtlest">{run.id}</div>
-                          </VStack>
-                          <div className="text-right text-xs text-text-subtle">
-                            {new Date(run.startedAt).toLocaleString()}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </Panel>
+              <RunHistoryPanel
+                runs={runs}
+                selectedRunId={selectedRunId ?? ""}
+                error={runsQuery.error}
+                onSelectRun={(runId) => setSearch({ runId })}
+              />
             </section>
 
             <section className="flex flex-col gap-4">
-              <Panel title="Event Timeline" subtitle="Unified run events emitted by the Yaku engine.">
-                <VStack space={3}>
-                  <Select
-                    name="yaku-event-kind"
-                    label="Filter"
-                    value={eventKind}
-                    options={YAKU_RUN_EVENT_KIND_OPTIONS}
-                    onChange={(value) => setEventKind(value as "all" | YakuRunEventKind)}
-                  />
-                  {runEventsQuery.error ? (
-                    <FormattedError>{String(runEventsQuery.error)}</FormattedError>
-                  ) : (runEventsQuery.data?.items.length ?? 0) === 0 ? (
-                    <EmptyCopy>No events available for this run and filter.</EmptyCopy>
-                  ) : (
-                    <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
-                      {runEventsQuery.data?.items.map((event) => (
-                        <div
-                          key={event.id}
-                          className="rounded-xl border border-border-subtle bg-surface px-3 py-3"
-                        >
-                          <HStack justifyContent="between" alignItems="start" className="gap-3">
-                            <div className="font-medium text-text">{event.kind}</div>
-                            <div className="text-xs text-text-subtlest">#{event.sequence}</div>
-                          </HStack>
-                          <div className="mt-1 text-xs text-text-subtlest">
-                            {new Date(event.createdAt).toLocaleString()}
-                          </div>
-                          <pre className="mt-3 overflow-auto whitespace-pre-wrap text-xs text-text-subtle">
-                            {JSON.stringify(event.data, null, 2)}
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </VStack>
-              </Panel>
+              <RunEventTimelinePanel
+                eventKind={eventKind}
+                setEventKind={setEventKind}
+                events={runEventsQuery.data?.items ?? []}
+                error={runEventsQuery.error}
+              />
 
               <Panel title="Captured Bodies" subtitle="Response/message payloads stored by the Yaku body store.">
                 <YakuBodyViewer
