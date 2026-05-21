@@ -11,7 +11,6 @@ use std::path::PathBuf;
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
   - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
   - The default CLI path is Yaku-native; `v2` remains as a hidden temporary compatibility alias
-  - Deletion requires confirmation (--yes for non-interactive environments)
   "#)]
 pub struct Cli {
     /// Use a custom data directory
@@ -53,7 +52,7 @@ pub enum Commands {
     Request(YakuRequestArgs),
 
     /// Folder commands
-    Folder(FolderArgs),
+    Folder(YakuFolderArgs),
 
     /// Environment commands
     Environment(YakuEnvironmentArgs),
@@ -86,6 +85,9 @@ pub enum YakuCommands {
 
     /// Yaku request commands
     Request(YakuRequestArgs),
+
+    /// Yaku folder commands
+    Folder(YakuFolderArgs),
 
     /// Yaku run history commands
     Run(YakuRunArgs),
@@ -258,6 +260,84 @@ pub enum YakuWorkspaceCommands {
     Delete {
         /// Workspace ID
         workspace_id: String,
+    },
+}
+
+#[derive(Args)]
+#[command(disable_help_subcommand = true)]
+pub struct YakuFolderArgs {
+    #[command(subcommand)]
+    pub command: YakuFolderCommands,
+}
+
+#[derive(Subcommand)]
+pub enum YakuFolderCommands {
+    /// List Yaku folders in a workspace
+    List {
+        /// Workspace ID
+        workspace_id: String,
+
+        /// Cursor returned by a previous page
+        #[arg(long)]
+        cursor: Option<i64>,
+
+        /// Maximum number of request tree nodes to scan
+        #[arg(long, default_value_t = 500)]
+        limit: u32,
+    },
+
+    /// Get a Yaku folder by request tree node ID
+    Get {
+        /// Folder node ID
+        folder_id: String,
+    },
+
+    /// Create a Yaku folder in the request tree
+    Create {
+        /// Workspace ID
+        workspace_id: String,
+
+        /// Folder name
+        #[arg(short, long)]
+        name: String,
+
+        /// Parent folder node ID
+        #[arg(long)]
+        parent_id: Option<String>,
+
+        /// Stable sort key
+        #[arg(long)]
+        sort_key: Option<String>,
+    },
+
+    /// Rename a Yaku folder
+    Update {
+        /// Folder node ID
+        folder_id: String,
+
+        /// New folder name
+        #[arg(short, long)]
+        name: String,
+    },
+
+    /// Move a Yaku folder
+    Move {
+        /// Folder node ID
+        folder_id: String,
+
+        /// New parent folder node ID. Omit to move to workspace root.
+        #[arg(long)]
+        parent_id: Option<String>,
+
+        /// New stable sort key
+        #[arg(long)]
+        sort_key: Option<String>,
+    },
+
+    /// Delete a Yaku folder and its subtree
+    Delete {
+        /// Folder node ID
+        folder_id: String,
     },
 }
 
@@ -1002,68 +1082,4 @@ impl LogLevel {
             LogLevel::Trace => log::LevelFilter::Trace,
         }
     }
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct FolderArgs {
-    #[command(subcommand)]
-    pub command: FolderCommands,
-}
-
-#[derive(Subcommand)]
-pub enum FolderCommands {
-    /// List folders in a workspace
-    List {
-        /// Workspace ID (optional when exactly one workspace exists)
-        workspace_id: Option<String>,
-    },
-
-    /// Output JSON schema for folder create/update payloads
-    Schema {
-        /// Pretty-print schema JSON output
-        #[arg(long)]
-        pretty: bool,
-    },
-
-    /// Show a folder as JSON
-    Show {
-        /// Folder ID
-        folder_id: String,
-    },
-
-    /// Create a folder
-    Create {
-        /// Workspace ID (or positional JSON payload shorthand)
-        workspace_id: Option<String>,
-
-        /// Folder name
-        #[arg(short, long)]
-        name: Option<String>,
-
-        /// JSON payload
-        #[arg(long)]
-        json: Option<String>,
-    },
-
-    /// Update a folder
-    Update {
-        /// JSON payload
-        #[arg(long, conflicts_with = "json_input")]
-        json: Option<String>,
-
-        /// JSON payload shorthand
-        #[arg(value_name = "JSON", conflicts_with = "json")]
-        json_input: Option<String>,
-    },
-
-    /// Delete a folder
-    Delete {
-        /// Folder ID
-        folder_id: String,
-
-        /// Skip confirmation prompt
-        #[arg(short, long)]
-        yes: bool,
-    },
 }

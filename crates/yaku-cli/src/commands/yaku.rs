@@ -1,6 +1,6 @@
 use crate::cli::{
-    YakuArgs, YakuBackupCommands, YakuCommands, YakuEnvironmentCommands, YakuRequestCommands,
-    YakuRunCommands, YakuWorkspaceCommands,
+    YakuArgs, YakuBackupCommands, YakuCommands, YakuEnvironmentCommands, YakuFolderCommands,
+    YakuRequestCommands, YakuRunCommands, YakuWorkspaceCommands,
 };
 use crate::utils::output::print_json;
 use chrono::Utc;
@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use yaku_domain::{
     BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateWorkspace,
     DomainService, DuplicateRequest, MoveRequestNode, Page, Protocol, PruneRuns, PruneRunsScope,
-    RunEventKind, Setting, UpdateEnvironment, UpdateRequest,
+    RequestNodeKind, RunEventKind, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest,
 };
 use yaku_engine::{
     GrpcEngine, Header, HttpEngine, QueryParam, ReflectionGrpcSender, ReqwestHttpSender,
@@ -123,6 +123,118 @@ fn run_inner(
                 print_json(
                     &json!({ "deleted": true, "environmentId": environment_id }),
                     "Yaku environment delete",
+                )
+            }
+        },
+        YakuCommands::Folder(args) => match args.command {
+            YakuFolderCommands::List { workspace_id, cursor, limit } => {
+                let target_len = limit.max(1) as usize;
+                let scan_limit = limit.clamp(100, 1_000);
+                let mut scan_cursor = cursor;
+                let mut folders = Vec::new();
+                let mut next_cursor = None;
+
+                while folders.len() < target_len {
+                    let page = service
+                        .repository()
+                        .list_request_node_page(
+                            &workspace_id,
+                            Page { cursor: scan_cursor, limit: scan_limit },
+                        )
+                        .map_err(|e| e.to_string())?;
+
+                    if page.is_empty() {
+                        break;
+                    }
+
+                    for item in &page {
+                        scan_cursor = Some(item.cursor);
+                        if item.node.kind == RequestNodeKind::Folder {
+                            folders.push(item.clone());
+                            if folders.len() == target_len {
+                                next_cursor = scan_cursor;
+                                break;
+                            }
+                        }
+                    }
+
+                    if folders.len() == target_len || page.len() < scan_limit as usize {
+                        break;
+                    }
+                }
+
+                print_json(
+                    &json!({ "items": folders, "nextCursor": next_cursor }),
+                    "Yaku folder list",
+                )
+            }
+            YakuFolderCommands::Get { folder_id } => {
+                let node = service
+                    .repository()
+                    .get_request_node(&folder_id)
+                    .map_err(|e| e.to_string())?
+                    .ok_or_else(|| format!("Folder '{folder_id}' not found"))?;
+                if node.kind != RequestNodeKind::Folder {
+                    return Err(format!("Request node '{folder_id}' is not a folder"));
+                }
+                print_json(&node, "Yaku folder get")
+            }
+            YakuFolderCommands::Create { workspace_id, name, parent_id, sort_key } => {
+                let node = service
+                    .create_folder(CreateFolder {
+                        id: prefixed_id("folder"),
+                        workspace_id,
+                        parent_id,
+                        name,
+                        sort_key: sort_key.unwrap_or_else(default_sort_key),
+                        now: Utc::now(),
+                    })
+                    .map_err(|e| e.to_string())?;
+                print_json(&node, "Yaku folder create")
+            }
+            YakuFolderCommands::Update { folder_id, name } => {
+                let node = service
+                    .update_folder(UpdateFolder {
+                        id: folder_id,
+                        name: Some(name),
+                        now: Utc::now(),
+                    })
+                    .map_err(|e| e.to_string())?;
+                print_json(&node, "Yaku folder update")
+            }
+            YakuFolderCommands::Move { folder_id, parent_id, sort_key } => {
+                let current = service
+                    .repository()
+                    .get_request_node(&folder_id)
+                    .map_err(|e| e.to_string())?
+                    .ok_or_else(|| format!("Folder '{folder_id}' not found"))?;
+                if current.kind != RequestNodeKind::Folder {
+                    return Err(format!("Request node '{folder_id}' is not a folder"));
+                }
+                let node = service
+                    .move_request_node(MoveRequestNode {
+                        id: folder_id,
+                        parent_id,
+                        sort_key: sort_key.unwrap_or_else(default_sort_key),
+                        now: Utc::now(),
+                    })
+                    .map_err(|e| e.to_string())?;
+                print_json(&node, "Yaku folder move")
+            }
+            YakuFolderCommands::Delete { folder_id } => {
+                let node = service
+                    .repository()
+                    .get_request_node(&folder_id)
+                    .map_err(|e| e.to_string())?
+                    .ok_or_else(|| format!("Folder '{folder_id}' not found"))?;
+                if node.kind != RequestNodeKind::Folder {
+                    return Err(format!("Request node '{folder_id}' is not a folder"));
+                }
+                service.delete_request_node(&folder_id).map_err(|e| e.to_string())?;
+                let body_gc = gc_body_files(service.repository(), &bodies_dir, false)?;
+                print_json(
+                    &json!({ "deleted": true, "folderId": folder_id, "bodyGc": body_gc }),
+                    "Yaku folder delete",
                 )
             }
         },

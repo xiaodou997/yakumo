@@ -341,8 +341,9 @@ Phase 6: Rebuild optional capabilities.
 - Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
   implemented through `app.settings`; secrets remain follow-up work.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
-  the Yaku-native command path; `v2` remains as a temporary compatibility alias
-  while CLI command names and docs are cleaned up.
+  the Yaku-native command path. Top-level `workspace`, `request`, `folder`,
+  `environment`, `run`, `backup`, and `send` commands now use Yaku-native
+  argument types; `v2` remains only as a hidden compatibility alias.
 
 ## Proposed Commit Sequence
 

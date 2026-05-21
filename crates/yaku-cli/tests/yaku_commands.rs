@@ -266,6 +266,46 @@ fn top_level_commands_use_yaku_store() {
 }
 
 #[test]
+fn yaku_folder_list_skips_non_folder_nodes_before_cursor() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+
+    let create_workspace = cli_cmd(data_dir)
+        .args(["workspace", "create", "--name", "Folder Page Workspace"])
+        .assert()
+        .success();
+    let workspace_id =
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
+
+    cli_cmd(data_dir)
+        .args([
+            "request",
+            "create",
+            &workspace_id,
+            "--name",
+            "Before Folder",
+            "--url",
+            "https://example.test",
+        ])
+        .assert()
+        .success();
+
+    let create_folder = cli_cmd(data_dir)
+        .args(["folder", "create", &workspace_id, "--name", "Only Folder"])
+        .assert()
+        .success();
+    let folder_id = parse_created_id(&create_folder.get_output().stdout, "yaku folder create");
+
+    cli_cmd(data_dir)
+        .args(["folder", "list", &workspace_id, "--limit", "1"])
+        .assert()
+        .success()
+        .stdout(contains(format!(r#""id":"{folder_id}""#)))
+        .stdout(contains("\"kind\":\"folder\""))
+        .stdout(predicates::str::contains("\"kind\":\"request\"").not());
+}
+
+#[test]
 fn yaku_environment_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
@@ -819,8 +859,8 @@ fn yaku_request_tree_mutation_round_trip() {
 
     let create_folder = cli_cmd(data_dir)
         .args([
-            "request",
-            "create-folder",
+            "folder",
+            "create",
             &workspace_id,
             "--name",
             "Core APIs",
@@ -831,10 +871,24 @@ fn yaku_request_tree_mutation_round_trip() {
         .success()
         .stdout(contains("\"kind\":\"folder\""));
     let folder_id = parse_created_id(&create_folder.get_output().stdout, "yaku folder create");
+
+    cli_cmd(data_dir)
+        .args(["folder", "get", &folder_id])
+        .assert()
+        .success()
+        .stdout(contains(format!(r#""id":"{folder_id}""#)))
+        .stdout(contains("\"name\":\"Core APIs\""));
+
+    cli_cmd(data_dir)
+        .args(["folder", "update", &folder_id, "--name", "Core"])
+        .assert()
+        .success()
+        .stdout(contains("\"name\":\"Core\""));
+
     let create_archive = cli_cmd(data_dir)
         .args([
-            "request",
-            "create-folder",
+            "folder",
+            "create",
             &workspace_id,
             "--name",
             "Archive",
@@ -844,6 +898,13 @@ fn yaku_request_tree_mutation_round_trip() {
         .assert()
         .success();
     let archive_id = parse_created_id(&create_archive.get_output().stdout, "yaku archive create");
+
+    cli_cmd(data_dir)
+        .args(["folder", "list", &workspace_id])
+        .assert()
+        .success()
+        .stdout(contains(format!(r#""id":"{folder_id}""#)))
+        .stdout(contains(format!(r#""id":"{archive_id}""#)));
 
     let create_request = cli_cmd(data_dir)
         .args([
@@ -949,7 +1010,7 @@ fn yaku_request_tree_mutation_round_trip() {
         .stdout(contains(format!(r#""parentId":"{archive_id}""#)));
 
     cli_cmd(data_dir)
-        .args(["request", "delete", &archive_id])
+        .args(["folder", "delete", &archive_id])
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
