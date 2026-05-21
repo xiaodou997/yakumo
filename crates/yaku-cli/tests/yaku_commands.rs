@@ -26,38 +26,54 @@ fn backup_core(value: &serde_json::Value) -> serde_json::Value {
 }
 
 #[test]
-fn v2_workspace_and_request_round_trip() {
+fn hidden_v2_alias_routes_to_yaku_store() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+
+    cli_cmd(data_dir)
+        .args(["v2", "workspace", "create", "--name", "Alias Workspace"])
+        .assert()
+        .success()
+        .stdout(contains("\"name\":\"Alias Workspace\""));
+
+    assert!(data_dir.join("yaku.sqlite").exists());
+    assert!(!data_dir.join("db.sqlite").exists());
+    assert!(!data_dir.join("blobs.sqlite").exists());
+}
+
+#[test]
+fn yaku_workspace_and_request_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Yaku Workspace"])
+        .args(["workspace", "create", "--name", "Yaku Workspace"])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Yaku Workspace\""));
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
     let second_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Second Workspace"])
+        .args(["workspace", "create", "--name", "Second Workspace"])
         .assert()
         .success();
     let second_workspace_id =
-        parse_created_id(&second_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&second_workspace.get_output().stdout, "yaku workspace create");
 
     cli_cmd(data_dir)
-        .args(["v2", "workspace", "list"])
+        .args(["workspace", "list"])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{workspace_id}""#)));
 
     cli_cmd(data_dir)
-        .args(["v2", "workspace", "get", &workspace_id])
+        .args(["workspace", "get", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Yaku Workspace\""));
 
     let first_workspace_page =
-        cli_cmd(data_dir).args(["v2", "workspace", "list", "--limit", "1"]).assert().success();
+        cli_cmd(data_dir).args(["workspace", "list", "--limit", "1"]).assert().success();
     let first_workspace_json: serde_json::Value =
         serde_json::from_slice(&first_workspace_page.get_output().stdout).expect("workspace page");
     let first_workspace_items = first_workspace_json["items"].as_array().expect("workspace items");
@@ -67,7 +83,6 @@ fn v2_workspace_and_request_round_trip() {
 
     let second_workspace_page = cli_cmd(data_dir)
         .args([
-            "v2",
             "workspace",
             "list",
             "--limit",
@@ -86,7 +101,6 @@ fn v2_workspace_and_request_round_trip() {
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -100,10 +114,10 @@ fn v2_workspace_and_request_round_trip() {
         .assert()
         .success()
         .stdout(contains("\"name\":\"Health\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "get", &request_id])
+        .args(["request", "get", &request_id])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Health\""))
@@ -112,7 +126,6 @@ fn v2_workspace_and_request_round_trip() {
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "patch-http",
             &request_id,
@@ -142,14 +155,13 @@ fn v2_workspace_and_request_round_trip() {
         .stdout(contains("\"followRedirects\":false"));
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "list", &workspace_id])
+        .args(["request", "list", &workspace_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""requestId":"{request_id}""#)));
 
     let create_websocket = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-websocket",
             &workspace_id,
@@ -170,10 +182,10 @@ fn v2_workspace_and_request_round_trip() {
         .success()
         .stdout(contains("\"protocol\":\"web_socket\""));
     let websocket_id =
-        parse_created_id(&create_websocket.get_output().stdout, "v2 websocket create");
+        parse_created_id(&create_websocket.get_output().stdout, "yaku websocket create");
 
     let first_tree_page = cli_cmd(data_dir)
-        .args(["v2", "request", "list", &workspace_id, "--limit", "1"])
+        .args(["request", "list", &workspace_id, "--limit", "1"])
         .assert()
         .success();
     let first_tree_json: serde_json::Value =
@@ -184,7 +196,6 @@ fn v2_workspace_and_request_round_trip() {
 
     let second_tree_page = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "list",
             &workspace_id,
@@ -201,7 +212,7 @@ fn v2_workspace_and_request_round_trip() {
     assert_eq!(second_tree_items.len(), 1);
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "list", &workspace_id])
+        .args(["request", "list", &workspace_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""requestId":"{websocket_id}""#)))
@@ -244,7 +255,7 @@ fn top_level_commands_use_yaku_store() {
     let request_id = parse_created_id(&create_request.get_output().stdout, "request create");
 
     cli_cmd(data_dir)
-        .args(["request", "show", &request_id])
+        .args(["request", "get", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"http\""));
@@ -255,20 +266,19 @@ fn top_level_commands_use_yaku_store() {
 }
 
 #[test]
-fn v2_environment_round_trip() {
+fn yaku_environment_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Env Workspace"])
+        .args(["workspace", "create", "--name", "Env Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_environment = cli_cmd(data_dir)
         .args([
-            "v2",
             "environment",
             "create",
             &workspace_id,
@@ -283,24 +293,23 @@ fn v2_environment_round_trip() {
         .stdout(contains("\"base_url\":\"https://example.test\""))
         .stdout(contains("\"retry\":2"));
     let environment_id =
-        parse_created_id(&create_environment.get_output().stdout, "v2 environment create");
+        parse_created_id(&create_environment.get_output().stdout, "yaku environment create");
 
     cli_cmd(data_dir)
-        .args(["v2", "environment", "list", &workspace_id])
+        .args(["environment", "list", &workspace_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{environment_id}""#)))
         .stdout(contains("\"base_url\":\"https://example.test\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "environment", "get", &environment_id])
+        .args(["environment", "get", &environment_id])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Local\""));
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "environment",
             "update",
             &environment_id,
@@ -315,32 +324,31 @@ fn v2_environment_round_trip() {
         .stdout(contains("\"token\":\"abc\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "environment", "delete", &environment_id])
+        .args(["environment", "delete", &environment_id])
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
 
     cli_cmd(data_dir)
-        .args(["v2", "environment", "list", &workspace_id])
+        .args(["environment", "list", &workspace_id])
         .assert()
         .success()
         .stdout(contains("[]"));
 }
 
 #[test]
-fn v2_backup_exports_workspace_core_data() {
+fn yaku_backup_exports_workspace_core_data() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Backup Workspace"])
+        .args(["workspace", "create", "--name", "Backup Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
     cli_cmd(data_dir)
         .args([
-            "v2",
             "environment",
             "create",
             &workspace_id,
@@ -352,31 +360,16 @@ fn v2_backup_exports_workspace_core_data() {
         .assert()
         .success();
     cli_cmd(data_dir)
-        .args([
-            "v2",
-            "run",
-            "retention-set",
-            &workspace_id,
-            "--keep-last",
-            "7",
-        ])
+        .args(["run", "retention-set", &workspace_id, "--keep-last", "7"])
         .assert()
         .success();
     let create_folder = cli_cmd(data_dir)
-        .args([
-            "v2",
-            "request",
-            "create-folder",
-            &workspace_id,
-            "--name",
-            "Core",
-        ])
+        .args(["request", "create-folder", &workspace_id, "--name", "Core"])
         .assert()
         .success();
-    let folder_id = parse_created_id(&create_folder.get_output().stdout, "v2 folder create");
+    let folder_id = parse_created_id(&create_folder.get_output().stdout, "yaku folder create");
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -389,10 +382,10 @@ fn v2_backup_exports_workspace_core_data() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     let export = cli_cmd(data_dir)
-        .args(["v2", "backup", "export-workspace", &workspace_id])
+        .args(["backup", "export-workspace", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"formatVersion\": 1"))
@@ -410,7 +403,6 @@ fn v2_backup_exports_workspace_core_data() {
     let output = data_dir.join("backup").join("workspace.json");
     cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "export-workspace",
             &workspace_id,
@@ -427,7 +419,7 @@ fn v2_backup_exports_workspace_core_data() {
     assert_eq!(file_json["workspace"]["id"], workspace_id);
     assert_eq!(file_json["contentHash"], export_json["contentHash"]);
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open yaku store");
     let manifests =
         store.list_backup_manifests(Some(&workspace_id)).expect("list backup manifests");
     assert_eq!(manifests.len(), 2);
@@ -440,19 +432,18 @@ fn v2_backup_exports_workspace_core_data() {
 }
 
 #[test]
-fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
+fn yaku_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     let source_temp_dir = TempDir::new().expect("Failed to create source temp dir");
     let source_data_dir = source_temp_dir.path();
 
     let create_workspace = cli_cmd(source_data_dir)
-        .args(["v2", "workspace", "create", "--name", "Backup Workspace"])
+        .args(["workspace", "create", "--name", "Backup Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
     let create_environment = cli_cmd(source_data_dir)
         .args([
-            "v2",
             "environment",
             "create",
             &workspace_id,
@@ -464,33 +455,18 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
         .assert()
         .success();
     let environment_id =
-        parse_created_id(&create_environment.get_output().stdout, "v2 environment create");
+        parse_created_id(&create_environment.get_output().stdout, "yaku environment create");
     cli_cmd(source_data_dir)
-        .args([
-            "v2",
-            "run",
-            "retention-set",
-            &workspace_id,
-            "--keep-last",
-            "7",
-        ])
+        .args(["run", "retention-set", &workspace_id, "--keep-last", "7"])
         .assert()
         .success();
     let create_folder = cli_cmd(source_data_dir)
-        .args([
-            "v2",
-            "request",
-            "create-folder",
-            &workspace_id,
-            "--name",
-            "Core",
-        ])
+        .args(["request", "create-folder", &workspace_id, "--name", "Core"])
         .assert()
         .success();
-    let folder_id = parse_created_id(&create_folder.get_output().stdout, "v2 folder create");
+    let folder_id = parse_created_id(&create_folder.get_output().stdout, "yaku folder create");
     let create_request = cli_cmd(source_data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -503,13 +479,12 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     let export_path = source_data_dir.join("backup").join("workspace.json");
     let export_path_str = export_path.to_string_lossy().to_string();
     cli_cmd(source_data_dir)
         .args([
-            "v2",
             "backup",
             "export-workspace",
             &workspace_id,
@@ -523,7 +498,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
             .expect("parse source export");
 
     cli_cmd(source_data_dir)
-        .args(["v2", "backup", "verify-workspace", &export_path_str])
+        .args(["backup", "verify-workspace", &export_path_str])
         .assert()
         .success()
         .stdout(contains("\"verified\":true"))
@@ -544,7 +519,6 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
 
     cli_cmd(source_data_dir)
         .args([
-            "v2",
             "backup",
             "verify-workspace",
             tampered_path.to_str().expect("tampered path"),
@@ -557,7 +531,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     let target_data_dir = target_temp_dir.path();
 
     cli_cmd(target_data_dir)
-        .args(["v2", "backup", "import-workspace", &export_path_str])
+        .args(["backup", "import-workspace", &export_path_str])
         .assert()
         .success()
         .stdout(contains("\"replacedExisting\":false"))
@@ -565,7 +539,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
         .stdout(contains(format!(r#""workspaceId":"{workspace_id}""#)));
 
     let imported_export = cli_cmd(target_data_dir)
-        .args(["v2", "backup", "export-workspace", &workspace_id])
+        .args(["backup", "export-workspace", &workspace_id])
         .assert()
         .success();
     let imported_export_json: serde_json::Value =
@@ -574,7 +548,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     assert_eq!(backup_core(&imported_export_json), backup_core(&source_export_json));
 
     cli_cmd(target_data_dir)
-        .args(["v2", "backup", "import-workspace", &export_path_str])
+        .args(["backup", "import-workspace", &export_path_str])
         .assert()
         .failure()
         .stderr(contains("already exists"))
@@ -604,7 +578,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     );
 
     let mutated_export = cli_cmd(target_data_dir)
-        .args(["v2", "backup", "export-workspace", &workspace_id])
+        .args(["backup", "export-workspace", &workspace_id])
         .assert()
         .success();
     let mutated_export_json: serde_json::Value =
@@ -613,7 +587,6 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
 
     cli_cmd(target_data_dir)
         .args([
-            "v2",
             "backup",
             "import-workspace",
             &export_path_str,
@@ -625,7 +598,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
         .stdout(contains("\"replacedExisting\":true"));
 
     let replaced_export = cli_cmd(target_data_dir)
-        .args(["v2", "backup", "export-workspace", &workspace_id])
+        .args(["backup", "export-workspace", &workspace_id])
         .assert()
         .success();
     let replaced_export_json: serde_json::Value =
@@ -692,28 +665,27 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
 }
 
 #[test]
-fn v2_backup_list_manifests_pages_and_filters_results() {
+fn yaku_backup_list_manifests_pages_and_filters_results() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let first_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Manifest Alpha"])
+        .args(["workspace", "create", "--name", "Manifest Alpha"])
         .assert()
         .success();
     let first_workspace_id =
-        parse_created_id(&first_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&first_workspace.get_output().stdout, "yaku workspace create");
     let second_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Manifest Beta"])
+        .args(["workspace", "create", "--name", "Manifest Beta"])
         .assert()
         .success();
     let second_workspace_id =
-        parse_created_id(&second_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&second_workspace.get_output().stdout, "yaku workspace create");
 
     let first_output = data_dir.join("backup").join("alpha.json");
     let first_output_str = first_output.to_string_lossy().to_string();
     cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "export-workspace",
             &first_workspace_id,
@@ -727,19 +699,12 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
             .expect("parse first export");
     let first_hash = first_export_json["contentHash"].as_str().expect("first hash").to_string();
 
-    cli_cmd(data_dir)
-        .args(["v2", "backup", "verify-workspace", &first_output_str])
-        .assert()
-        .success();
-    cli_cmd(data_dir)
-        .args(["v2", "backup", "export-workspace", &first_workspace_id])
-        .assert()
-        .success();
+    cli_cmd(data_dir).args(["backup", "verify-workspace", &first_output_str]).assert().success();
+    cli_cmd(data_dir).args(["backup", "export-workspace", &first_workspace_id]).assert().success();
 
     let second_output = data_dir.join("backup").join("beta.json");
     cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "export-workspace",
             &second_workspace_id,
@@ -751,7 +716,6 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
 
     let first_page = cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "list-manifests",
             "--workspace-id",
@@ -769,10 +733,8 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
     let first_cursor = first_page_json["nextCursor"].as_i64().expect("first page cursor");
     let first_manifest_id = first_page_items[0]["id"].as_str().expect("first manifest id");
 
-    let get_manifest = cli_cmd(data_dir)
-        .args(["v2", "backup", "get-manifest", first_manifest_id])
-        .assert()
-        .success();
+    let get_manifest =
+        cli_cmd(data_dir).args(["backup", "get-manifest", first_manifest_id]).assert().success();
     let get_manifest_json: serde_json::Value =
         serde_json::from_slice(&get_manifest.get_output().stdout).expect("get manifest json");
     assert_eq!(get_manifest_json["id"], json!(first_manifest_id));
@@ -781,7 +743,6 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
 
     let second_page = cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "list-manifests",
             "--workspace-id",
@@ -801,7 +762,6 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
 
     let hash_filtered = cli_cmd(data_dir)
         .args([
-            "v2",
             "backup",
             "list-manifests",
             "--content-hash",
@@ -828,10 +788,8 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
         hash_filtered_items.iter().any(|item| item["metadata"]["outputKind"] == json!("stdout"))
     );
 
-    let all_manifests = cli_cmd(data_dir)
-        .args(["v2", "backup", "list-manifests", "--limit", "10"])
-        .assert()
-        .success();
+    let all_manifests =
+        cli_cmd(data_dir).args(["backup", "list-manifests", "--limit", "10"]).assert().success();
     let all_manifests_json: serde_json::Value =
         serde_json::from_slice(&all_manifests.get_output().stdout).expect("all manifests page");
     let all_manifest_items = all_manifests_json["items"].as_array().expect("all manifest items");
@@ -841,27 +799,26 @@ fn v2_backup_list_manifests_pages_and_filters_results() {
     );
 
     cli_cmd(data_dir)
-        .args(["v2", "backup", "get-manifest", "bkp_missing"])
+        .args(["backup", "get-manifest", "bkp_missing"])
         .assert()
         .failure()
         .stderr(contains("Backup manifest 'bkp_missing' not found"));
 }
 
 #[test]
-fn v2_request_tree_mutation_round_trip() {
+fn yaku_request_tree_mutation_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Tree Workspace"])
+        .args(["workspace", "create", "--name", "Tree Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_folder = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-folder",
             &workspace_id,
@@ -873,10 +830,9 @@ fn v2_request_tree_mutation_round_trip() {
         .assert()
         .success()
         .stdout(contains("\"kind\":\"folder\""));
-    let folder_id = parse_created_id(&create_folder.get_output().stdout, "v2 folder create");
+    let folder_id = parse_created_id(&create_folder.get_output().stdout, "yaku folder create");
     let create_archive = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-folder",
             &workspace_id,
@@ -887,11 +843,10 @@ fn v2_request_tree_mutation_round_trip() {
         ])
         .assert()
         .success();
-    let archive_id = parse_created_id(&create_archive.get_output().stdout, "v2 archive create");
+    let archive_id = parse_created_id(&create_archive.get_output().stdout, "yaku archive create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -908,9 +863,9 @@ fn v2_request_tree_mutation_round_trip() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open yaku store");
     let tree = store.list_request_tree(&workspace_id).expect("tree read");
     let request_node = tree
         .iter()
@@ -921,7 +876,7 @@ fn v2_request_tree_mutation_round_trip() {
     let request_node_id = request_node.id.clone();
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "get-node", &request_node_id])
+        .args(["request", "get-node", &request_node_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{request_node_id}""#)))
@@ -930,7 +885,7 @@ fn v2_request_tree_mutation_round_trip() {
         .stdout(contains("\"name\":\"Health\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "get-node", &folder_id])
+        .args(["request", "get-node", &folder_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{folder_id}""#)))
@@ -939,7 +894,6 @@ fn v2_request_tree_mutation_round_trip() {
 
     let duplicate_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "duplicate",
             &request_id,
@@ -956,7 +910,7 @@ fn v2_request_tree_mutation_round_trip() {
         .stdout(contains("\"protocol\":\"http\""))
         .stdout(contains("\"url\":\"https://example.test\""));
     let duplicate_id =
-        parse_created_id(&duplicate_request.get_output().stdout, "v2 request duplicate");
+        parse_created_id(&duplicate_request.get_output().stdout, "yaku request duplicate");
     assert_ne!(duplicate_id, request_id);
 
     let tree = store.list_request_tree(&workspace_id).expect("tree read");
@@ -969,7 +923,6 @@ fn v2_request_tree_mutation_round_trip() {
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "move",
             &request_node_id,
@@ -983,25 +936,25 @@ fn v2_request_tree_mutation_round_trip() {
         .stdout(contains(format!(r#""parentId":"{archive_id}""#)));
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "update", &request_id, "--name", "Ping"])
+        .args(["request", "update", &request_id, "--name", "Ping"])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Ping\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "list", &workspace_id])
+        .args(["request", "list", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"name\":\"Ping\""))
         .stdout(contains(format!(r#""parentId":"{archive_id}""#)));
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "delete", &archive_id])
+        .args(["request", "delete", &archive_id])
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen yaku store");
     assert!(store.get_request(&request_id).expect("request read").is_none());
     assert!(store.get_request(&duplicate_id).expect("duplicate read").is_none());
     assert!(store.get_request_node(&request_node_id).expect("node read").is_none());
@@ -1009,29 +962,28 @@ fn v2_request_tree_mutation_round_trip() {
     assert!(store.get_request_node(&folder_id).expect("folder read").is_some());
 
     cli_cmd(data_dir)
-        .args(["v2", "workspace", "delete", &workspace_id])
+        .args(["workspace", "delete", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen yaku store");
     assert!(store.get_workspace(&workspace_id).expect("workspace read").is_none());
 }
 
 #[test]
-fn v2_send_records_run_events_and_response_body() {
+fn yaku_send_records_run_events_and_response_body() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
-    let server = TestHttpServer::spawn_ok("hello-v2");
+    let server = TestHttpServer::spawn_ok("hello-yaku");
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Send Workspace"])
+        .args(["workspace", "create", "--name", "Send Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
     let create_environment = cli_cmd(data_dir)
         .args([
-            "v2",
             "environment",
             "create",
             &workspace_id,
@@ -1043,11 +995,10 @@ fn v2_send_records_run_events_and_response_body() {
         .assert()
         .success();
     let environment_id =
-        parse_created_id(&create_environment.get_output().stdout, "v2 environment create");
+        parse_created_id(&create_environment.get_output().stdout, "yaku environment create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -1069,18 +1020,18 @@ fn v2_send_records_run_events_and_response_body() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     let send = cli_cmd(data_dir)
-        .args(["--environment", &environment_id, "v2", "send", &request_id])
+        .args(["--environment", &environment_id, "send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"state\":\"completed\""))
         .stdout(contains("\"statusCode\":200"));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku send");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "get", &run_id])
+        .args(["run", "get", &run_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{run_id}""#)))
@@ -1092,21 +1043,21 @@ fn v2_send_records_run_events_and_response_body() {
     assert!(received_request.ends_with("ping present"));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "list", &request_id])
+        .args(["run", "list", &request_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{run_id}""#)))
         .stdout(contains("\"state\":\"completed\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "list-workspace", &workspace_id])
+        .args(["run", "list-workspace", &workspace_id])
         .assert()
         .success()
         .stdout(contains(format!(r#""id":"{run_id}""#)))
         .stdout(contains(format!(r#""requestId":"{request_id}""#)));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_snapshot\""))
@@ -1118,7 +1069,7 @@ fn v2_send_records_run_events_and_response_body() {
         .stdout(contains("\"kind\":\"response_body\""));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id, "--kind", "request_snapshot"])
+        .args(["run", "events", &run_id, "--kind", "request_snapshot"])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_snapshot\""))
@@ -1126,7 +1077,7 @@ fn v2_send_records_run_events_and_response_body() {
         .stdout(predicates::str::contains("\"kind\":\"response_body\"").not());
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "snapshot", &run_id])
+        .args(["run", "snapshot", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_snapshot\""))
@@ -1134,11 +1085,11 @@ fn v2_send_records_run_events_and_response_body() {
         .stdout(contains("\"ping present\""));
 
     let bodies_output = cli_cmd(data_dir)
-        .args(["v2", "run", "bodies", &run_id])
+        .args(["run", "bodies", &run_id])
         .assert()
         .success()
         .stdout(contains("\"storageKind\":\"inline\""))
-        .stdout(contains(format!(r#""byteLength":{}"#, "hello-v2".len())));
+        .stdout(contains(format!(r#""byteLength":{}"#, "hello-yaku".len())));
     let bodies_json: serde_json::Value =
         serde_json::from_slice(&bodies_output.get_output().stdout).expect("bodies json");
     let body_id = bodies_json
@@ -1149,12 +1100,12 @@ fn v2_send_records_run_events_and_response_body() {
         .expect("body id");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "body", body_id])
+        .args(["run", "body", body_id])
         .assert()
         .success()
-        .stdout(contains("hello-v2"));
+        .stdout(contains("hello-yaku"));
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open yaku store");
     let events =
         store.list_run_events(&run_id, Page::first(20)).expect("Failed to list run events");
     assert!(
@@ -1168,37 +1119,36 @@ fn v2_send_records_run_events_and_response_body() {
 
     let bodies = store.list_run_bodies(&run_id).expect("Failed to list run bodies");
     assert_eq!(bodies.len(), 1);
-    assert_eq!(bodies[0].byte_length, "hello-v2".len() as i64);
+    assert_eq!(bodies[0].byte_length, "hello-yaku".len() as i64);
     assert_eq!(bodies[0].storage_kind, BodyStorageKind::Inline);
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "delete", &run_id])
+        .args(["run", "delete", &run_id])
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to reopen yaku store");
     assert!(store.get_run(&run_id).expect("run read").is_none());
     assert!(store.list_run_events(&run_id, Page::first(20)).expect("events").is_empty());
     assert!(store.list_run_bodies(&run_id).expect("bodies").is_empty());
 }
 
 #[test]
-fn v2_run_prune_keeps_newest_runs() {
+fn yaku_run_prune_keeps_newest_runs() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
-    let server = TestHttpServer::spawn_ok("hello-v2");
+    let server = TestHttpServer::spawn_ok("hello-yaku");
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Prune Workspace"])
+        .args(["workspace", "create", "--name", "Prune Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -1209,18 +1159,16 @@ fn v2_run_prune_keeps_newest_runs() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     let mut run_ids = Vec::new();
     for _ in 0..3 {
-        let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
-        run_ids.push(parse_created_id(&send.get_output().stdout, "v2 send"));
+        let send = cli_cmd(data_dir).args(["send", &request_id]).assert().success();
+        run_ids.push(parse_created_id(&send.get_output().stdout, "yaku send"));
     }
 
-    let first_page = cli_cmd(data_dir)
-        .args(["v2", "run", "list", &request_id, "--limit", "2"])
-        .assert()
-        .success();
+    let first_page =
+        cli_cmd(data_dir).args(["run", "list", &request_id, "--limit", "2"]).assert().success();
     let first_page_json: serde_json::Value =
         serde_json::from_slice(&first_page.get_output().stdout).expect("run page json");
     let first_items = first_page_json["items"].as_array().expect("first page items");
@@ -1231,7 +1179,6 @@ fn v2_run_prune_keeps_newest_runs() {
 
     let second_page = cli_cmd(data_dir)
         .args([
-            "v2",
             "run",
             "list",
             &request_id,
@@ -1250,7 +1197,6 @@ fn v2_run_prune_keeps_newest_runs() {
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "run",
             "prune",
             "--request-id",
@@ -1263,7 +1209,7 @@ fn v2_run_prune_keeps_newest_runs() {
         .stdout(contains("\"deleted\":2"))
         .stdout(contains("\"keepLast\":1"));
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open yaku store");
     let remaining = store.list_runs_for_request(&request_id, Page::first(10)).expect("runs");
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, run_ids[2]);
@@ -1272,7 +1218,6 @@ fn v2_run_prune_keeps_newest_runs() {
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "run",
             "prune",
             "--workspace-id",
@@ -1288,39 +1233,31 @@ fn v2_run_prune_keeps_newest_runs() {
 }
 
 #[test]
-fn v2_run_retention_auto_prunes_workspace_runs() {
+fn yaku_run_retention_auto_prunes_workspace_runs() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
-    let server = TestHttpServer::spawn_ok("hello-v2");
+    let server = TestHttpServer::spawn_ok("hello-yaku");
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Retention Workspace"])
+        .args(["workspace", "create", "--name", "Retention Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "retention-get", &workspace_id])
+        .args(["run", "retention-get", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"keepLast\":null"));
     cli_cmd(data_dir)
-        .args([
-            "v2",
-            "run",
-            "retention-set",
-            &workspace_id,
-            "--keep-last",
-            "2",
-        ])
+        .args(["run", "retention-set", &workspace_id, "--keep-last", "2"])
         .assert()
         .success()
         .stdout(contains("\"keepLast\":2"));
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -1333,15 +1270,15 @@ fn v2_run_retention_auto_prunes_workspace_runs() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
     let mut run_ids = Vec::new();
     for _ in 0..3 {
-        let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
-        run_ids.push(parse_created_id(&send.get_output().stdout, "v2 send"));
+        let send = cli_cmd(data_dir).args(["send", &request_id]).assert().success();
+        run_ids.push(parse_created_id(&send.get_output().stdout, "yaku send"));
     }
 
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open yaku store");
     let remaining = store.list_runs_for_workspace(&workspace_id, Page::first(10)).expect("runs");
     assert_eq!(remaining.len(), 2);
     assert_eq!(remaining[0].id, run_ids[2]);
@@ -1349,28 +1286,27 @@ fn v2_run_retention_auto_prunes_workspace_runs() {
     assert!(store.get_run(&run_ids[0]).expect("pruned run read").is_none());
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "retention-clear", &workspace_id])
+        .args(["run", "retention-clear", &workspace_id])
         .assert()
         .success()
         .stdout(contains("\"keepLast\":null"));
 }
 
 #[test]
-fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
+fn yaku_run_gc_bodies_deletes_unreferenced_body_files() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let server = TestHttpServer::spawn_with_body(vec![b'x'; 70 * 1024]);
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "GC Workspace"])
+        .args(["workspace", "create", "--name", "GC Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -1381,11 +1317,11 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
-    let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 send");
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
+    let send = cli_cmd(data_dir).args(["send", &request_id]).assert().success();
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku send");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open yaku store");
     let bodies = store.list_run_bodies(&run_id).expect("body list");
     assert_eq!(bodies.len(), 1);
     assert_eq!(bodies[0].storage_kind, BodyStorageKind::File);
@@ -1397,7 +1333,7 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
     assert!(body_path.exists());
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "gc-bodies", "--dry-run"])
+        .args(["run", "gc-bodies", "--dry-run"])
         .assert()
         .success()
         .stdout(contains("\"deleted\":0"))
@@ -1406,7 +1342,7 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
     assert!(body_path.exists());
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "delete", &run_id])
+        .args(["run", "delete", &run_id])
         .assert()
         .success()
         .stdout(contains("\"bodyGc\""))
@@ -1415,7 +1351,7 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
     assert!(!body_path.exists());
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "gc-bodies"])
+        .args(["run", "gc-bodies"])
         .assert()
         .success()
         .stdout(contains("\"deleted\":0"))
@@ -1424,27 +1360,20 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
 }
 
 #[test]
-fn v2_request_delete_runs_body_gc() {
+fn yaku_request_delete_runs_body_gc() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let server = TestHttpServer::spawn_with_body(vec![b'y'; 70 * 1024]);
 
     let create_workspace = cli_cmd(data_dir)
-        .args([
-            "v2",
-            "workspace",
-            "create",
-            "--name",
-            "Request GC Workspace",
-        ])
+        .args(["workspace", "create", "--name", "Request GC Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create",
             &workspace_id,
@@ -1455,11 +1384,11 @@ fn v2_request_delete_runs_body_gc() {
         ])
         .assert()
         .success();
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku request create");
 
-    let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 send");
-    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
+    let send = cli_cmd(data_dir).args(["send", &request_id]).assert().success();
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku send");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open yaku store");
     let bodies = store.list_run_bodies(&run_id).expect("body list");
     let body_path = bodies[0]
         .storage_ref
@@ -1477,7 +1406,7 @@ fn v2_request_delete_runs_body_gc() {
         .clone();
 
     cli_cmd(data_dir)
-        .args(["v2", "request", "delete", &request_node_id])
+        .args(["request", "delete", &request_node_id])
         .assert()
         .success()
         .stdout(contains("\"bodyGc\""))
@@ -1487,21 +1416,20 @@ fn v2_request_delete_runs_body_gc() {
 }
 
 #[test]
-fn v2_graphql_request_sends_json_body_through_run_model() {
+fn yaku_graphql_request_sends_json_body_through_run_model() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let server = TestHttpServer::spawn_ok("{\"data\":{\"ping\":\"pong\"}}");
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "GraphQL Workspace"])
+        .args(["workspace", "create", "--name", "GraphQL Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-graphql",
             &workspace_id,
@@ -1521,11 +1449,10 @@ fn v2_graphql_request_sends_json_body_through_run_model() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"graphql\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 graphql create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku graphql create");
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "patch-graphql",
             &request_id,
@@ -1553,12 +1480,12 @@ fn v2_graphql_request_sends_json_body_through_run_model() {
         .stdout(contains("\"followRedirects\":false"));
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"graphql\""))
         .stdout(contains("\"state\":\"completed\""));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 graphql send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku graphql send");
 
     let received_request = server.request_text();
     assert!(received_request.starts_with("POST /test HTTP/1.1"));
@@ -1569,14 +1496,14 @@ fn v2_graphql_request_sends_json_body_through_run_model() {
     assert!(received_request.contains(r#""operationName":"Patched""#));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_body\""))
         .stdout(contains("\"kind\":\"response_body\""));
 
     let bodies_output = cli_cmd(data_dir)
-        .args(["v2", "run", "bodies", &run_id])
+        .args(["run", "bodies", &run_id])
         .assert()
         .success()
         .stdout(contains("\"byteLength\":24"));
@@ -1590,27 +1517,26 @@ fn v2_graphql_request_sends_json_body_through_run_model() {
         .expect("body id");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "body", body_id])
+        .args(["run", "body", body_id])
         .assert()
         .success()
         .stdout(contains(r#""ping":"pong""#));
 }
 
 #[test]
-fn v2_graphql_request_rejects_non_object_variables() {
+fn yaku_graphql_request_rejects_non_object_variables() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "Invalid GraphQL"])
+        .args(["workspace", "create", "--name", "Invalid GraphQL"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-graphql",
             &workspace_id,
@@ -1629,7 +1555,7 @@ fn v2_graphql_request_rejects_non_object_variables() {
 }
 
 #[test]
-fn v2_sse_request_records_stream_messages_as_run_events() {
+fn yaku_sse_request_records_stream_messages_as_run_events() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let server = TestHttpServer::spawn_with_headers(
@@ -1638,15 +1564,14 @@ fn v2_sse_request_records_stream_messages_as_run_events() {
     );
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "SSE Workspace"])
+        .args(["workspace", "create", "--name", "SSE Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-sse",
             &workspace_id,
@@ -1662,11 +1587,10 @@ fn v2_sse_request_records_stream_messages_as_run_events() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"sse\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 sse create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku sse create");
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "patch-sse",
             &request_id,
@@ -1688,12 +1612,12 @@ fn v2_sse_request_records_stream_messages_as_run_events() {
         .stdout(contains("\"followRedirects\":false"));
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"sse\""))
         .stdout(contains("\"state\":\"completed\""));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 sse send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku sse send");
 
     let received_request = server.request_text();
     assert!(received_request.starts_with("GET /test?channel=patched HTTP/1.1"));
@@ -1701,7 +1625,7 @@ fn v2_sse_request_records_stream_messages_as_run_events() {
     assert!(received_request.to_ascii_lowercase().contains("x-sse: patched"));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"message\""))
@@ -1713,21 +1637,20 @@ fn v2_sse_request_records_stream_messages_as_run_events() {
 }
 
 #[test]
-fn v2_websocket_request_sends_real_message_through_run_model() {
+fn yaku_websocket_request_sends_real_message_through_run_model() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let server = TestWebSocketServer::spawn();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "WebSocket Workspace"])
+        .args(["workspace", "create", "--name", "WebSocket Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-websocket",
             &workspace_id,
@@ -1749,11 +1672,10 @@ fn v2_websocket_request_sends_real_message_through_run_model() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"web_socket\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 websocket create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku websocket create");
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "patch-websocket",
             &request_id,
@@ -1778,13 +1700,13 @@ fn v2_websocket_request_sends_real_message_through_run_model() {
         .stdout(contains("\"timeoutMs\":6000"));
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"web_socket\""))
         .stdout(contains("\"state\":\"completed\""))
         .stdout(contains("\"statusCode\":101"));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 websocket send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku websocket send");
 
     server.join();
     let received_request = server.request_text();
@@ -1792,7 +1714,7 @@ fn v2_websocket_request_sends_real_message_through_run_model() {
     assert!(received_request.to_ascii_lowercase().contains("x-ws: patched"));
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"direction\":\"sent\""))
@@ -1803,20 +1725,19 @@ fn v2_websocket_request_sends_real_message_through_run_model() {
 }
 
 #[test]
-fn v2_grpc_request_records_failed_run_when_reflection_is_disabled() {
+fn yaku_grpc_request_records_failed_run_when_reflection_is_disabled() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "gRPC Workspace"])
+        .args(["workspace", "create", "--name", "gRPC Workspace"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-grpc",
             &workspace_id,
@@ -1841,11 +1762,10 @@ fn v2_grpc_request_records_failed_run_when_reflection_is_disabled() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 grpc create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
 
     cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "patch-grpc",
             &request_id,
@@ -1877,15 +1797,15 @@ fn v2_grpc_request_records_failed_run_when_reflection_is_disabled() {
         .stdout(contains("\"timeoutMs\":6000"));
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""))
         .stdout(contains("\"state\":\"failed\""));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 grpc send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku grpc send");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_headers\""))
@@ -1896,21 +1816,20 @@ fn v2_grpc_request_records_failed_run_when_reflection_is_disabled() {
 }
 
 #[test]
-fn v2_grpc_request_records_reflection_services_from_local_server() {
+fn yaku_grpc_request_records_reflection_services_from_local_server() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let reflection_server = TestReflectionServer::spawn();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "gRPC Reflection"])
+        .args(["workspace", "create", "--name", "gRPC Reflection"])
         .assert()
         .success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-grpc",
             &workspace_id,
@@ -1926,19 +1845,19 @@ fn v2_grpc_request_records_reflection_services_from_local_server() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 grpc create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""))
         .stdout(contains("\"state\":\"completed\""))
         .stdout(contains("\"statusCode\":0"));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 grpc reflection send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku grpc reflection send");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"message\""))
@@ -1948,7 +1867,7 @@ fn v2_grpc_request_records_reflection_services_from_local_server() {
 }
 
 #[test]
-fn v2_grpc_request_invokes_unary_with_local_proto_file() {
+fn yaku_grpc_request_invokes_unary_with_local_proto_file() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let unary_server = TestUnaryGrpcServer::spawn();
@@ -1971,16 +1890,13 @@ fn v2_grpc_request_invokes_unary_with_local_proto_file() {
     )
     .expect("write proto");
 
-    let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "gRPC Unary"])
-        .assert()
-        .success();
+    let create_workspace =
+        cli_cmd(data_dir).args(["workspace", "create", "--name", "gRPC Unary"]).assert().success();
     let workspace_id =
-        parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
 
     let create_request = cli_cmd(data_dir)
         .args([
-            "v2",
             "request",
             "create-grpc",
             &workspace_id,
@@ -2001,19 +1917,19 @@ fn v2_grpc_request_invokes_unary_with_local_proto_file() {
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""));
-    let request_id = parse_created_id(&create_request.get_output().stdout, "v2 grpc create");
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
 
     let send = cli_cmd(data_dir)
-        .args(["v2", "send", &request_id])
+        .args(["send", &request_id])
         .assert()
         .success()
         .stdout(contains("\"protocol\":\"grpc\""))
         .stdout(contains("\"state\":\"completed\""))
         .stdout(contains("\"statusCode\":0"));
-    let run_id = parse_created_id(&send.get_output().stdout, "v2 grpc unary send");
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku grpc unary send");
 
     cli_cmd(data_dir)
-        .args(["v2", "run", "events", &run_id])
+        .args(["run", "events", &run_id])
         .assert()
         .success()
         .stdout(contains("\"kind\":\"request_body\""))

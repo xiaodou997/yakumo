@@ -35,8 +35,7 @@ The runtime architecture must not preserve compatibility layers.
 - Existing app bundle identifier, updater identity, and release tag policy are
   not renamed until explicitly approved because they affect app data locations,
   keychain identity, release automation, and installed app behavior.
-- `docs/architecture-v2.md` keeps its current filename temporarily to avoid
-  route churn in docs references. The content is Yaku-first.
+- `docs/architecture-yaku.md` is the canonical rewrite plan.
 
 ## Code Audit
 
@@ -238,20 +237,21 @@ Runtime ownership:
 
 Use generated Rust TS bindings as the canonical frontend domain types.
 
-Required changes:
+Current state:
 
 - Import generated domain types from `crates/yaku-domain/bindings/gen_domain.ts`.
 - Add generated command DTOs for page responses, GC reports, delete responses,
   and event payloads.
-- Add `src/lib/yaku-client/types.ts` as the only app-facing type barrel.
-- Remove duplicate hand-written V2 types from `src/lib/v2.ts`.
+- `src/lib/yaku-client/types.ts` is the only app-facing type barrel.
+- The old frontend V2 compatibility shim has been removed.
 
 ## Aggressive Rename Plan
 
 ### Rename Now
 
 - User-facing docs and new code: `Yaku`.
-- `src/lib/v2.ts` split to `src/lib/yaku-client/*`.
+- The old frontend V2 shim was split to `src/lib/yaku-client/*` and removed.
+- Frontend Yaku client public APIs use `Yaku*` names.
 - `src-tauri/src/yaku_commands.rs`.
 - Tauri commands use `cmd_yaku_*`.
 - Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
@@ -277,8 +277,8 @@ Required changes:
 Phase 1: Establish Yaku main path.
 
 - Add Yaku generated type imports.
-- Split `src/lib/v2.ts` into `src/lib/yaku-client/commands.ts`,
-  `queries.ts`, `types.ts`, and `events.ts`.
+- Split the old frontend V2 shim into `src/lib/yaku-client/commands.ts`,
+  `queries.ts`, `types.ts`, and `events.ts`. Done; the old shim is deleted.
 - Create `src/features/yaku-workspace`.
 - Point `/workspaces` and `/workspaces/$workspaceId` at Yaku components.
 - Move current `/v2` to `/debug/yaku` or delete it after parity. Done.
@@ -342,7 +342,7 @@ Phase 6: Rebuild optional capabilities.
   implemented through `app.settings`; secrets remain follow-up work.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
   the Yaku-native command path; `v2` remains as a temporary compatibility alias
-  while command names and docs are cleaned up.
+  while CLI command names and docs are cleaned up.
 
 ## Proposed Commit Sequence
 
@@ -375,4 +375,5 @@ Run before large deletions:
 - `rg "@yakumo-internal/models" src`
 - `rg "models_ext|models_" src-tauri/src`
 - `rg "cmd_v2|v2.sqlite|v2-bodies" src src-tauri crates`
+- Search `src` for old uppercase V2 client/helper names.
 - `cargo check --workspace`

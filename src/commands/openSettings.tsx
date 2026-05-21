@@ -2,7 +2,7 @@ import type { SettingsTab } from "../components/Settings/Settings";
 import { createFastMutation } from "../hooks/useFastMutation";
 import { router } from "../lib/router";
 import { invokeCmd } from "../lib/tauri";
-import { listV2Workspaces } from "../lib/yaku-client";
+import { listYakuWorkspaces } from "../lib/yaku-client";
 
 // Allow tab with an optional subtab suffix for future settings sections.
 type SettingsTabWithSubtab = SettingsTab | `${SettingsTab}:${string}` | null;
@@ -41,6 +41,6 @@ async function getActiveYakuWorkspaceId() {
     return search.workspaceId;
   }
 
-  const workspaces = await listV2Workspaces(1);
+  const workspaces = await listYakuWorkspaces(1);
   return workspaces.items[0]?.id ?? null;
 }

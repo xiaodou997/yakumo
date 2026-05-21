@@ -16,48 +16,48 @@ import type {
   Workspace as DomainWorkspace,
 } from "../../../crates/yaku-domain/bindings/gen_domain";
 
-export type V2Protocol = DomainProtocol;
-export type V2RequestNodeKind = DomainRequestNodeKind;
-export type V2RunState = DomainRunState;
-export type V2RunEventKind = DomainRunEventKind;
-export type V2BodyRole = DomainBodyRole;
-export type V2BodyStorageKind = DomainBodyStorageKind;
+export type YakuProtocol = DomainProtocol;
+export type YakuRequestNodeKind = DomainRequestNodeKind;
+export type YakuRunState = DomainRunState;
+export type YakuRunEventKind = DomainRunEventKind;
+export type YakuBodyRole = DomainBodyRole;
+export type YakuBodyStorageKind = DomainBodyStorageKind;
 
-export interface V2PageResponse<T> {
+export interface YakuPageResponse<T> {
   items: T[];
   nextCursor: number | null;
 }
 
-export interface V2GcReport {
+export interface YakuGcReport {
   deleted: number;
   retained: number;
   bytesDeleted: number;
   dryRun: boolean;
 }
 
-export interface V2DeleteResponse {
+export interface YakuDeleteResponse {
   deleted: boolean;
-  bodyGc?: V2GcReport;
+  bodyGc?: YakuGcReport;
 }
 
-export type V2Workspace = DomainWorkspace;
-export type V2Environment = DomainEnvironment;
-export type V2RequestNode = DomainRequestNode;
-export type V2Request = DomainRequest;
-export type V2Run = DomainRun;
-export type V2RunEvent = Omit<DomainRunEvent, "id" | "sequence" | "data"> & {
+export type YakuWorkspace = DomainWorkspace;
+export type YakuEnvironment = DomainEnvironment;
+export type YakuRequestNode = DomainRequestNode;
+export type YakuRequest = DomainRequest;
+export type YakuRun = DomainRun;
+export type YakuRunEvent = Omit<DomainRunEvent, "id" | "sequence" | "data"> & {
   id: number;
   sequence: number;
   data: Record<string, unknown>;
 };
-export type V2RunBody = Omit<DomainRunBody, "eventId" | "byteLength"> & {
+export type YakuRunBody = Omit<DomainRunBody, "eventId" | "byteLength"> & {
   eventId: number | null;
   byteLength: number;
 };
-export type V2Setting = DomainSetting;
-export type V2WorkspacePageItem = V2Workspace & { cursor: number };
-export type V2RequestNodePageItem = V2RequestNode & { cursor: number };
-export type V2RunPageItem = V2Run & { cursor: number };
+export type YakuSetting = DomainSetting;
+export type YakuWorkspacePageItem = YakuWorkspace & { cursor: number };
+export type YakuRequestNodePageItem = YakuRequestNode & { cursor: number };
+export type YakuRunPageItem = YakuRun & { cursor: number };
 
 export interface YakuBackupManifest {
   id: string;
@@ -68,7 +68,7 @@ export interface YakuBackupManifest {
 }
 
 export interface YakuBackupImportResponse {
-  workspace: V2Workspace;
+  workspace: YakuWorkspace;
   manifest: YakuBackupManifest;
   replacedExisting: boolean;
 }
@@ -129,12 +129,12 @@ export interface YakuRunLifecycleEvent {
   runId: string;
   requestId: string;
   workspaceId: string;
-  run: V2Run | null;
+  run: YakuRun | null;
   error: string | null;
 }
 
-export const V2_RUN_EVENT_KIND_OPTIONS: Array<{
-  value: "all" | V2RunEventKind;
+export const YAKU_RUN_EVENT_KIND_OPTIONS: Array<{
+  value: "all" | YakuRunEventKind;
   label: string;
 }> = [
   { value: "all", label: "All Events" },
@@ -152,4 +152,4 @@ export const V2_RUN_EVENT_KIND_OPTIONS: Array<{
   { value: "log", label: "Log" },
 ];
 
-export type { DomainPage as V2DomainPage };
+export type { DomainPage as YakuDomainPage };

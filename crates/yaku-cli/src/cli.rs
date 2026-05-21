@@ -10,7 +10,7 @@ use std::path::PathBuf;
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
   - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
-  - The default CLI path is Yaku-native; `v2` remains as a temporary compatibility alias
+  - The default CLI path is Yaku-native; `v2` remains as a hidden temporary compatibility alias
   - Deletion requires confirmation (--yes for non-interactive environments)
   "#)]
 pub struct Cli {
@@ -47,46 +47,53 @@ pub enum Commands {
     CookieJar(CookieJarArgs),
 
     /// Workspace commands
-    Workspace(WorkspaceArgs),
+    Workspace(YakuWorkspaceArgs),
 
     /// Request commands
-    Request(RequestArgs),
+    Request(YakuRequestArgs),
 
     /// Folder commands
     Folder(FolderArgs),
 
     /// Environment commands
-    Environment(EnvironmentArgs),
+    Environment(YakuEnvironmentArgs),
 
-    /// Temporary compatibility alias for Yaku-native commands
-    V2(V2Args),
+    /// Run history commands
+    Run(YakuRunArgs),
+
+    /// Backup commands
+    Backup(YakuBackupArgs),
+
+    /// Hidden compatibility alias for older Yaku V2 commands
+    #[command(hide = true)]
+    V2(YakuArgs),
 }
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2Args {
+pub struct YakuArgs {
     #[command(subcommand)]
-    pub command: V2Commands,
+    pub command: YakuCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2Commands {
-    /// V2 workspace commands
-    Workspace(V2WorkspaceArgs),
+pub enum YakuCommands {
+    /// Yaku workspace commands
+    Workspace(YakuWorkspaceArgs),
 
-    /// V2 environment commands
-    Environment(V2EnvironmentArgs),
+    /// Yaku environment commands
+    Environment(YakuEnvironmentArgs),
 
-    /// V2 request commands
-    Request(V2RequestArgs),
+    /// Yaku request commands
+    Request(YakuRequestArgs),
 
-    /// V2 run history commands
-    Run(V2RunArgs),
+    /// Yaku run history commands
+    Run(YakuRunArgs),
 
-    /// V2 backup commands
-    Backup(V2BackupArgs),
+    /// Yaku backup commands
+    Backup(YakuBackupArgs),
 
-    /// Send a V2 request by ID
+    /// Send a Yaku request by ID
     Send {
         /// Request ID
         request_id: String,
@@ -95,13 +102,13 @@ pub enum V2Commands {
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2BackupArgs {
+pub struct YakuBackupArgs {
     #[command(subcommand)]
-    pub command: V2BackupCommands,
+    pub command: YakuBackupCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2BackupCommands {
+pub enum YakuBackupCommands {
     /// Export one workspace as stable JSON
     ExportWorkspace {
         /// Workspace ID
@@ -156,26 +163,26 @@ pub enum V2BackupCommands {
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2EnvironmentArgs {
+pub struct YakuEnvironmentArgs {
     #[command(subcommand)]
-    pub command: V2EnvironmentCommands,
+    pub command: YakuEnvironmentCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2EnvironmentCommands {
-    /// List V2 environments in a workspace
+pub enum YakuEnvironmentCommands {
+    /// List Yaku environments in a workspace
     List {
         /// Workspace ID
         workspace_id: String,
     },
 
-    /// Get a V2 environment by ID
+    /// Get a Yaku environment by ID
     Get {
         /// Environment ID
         environment_id: String,
     },
 
-    /// Create a V2 environment
+    /// Create a Yaku environment
     Create {
         /// Workspace ID
         workspace_id: String,
@@ -189,7 +196,7 @@ pub enum V2EnvironmentCommands {
         variables_json: String,
     },
 
-    /// Update a V2 environment
+    /// Update a Yaku environment
     Update {
         /// Environment ID
         environment_id: String,
@@ -203,7 +210,7 @@ pub enum V2EnvironmentCommands {
         variables_json: Option<String>,
     },
 
-    /// Delete a V2 environment
+    /// Delete a Yaku environment
     Delete {
         /// Environment ID
         environment_id: String,
@@ -212,14 +219,14 @@ pub enum V2EnvironmentCommands {
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2WorkspaceArgs {
+pub struct YakuWorkspaceArgs {
     #[command(subcommand)]
-    pub command: V2WorkspaceCommands,
+    pub command: YakuWorkspaceCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2WorkspaceCommands {
-    /// List V2 workspaces
+pub enum YakuWorkspaceCommands {
+    /// List Yaku workspaces
     List {
         /// Cursor returned by a previous page
         #[arg(long)]
@@ -230,7 +237,7 @@ pub enum V2WorkspaceCommands {
         limit: u32,
     },
 
-    /// Create a V2 workspace
+    /// Create a Yaku workspace
     Create {
         /// Workspace name
         #[arg(short, long)]
@@ -241,13 +248,13 @@ pub enum V2WorkspaceCommands {
         description: String,
     },
 
-    /// Get a V2 workspace by ID
+    /// Get a Yaku workspace by ID
     Get {
         /// Workspace ID
         workspace_id: String,
     },
 
-    /// Delete a V2 workspace
+    /// Delete a Yaku workspace
     Delete {
         /// Workspace ID
         workspace_id: String,
@@ -256,14 +263,14 @@ pub enum V2WorkspaceCommands {
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2RequestArgs {
+pub struct YakuRequestArgs {
     #[command(subcommand)]
-    pub command: V2RequestCommands,
+    pub command: YakuRequestCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2RequestCommands {
-    /// List V2 request tree nodes in a workspace
+pub enum YakuRequestCommands {
+    /// List Yaku request tree nodes in a workspace
     List {
         /// Workspace ID
         workspace_id: String,
@@ -277,19 +284,19 @@ pub enum V2RequestCommands {
         limit: u32,
     },
 
-    /// Get a V2 request by ID
+    /// Get a Yaku request by ID
     Get {
         /// Request ID
         request_id: String,
     },
 
-    /// Get a V2 request tree node by node ID
+    /// Get a Yaku request tree node by node ID
     GetNode {
         /// Request tree node ID
         node_id: String,
     },
 
-    /// Duplicate a V2 request
+    /// Duplicate a Yaku request
     Duplicate {
         /// Source request ID
         request_id: String,
@@ -307,7 +314,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Create a V2 HTTP request
+    /// Create a Yaku HTTP request
     Create {
         /// Workspace ID
         workspace_id: String,
@@ -353,7 +360,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Patch a V2 HTTP request config
+    /// Patch a Yaku HTTP request config
     PatchHttp {
         /// Request ID
         request_id: String,
@@ -399,7 +406,7 @@ pub enum V2RequestCommands {
         no_follow_redirects: bool,
     },
 
-    /// Patch a V2 GraphQL request config
+    /// Patch a Yaku GraphQL request config
     PatchGraphql {
         /// Request ID
         request_id: String,
@@ -449,7 +456,7 @@ pub enum V2RequestCommands {
         no_follow_redirects: bool,
     },
 
-    /// Patch a V2 SSE request config
+    /// Patch a Yaku SSE request config
     PatchSse {
         /// Request ID
         request_id: String,
@@ -483,7 +490,7 @@ pub enum V2RequestCommands {
         no_follow_redirects: bool,
     },
 
-    /// Create a V2 folder in the request tree
+    /// Create a Yaku folder in the request tree
     CreateFolder {
         /// Workspace ID
         workspace_id: String,
@@ -501,7 +508,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Update V2 request metadata or config
+    /// Update Yaku request metadata or config
     Update {
         /// Request ID
         request_id: String,
@@ -519,7 +526,7 @@ pub enum V2RequestCommands {
         config_json: Option<String>,
     },
 
-    /// Move a V2 request tree node
+    /// Move a Yaku request tree node
     Move {
         /// Request tree node ID
         node_id: String,
@@ -533,13 +540,13 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Delete a V2 request tree node
+    /// Delete a Yaku request tree node
     Delete {
         /// Request tree node ID
         node_id: String,
     },
 
-    /// Create a V2 GraphQL request
+    /// Create a Yaku GraphQL request
     CreateGraphql {
         /// Workspace ID
         workspace_id: String,
@@ -585,7 +592,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Create a V2 SSE request
+    /// Create a Yaku SSE request
     CreateSse {
         /// Workspace ID
         workspace_id: String,
@@ -623,7 +630,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Create a V2 WebSocket request
+    /// Create a Yaku WebSocket request
     CreateWebsocket {
         /// Workspace ID
         workspace_id: String,
@@ -665,7 +672,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Patch a V2 WebSocket request config
+    /// Patch a Yaku WebSocket request config
     PatchWebsocket {
         /// Request ID
         request_id: String,
@@ -703,7 +710,7 @@ pub enum V2RequestCommands {
         timeout_ms: Option<u64>,
     },
 
-    /// Create a V2 gRPC request
+    /// Create a Yaku gRPC request
     CreateGrpc {
         /// Workspace ID
         workspace_id: String,
@@ -753,7 +760,7 @@ pub enum V2RequestCommands {
         sort_key: Option<String>,
     },
 
-    /// Patch a V2 gRPC request config
+    /// Patch a Yaku gRPC request config
     PatchGrpc {
         /// Request ID
         request_id: String,
@@ -810,13 +817,13 @@ pub enum V2RequestCommands {
 
 #[derive(Args)]
 #[command(disable_help_subcommand = true)]
-pub struct V2RunArgs {
+pub struct YakuRunArgs {
     #[command(subcommand)]
-    pub command: V2RunCommands,
+    pub command: YakuRunCommands,
 }
 
 #[derive(Subcommand)]
-pub enum V2RunCommands {
+pub enum YakuRunCommands {
     /// Get one run by ID
     Get {
         /// Run ID
@@ -976,156 +983,6 @@ pub enum CookieJarCommands {
     },
 }
 
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct WorkspaceArgs {
-    #[command(subcommand)]
-    pub command: WorkspaceCommands,
-}
-
-#[derive(Subcommand)]
-pub enum WorkspaceCommands {
-    /// List all workspaces
-    List,
-
-    /// Output JSON schema for workspace create/update payloads
-    Schema {
-        /// Pretty-print schema JSON output
-        #[arg(long)]
-        pretty: bool,
-    },
-
-    /// Show a workspace as JSON
-    Show {
-        /// Workspace ID
-        workspace_id: String,
-    },
-
-    /// Create a workspace
-    Create {
-        /// Workspace name
-        #[arg(short, long)]
-        name: Option<String>,
-
-        /// JSON payload
-        #[arg(long, conflicts_with = "json_input")]
-        json: Option<String>,
-
-        /// JSON payload shorthand
-        #[arg(value_name = "JSON", conflicts_with = "json")]
-        json_input: Option<String>,
-    },
-
-    /// Update a workspace
-    Update {
-        /// JSON payload
-        #[arg(long, conflicts_with = "json_input")]
-        json: Option<String>,
-
-        /// JSON payload shorthand
-        #[arg(value_name = "JSON", conflicts_with = "json")]
-        json_input: Option<String>,
-    },
-
-    /// Delete a workspace
-    Delete {
-        /// Workspace ID
-        workspace_id: String,
-
-        /// Skip confirmation prompt
-        #[arg(short, long)]
-        yes: bool,
-    },
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct RequestArgs {
-    #[command(subcommand)]
-    pub command: RequestCommands,
-}
-
-#[derive(Subcommand)]
-pub enum RequestCommands {
-    /// List requests in a workspace
-    List {
-        /// Workspace ID (optional when exactly one workspace exists)
-        workspace_id: Option<String>,
-    },
-
-    /// Show a request as JSON
-    Show {
-        /// Request ID
-        request_id: String,
-    },
-
-    /// Send a request by ID
-    Send {
-        /// Request ID
-        request_id: String,
-    },
-
-    /// Output JSON schema for request create/update payloads
-    Schema {
-        #[arg(value_enum)]
-        request_type: RequestSchemaType,
-
-        /// Pretty-print schema JSON output
-        #[arg(long)]
-        pretty: bool,
-    },
-
-    /// Create a new HTTP request
-    Create {
-        /// Workspace ID (or positional JSON payload shorthand)
-        workspace_id: Option<String>,
-
-        /// Request name
-        #[arg(short, long)]
-        name: Option<String>,
-
-        /// HTTP method
-        #[arg(short, long)]
-        method: Option<String>,
-
-        /// URL
-        #[arg(short, long)]
-        url: Option<String>,
-
-        /// JSON payload
-        #[arg(long)]
-        json: Option<String>,
-    },
-
-    /// Update an HTTP request
-    Update {
-        /// JSON payload
-        #[arg(long, conflicts_with = "json_input")]
-        json: Option<String>,
-
-        /// JSON payload shorthand
-        #[arg(value_name = "JSON", conflicts_with = "json")]
-        json_input: Option<String>,
-    },
-
-    /// Delete a request
-    Delete {
-        /// Request tree node ID
-        request_id: String,
-
-        /// Skip confirmation prompt
-        #[arg(short, long)]
-        yes: bool,
-    },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum RequestSchemaType {
-    Http,
-    Grpc,
-    Websocket,
-}
-
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum LogLevel {
     Error,
@@ -1204,77 +1061,6 @@ pub enum FolderCommands {
     Delete {
         /// Folder ID
         folder_id: String,
-
-        /// Skip confirmation prompt
-        #[arg(short, long)]
-        yes: bool,
-    },
-}
-
-#[derive(Args)]
-#[command(disable_help_subcommand = true)]
-pub struct EnvironmentArgs {
-    #[command(subcommand)]
-    pub command: EnvironmentCommands,
-}
-
-#[derive(Subcommand)]
-pub enum EnvironmentCommands {
-    /// List environments in a workspace
-    List {
-        /// Workspace ID (optional when exactly one workspace exists)
-        workspace_id: Option<String>,
-    },
-
-    /// Output JSON schema for environment create/update payloads
-    Schema {
-        /// Pretty-print schema JSON output
-        #[arg(long)]
-        pretty: bool,
-    },
-
-    /// Show an environment as JSON
-    Show {
-        /// Environment ID
-        environment_id: String,
-    },
-
-    /// Create an environment
-    #[command(after_help = r#"Modes (choose one):
-  1) yaku environment create <workspace_id> --name <name>
-  2) yaku environment create --json '{"workspaceId":"wk_abc","name":"Production"}'
-  3) yaku environment create '{"workspaceId":"wk_abc","name":"Production"}'
-  4) yaku environment create <workspace_id> --json '{"name":"Production"}'
-"#)]
-    Create {
-        /// Workspace ID for flag-based mode, or positional JSON payload shorthand
-        #[arg(value_name = "WORKSPACE_ID_OR_JSON")]
-        workspace_id: Option<String>,
-
-        /// Environment name
-        #[arg(short, long)]
-        name: Option<String>,
-
-        /// JSON payload (use instead of WORKSPACE_ID/--name)
-        #[arg(long)]
-        json: Option<String>,
-    },
-
-    /// Update an environment
-    Update {
-        /// JSON payload
-        #[arg(long, conflicts_with = "json_input")]
-        json: Option<String>,
-
-        /// JSON payload shorthand
-        #[arg(value_name = "JSON", conflicts_with = "json")]
-        json_input: Option<String>,
-    },
-
-    /// Delete an environment
-    Delete {
-        /// Environment ID
-        environment_id: String,
 
         /// Skip confirmation prompt
         #[arg(short, long)]

@@ -1,6 +1,6 @@
 use crate::cli::{
-    V2Args, V2BackupCommands, V2Commands, V2EnvironmentCommands, V2RequestCommands, V2RunCommands,
-    V2WorkspaceCommands,
+    YakuArgs, YakuBackupCommands, YakuCommands, YakuEnvironmentCommands, YakuRequestCommands,
+    YakuRunCommands, YakuWorkspaceCommands,
 };
 use crate::utils::output::print_json;
 use chrono::Utc;
@@ -23,7 +23,7 @@ use yaku_engine::{
 };
 use yaku_store::{BackupManifest, Store, WorkspaceBackup};
 
-pub fn run(data_dir: PathBuf, args: V2Args, environment_id: Option<String>) -> i32 {
+pub fn run(data_dir: PathBuf, args: YakuArgs, environment_id: Option<String>) -> i32 {
     match run_inner(data_dir, args, environment_id) {
         Ok(()) => 0,
         Err(error) => {
@@ -35,7 +35,7 @@ pub fn run(data_dir: PathBuf, args: V2Args, environment_id: Option<String>) -> i
 
 fn run_inner(
     data_dir: PathBuf,
-    args: V2Args,
+    args: YakuArgs,
     environment_id: Option<String>,
 ) -> Result<(), String> {
     let bodies_dir = data_dir.join("yaku-bodies");
@@ -43,15 +43,15 @@ fn run_inner(
     let service = DomainService::new(store);
 
     match args.command {
-        V2Commands::Workspace(args) => match args.command {
-            V2WorkspaceCommands::List { cursor, limit } => {
+        YakuCommands::Workspace(args) => match args.command {
+            YakuWorkspaceCommands::List { cursor, limit } => {
                 let workspaces = service
                     .repository()
                     .list_workspace_page(Page { cursor, limit })
                     .map_err(|e| e.to_string())?;
-                print_json(&page_response(workspaces), "v2 workspace list")
+                print_json(&page_response(workspaces), "Yaku workspace list")
             }
-            V2WorkspaceCommands::Create { name, description } => {
+            YakuWorkspaceCommands::Create { name, description } => {
                 let workspace = service
                     .create_workspace(CreateWorkspace {
                         id: prefixed_id("wk"),
@@ -60,42 +60,42 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&workspace, "v2 workspace create")
+                print_json(&workspace, "Yaku workspace create")
             }
-            V2WorkspaceCommands::Get { workspace_id } => {
+            YakuWorkspaceCommands::Get { workspace_id } => {
                 let workspace = service
                     .repository()
                     .get_workspace(&workspace_id)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Workspace '{workspace_id}' not found"))?;
-                print_json(&workspace, "v2 workspace get")
+                print_json(&workspace, "Yaku workspace get")
             }
-            V2WorkspaceCommands::Delete { workspace_id } => {
+            YakuWorkspaceCommands::Delete { workspace_id } => {
                 service.delete_workspace(&workspace_id).map_err(|e| e.to_string())?;
                 let body_gc = gc_body_files(service.repository(), &bodies_dir, false)?;
                 print_json(
                     &json!({ "deleted": true, "workspaceId": workspace_id, "bodyGc": body_gc }),
-                    "v2 workspace delete",
+                    "Yaku workspace delete",
                 )
             }
         },
-        V2Commands::Environment(args) => match args.command {
-            V2EnvironmentCommands::List { workspace_id } => {
+        YakuCommands::Environment(args) => match args.command {
+            YakuEnvironmentCommands::List { workspace_id } => {
                 let environments = service
                     .repository()
                     .list_environments(&workspace_id)
                     .map_err(|e| e.to_string())?;
-                print_json(&environments, "v2 environment list")
+                print_json(&environments, "Yaku environment list")
             }
-            V2EnvironmentCommands::Get { environment_id } => {
+            YakuEnvironmentCommands::Get { environment_id } => {
                 let environment = service
                     .repository()
                     .get_environment(&environment_id)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Environment '{environment_id}' not found"))?;
-                print_json(&environment, "v2 environment get")
+                print_json(&environment, "Yaku environment get")
             }
-            V2EnvironmentCommands::Create { workspace_id, name, variables_json } => {
+            YakuEnvironmentCommands::Create { workspace_id, name, variables_json } => {
                 let environment = service
                     .create_environment(CreateEnvironment {
                         id: prefixed_id("env"),
@@ -105,9 +105,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&environment, "v2 environment create")
+                print_json(&environment, "Yaku environment create")
             }
-            V2EnvironmentCommands::Update { environment_id, name, variables_json } => {
+            YakuEnvironmentCommands::Update { environment_id, name, variables_json } => {
                 let environment = service
                     .update_environment(UpdateEnvironment {
                         id: environment_id,
@@ -116,33 +116,33 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&environment, "v2 environment update")
+                print_json(&environment, "Yaku environment update")
             }
-            V2EnvironmentCommands::Delete { environment_id } => {
+            YakuEnvironmentCommands::Delete { environment_id } => {
                 service.delete_environment(&environment_id).map_err(|e| e.to_string())?;
                 print_json(
                     &json!({ "deleted": true, "environmentId": environment_id }),
-                    "v2 environment delete",
+                    "Yaku environment delete",
                 )
             }
         },
-        V2Commands::Request(args) => match args.command {
-            V2RequestCommands::List { workspace_id, cursor, limit } => {
+        YakuCommands::Request(args) => match args.command {
+            YakuRequestCommands::List { workspace_id, cursor, limit } => {
                 let tree = service
                     .repository()
                     .list_request_node_page(&workspace_id, Page { cursor, limit })
                     .map_err(|e| e.to_string())?;
-                print_json(&page_response(tree), "v2 request list")
+                print_json(&page_response(tree), "Yaku request list")
             }
-            V2RequestCommands::Get { request_id } => {
+            YakuRequestCommands::Get { request_id } => {
                 let request = service
                     .repository()
                     .get_request(&request_id)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Request '{request_id}' not found"))?;
-                print_json(&request, "v2 request get")
+                print_json(&request, "Yaku request get")
             }
-            V2RequestCommands::GetNode { node_id } => {
+            YakuRequestCommands::GetNode { node_id } => {
                 let node = service
                     .repository()
                     .get_request_node(&node_id)
@@ -154,9 +154,9 @@ fn run_inner(
                     }
                     None => None,
                 };
-                print_json(&json!({ "node": node, "request": request }), "v2 request get-node")
+                print_json(&json!({ "node": node, "request": request }), "Yaku request get-node")
             }
-            V2RequestCommands::Duplicate { request_id, name, parent_id, sort_key } => {
+            YakuRequestCommands::Duplicate { request_id, name, parent_id, sort_key } => {
                 let request = service
                     .duplicate_request(DuplicateRequest {
                         source_id: request_id,
@@ -168,9 +168,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request duplicate")
+                print_json(&request, "Yaku request duplicate")
             }
-            V2RequestCommands::Create {
+            YakuRequestCommands::Create {
                 workspace_id,
                 name,
                 method,
@@ -209,9 +209,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request create")
+                print_json(&request, "Yaku request create")
             }
-            V2RequestCommands::PatchHttp {
+            YakuRequestCommands::PatchHttp {
                 request_id,
                 name,
                 method,
@@ -268,9 +268,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request patch-http")
+                print_json(&request, "Yaku request patch-http")
             }
-            V2RequestCommands::PatchGraphql {
+            YakuRequestCommands::PatchGraphql {
                 request_id,
                 name,
                 url,
@@ -331,9 +331,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request patch-graphql")
+                print_json(&request, "Yaku request patch-graphql")
             }
-            V2RequestCommands::PatchSse {
+            YakuRequestCommands::PatchSse {
                 request_id,
                 name,
                 url,
@@ -380,9 +380,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request patch-sse")
+                print_json(&request, "Yaku request patch-sse")
             }
-            V2RequestCommands::CreateFolder { workspace_id, name, parent_id, sort_key } => {
+            YakuRequestCommands::CreateFolder { workspace_id, name, parent_id, sort_key } => {
                 let node = service
                     .create_folder(CreateFolder {
                         id: prefixed_id("folder"),
@@ -393,9 +393,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&node, "v2 request create-folder")
+                print_json(&node, "Yaku request create-folder")
             }
-            V2RequestCommands::Update { request_id, name, description, config_json } => {
+            YakuRequestCommands::Update { request_id, name, description, config_json } => {
                 let config = config_json.map(parse_config_json).transpose()?;
                 let request = service
                     .update_request(UpdateRequest {
@@ -406,9 +406,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request update")
+                print_json(&request, "Yaku request update")
             }
-            V2RequestCommands::Move { node_id, parent_id, sort_key } => {
+            YakuRequestCommands::Move { node_id, parent_id, sort_key } => {
                 let node = service
                     .move_request_node(MoveRequestNode {
                         id: node_id,
@@ -417,17 +417,17 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&node, "v2 request move")
+                print_json(&node, "Yaku request move")
             }
-            V2RequestCommands::Delete { node_id } => {
+            YakuRequestCommands::Delete { node_id } => {
                 service.delete_request_node(&node_id).map_err(|e| e.to_string())?;
                 let body_gc = gc_body_files(service.repository(), &bodies_dir, false)?;
                 print_json(
                     &json!({ "deleted": true, "nodeId": node_id, "bodyGc": body_gc }),
-                    "v2 request delete",
+                    "Yaku request delete",
                 )
             }
-            V2RequestCommands::CreateGraphql {
+            YakuRequestCommands::CreateGraphql {
                 workspace_id,
                 name,
                 url,
@@ -465,9 +465,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request create-graphql")
+                print_json(&request, "Yaku request create-graphql")
             }
-            V2RequestCommands::CreateSse {
+            YakuRequestCommands::CreateSse {
                 workspace_id,
                 name,
                 url,
@@ -501,9 +501,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request create-sse")
+                print_json(&request, "Yaku request create-sse")
             }
-            V2RequestCommands::CreateWebsocket {
+            YakuRequestCommands::CreateWebsocket {
                 workspace_id,
                 name,
                 url,
@@ -538,9 +538,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request create-websocket")
+                print_json(&request, "Yaku request create-websocket")
             }
-            V2RequestCommands::PatchWebsocket {
+            YakuRequestCommands::PatchWebsocket {
                 request_id,
                 name,
                 url,
@@ -592,9 +592,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request patch-websocket")
+                print_json(&request, "Yaku request patch-websocket")
             }
-            V2RequestCommands::CreateGrpc {
+            YakuRequestCommands::CreateGrpc {
                 workspace_id,
                 name,
                 url,
@@ -632,9 +632,9 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request create-grpc")
+                print_json(&request, "Yaku request create-grpc")
             }
-            V2RequestCommands::PatchGrpc {
+            YakuRequestCommands::PatchGrpc {
                 request_id,
                 name,
                 url,
@@ -699,33 +699,33 @@ fn run_inner(
                         now: Utc::now(),
                     })
                     .map_err(|e| e.to_string())?;
-                print_json(&request, "v2 request patch-grpc")
+                print_json(&request, "Yaku request patch-grpc")
             }
         },
-        V2Commands::Run(args) => match args.command {
-            V2RunCommands::Get { run_id } => {
+        YakuCommands::Run(args) => match args.command {
+            YakuRunCommands::Get { run_id } => {
                 let run = service
                     .repository()
                     .get_run(&run_id)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Run '{run_id}' not found"))?;
-                print_json(&run, "v2 run get")
+                print_json(&run, "Yaku run get")
             }
-            V2RunCommands::List { request_id, cursor, limit } => {
+            YakuRunCommands::List { request_id, cursor, limit } => {
                 let runs = service
                     .repository()
                     .list_run_page_for_request(&request_id, Page { cursor, limit })
                     .map_err(|e| e.to_string())?;
-                print_json(&page_response(runs), "v2 run list")
+                print_json(&page_response(runs), "Yaku run list")
             }
-            V2RunCommands::ListWorkspace { workspace_id, cursor, limit } => {
+            YakuRunCommands::ListWorkspace { workspace_id, cursor, limit } => {
                 let runs = service
                     .repository()
                     .list_run_page_for_workspace(&workspace_id, Page { cursor, limit })
                     .map_err(|e| e.to_string())?;
-                print_json(&page_response(runs), "v2 run list-workspace")
+                print_json(&page_response(runs), "Yaku run list-workspace")
             }
-            V2RunCommands::Events { run_id, cursor, kind, limit } => {
+            YakuRunCommands::Events { run_id, cursor, kind, limit } => {
                 let events = match kind {
                     Some(kind) => service
                         .repository()
@@ -741,22 +741,25 @@ fn run_inner(
                         .map_err(|e| e.to_string())?,
                 };
                 let next_cursor = events.last().map(|event| event.id);
-                print_json(&json!({ "items": events, "nextCursor": next_cursor }), "v2 run events")
+                print_json(
+                    &json!({ "items": events, "nextCursor": next_cursor }),
+                    "Yaku run events",
+                )
             }
-            V2RunCommands::Snapshot { run_id } => {
+            YakuRunCommands::Snapshot { run_id } => {
                 let snapshot = service
                     .repository()
                     .latest_run_event_by_kind(&run_id, RunEventKind::RequestSnapshot)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Run '{run_id}' does not have a request snapshot"))?;
-                print_json(&snapshot, "v2 run snapshot")
+                print_json(&snapshot, "Yaku run snapshot")
             }
-            V2RunCommands::Bodies { run_id } => {
+            YakuRunCommands::Bodies { run_id } => {
                 let bodies =
                     service.repository().list_run_bodies(&run_id).map_err(|e| e.to_string())?;
-                print_json(&bodies, "v2 run bodies")
+                print_json(&bodies, "Yaku run bodies")
             }
-            V2RunCommands::Body { body_id } => {
+            YakuRunCommands::Body { body_id } => {
                 let body = service
                     .repository()
                     .get_run_body(&body_id)
@@ -767,15 +770,15 @@ fn run_inner(
                     .write_all(&bytes)
                     .map_err(|e| format!("Failed to write body to stdout: {e}"))
             }
-            V2RunCommands::Delete { run_id } => {
+            YakuRunCommands::Delete { run_id } => {
                 service.delete_run(&run_id).map_err(|e| e.to_string())?;
                 let body_gc = gc_body_files(service.repository(), &bodies_dir, false)?;
                 print_json(
                     &json!({ "deleted": true, "runId": run_id, "bodyGc": body_gc }),
-                    "v2 run delete",
+                    "Yaku run delete",
                 )
             }
-            V2RunCommands::Prune { request_id, workspace_id, keep_last } => {
+            YakuRunCommands::Prune { request_id, workspace_id, keep_last } => {
                 let scope = match (request_id, workspace_id) {
                     (Some(request_id), None) => PruneRunsScope::Request { request_id },
                     (None, Some(workspace_id)) => PruneRunsScope::Workspace { workspace_id },
@@ -791,17 +794,17 @@ fn run_inner(
                 let body_gc = gc_body_files(service.repository(), &bodies_dir, false)?;
                 print_json(
                     &json!({ "deleted": deleted, "keepLast": keep_last, "bodyGc": body_gc }),
-                    "v2 run prune",
+                    "Yaku run prune",
                 )
             }
-            V2RunCommands::RetentionGet { workspace_id } => {
+            YakuRunCommands::RetentionGet { workspace_id } => {
                 let keep_last = workspace_run_retention(service.repository(), &workspace_id)?;
                 print_json(
                     &json!({ "workspaceId": workspace_id, "keepLast": keep_last }),
-                    "v2 run retention-get",
+                    "Yaku run retention-get",
                 )
             }
-            V2RunCommands::RetentionSet { workspace_id, keep_last } => {
+            YakuRunCommands::RetentionSet { workspace_id, keep_last } => {
                 if service
                     .repository()
                     .get_workspace(&workspace_id)
@@ -820,26 +823,26 @@ fn run_inner(
                     .map_err(|e| e.to_string())?;
                 print_json(
                     &json!({ "workspaceId": workspace_id, "keepLast": keep_last }),
-                    "v2 run retention-set",
+                    "Yaku run retention-set",
                 )
             }
-            V2RunCommands::RetentionClear { workspace_id } => {
+            YakuRunCommands::RetentionClear { workspace_id } => {
                 service
                     .repository()
                     .delete_setting(&workspace_run_retention_key(&workspace_id))
                     .map_err(|e| e.to_string())?;
                 print_json(
                     &json!({ "workspaceId": workspace_id, "keepLast": null }),
-                    "v2 run retention-clear",
+                    "Yaku run retention-clear",
                 )
             }
-            V2RunCommands::GcBodies { dry_run } => {
+            YakuRunCommands::GcBodies { dry_run } => {
                 let report = gc_body_files(service.repository(), &bodies_dir, dry_run)?;
-                print_json(&report, "v2 run gc-bodies")
+                print_json(&report, "Yaku run gc-bodies")
             }
         },
-        V2Commands::Backup(args) => match args.command {
-            V2BackupCommands::ExportWorkspace { workspace_id, output } => {
+        YakuCommands::Backup(args) => match args.command {
+            YakuBackupCommands::ExportWorkspace { workspace_id, output } => {
                 let export = export_workspace(service.repository(), &workspace_id)?;
                 let json = serde_json::to_string_pretty(&export)
                     .map_err(|e| format!("Failed to serialize workspace export: {e}"))?;
@@ -873,7 +876,7 @@ fn run_inner(
                                 "bytes": json.len() + 1,
                                 "manifestId": manifest.id,
                             }),
-                            "v2 backup export-workspace",
+                            "Yaku backup export-workspace",
                         )
                     }
                     None => {
@@ -893,7 +896,7 @@ fn run_inner(
                     }
                 }
             }
-            V2BackupCommands::ImportWorkspace { file, replace_existing } => {
+            YakuBackupCommands::ImportWorkspace { file, replace_existing } => {
                 let backup = read_workspace_backup(&file)?;
                 let replaced_existing = service
                     .repository()
@@ -931,10 +934,10 @@ fn run_inner(
                         "manifestId": manifest.id,
                         "bodyGc": body_gc,
                     }),
-                    "v2 backup import-workspace",
+                    "Yaku backup import-workspace",
                 )
             }
-            V2BackupCommands::VerifyWorkspace { file } => {
+            YakuBackupCommands::VerifyWorkspace { file } => {
                 let backup = read_workspace_backup(&file)?;
                 service.repository().verify_workspace_backup(&backup).map_err(|e| e.to_string())?;
                 let manifest = record_backup_manifest(
@@ -960,10 +963,10 @@ fn run_inner(
                         "runRetention": backup.run_retention,
                         "manifestId": manifest.id,
                     }),
-                    "v2 backup verify-workspace",
+                    "Yaku backup verify-workspace",
                 )
             }
-            V2BackupCommands::ListManifests { workspace_id, content_hash, cursor, limit } => {
+            YakuBackupCommands::ListManifests { workspace_id, content_hash, cursor, limit } => {
                 let manifests = service
                     .repository()
                     .list_backup_manifest_page(
@@ -972,18 +975,18 @@ fn run_inner(
                         Page { cursor, limit },
                     )
                     .map_err(|e| e.to_string())?;
-                print_json(&page_response(manifests), "v2 backup list-manifests")
+                print_json(&page_response(manifests), "Yaku backup list-manifests")
             }
-            V2BackupCommands::GetManifest { manifest_id } => {
+            YakuBackupCommands::GetManifest { manifest_id } => {
                 let manifest = service
                     .repository()
                     .get_backup_manifest(&manifest_id)
                     .map_err(|e| e.to_string())?
                     .ok_or_else(|| format!("Backup manifest '{manifest_id}' not found"))?;
-                print_json(&manifest, "v2 backup get-manifest")
+                print_json(&manifest, "Yaku backup get-manifest")
             }
         },
-        V2Commands::Send { request_id } => {
+        YakuCommands::Send { request_id } => {
             let request = service
                 .repository()
                 .get_request(&request_id)
@@ -1035,7 +1038,7 @@ fn run_inner(
                 }
             };
             auto_prune_workspace_runs(&service, &bodies_dir, &workspace_id)?;
-            print_json(&run, "v2 send")
+            print_json(&run, "Yaku send")
         }
     }
 }
@@ -1318,7 +1321,7 @@ fn read_body_bytes(storage_kind: &BodyStorageKind, storage_ref: &str) -> Result<
             std::fs::read(path).map_err(|e| format!("Failed to read body file {path}: {e}"))
         }
         BodyStorageKind::Blob => {
-            Err("Blob body storage is not supported by v2 CLI yet".to_string())
+            Err("Blob body storage is not supported by Yaku CLI yet".to_string())
         }
     }
 }
