@@ -20,7 +20,6 @@ mod error;
 mod formatting;
 mod history;
 mod metadata_commands;
-mod models_ext;
 mod notifications;
 mod path_guard;
 mod update_commands;
@@ -89,13 +88,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .plugin(yakumo_mac_window::init())
-        .plugin(models_ext::init()) // Database setup only
         .plugin(yakumo_fonts::init());
-
-    #[cfg(feature = "license")]
-    {
-        builder = builder.plugin(yakumo_license::init());
-    }
 
     #[cfg(feature = "updater")]
     {
@@ -104,15 +97,6 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // Initialize HTTP connection manager
-            app.manage(yakumo_http::manager::HttpConnectionManager::new());
-
-            // Initialize encryption manager
-            let query_manager =
-                app.state::<yakumo_models::query_manager::QueryManager>().inner().clone();
-            let app_id = app.config().identifier.to_string();
-            app.manage(yakumo_crypto::manager::EncryptionManager::new(query_manager, app_id));
-
             {
                 let app_handle = app.app_handle().clone();
                 app.deep_link().on_open_url(move |event| {

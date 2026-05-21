@@ -1,7 +1,6 @@
 use crate::error::Result;
 use crate::history::get_or_upsert_launch_info;
-use crate::models_ext::QueryManagerExt;
-use crate::yaku_app_settings::load_yaku_app_settings;
+use crate::yaku_app_settings::{load_yaku_app_settings, open_yaku_store, upsert_yaku_setting};
 use chrono::{DateTime, Utc};
 use log::{debug, info};
 use reqwest::Method;
@@ -12,13 +11,11 @@ use tokio::sync::Mutex;
 use ts_rs::TS;
 use yakumo_api::{ApiClientKind, yakumo_api_client};
 use yakumo_common::platform::get_os_str;
-use yakumo_models::util::UpdateSource;
 
 // Check for updates every hour
 const MAX_UPDATE_CHECK_SECONDS: u64 = 60 * 60;
 
-const KV_NAMESPACE: &str = "notifications";
-const KV_KEY: &str = "seen";
+const NOTIFICATIONS_SEEN_KEY: &str = "app.notifications.seen";
 
 // Create updater struct
 pub struct YakumoNotifier {
@@ -56,13 +53,8 @@ impl YakumoNotifier {
         let mut seen = get_kv(app_handle).await?;
         seen.push(id.to_string());
         debug!("Marked notification as seen {}", id);
-        let seen_json = serde_json::to_string(&seen)?;
-        window.db().set_key_value_raw(
-            KV_NAMESPACE,
-            KV_KEY,
-            seen_json.as_str(),
-            &UpdateSource::from_window_label(window.label()),
-        );
+        let store = open_yaku_store(app_handle)?;
+        upsert_yaku_setting(&store, NOTIFICATIONS_SEEN_KEY, serde_json::json!(seen))?;
         Ok(())
     }
 
@@ -83,23 +75,6 @@ impl YakumoNotifier {
 
         debug!("Checking for notifications");
 
-        #[cfg(feature = "license")]
-        let license_check = {
-            use yakumo_license::{LicenseCheckStatus, check_license};
-            match check_license(window).await {
-                Ok(LicenseCheckStatus::PersonalUse { .. }) => "personal",
-                Ok(LicenseCheckStatus::Active { .. }) => "commercial",
-                Ok(LicenseCheckStatus::PastDue { .. }) => "past_due",
-                Ok(LicenseCheckStatus::Inactive { .. }) => "invalid_license",
-                Ok(LicenseCheckStatus::Trialing { .. }) => "trialing",
-                Ok(LicenseCheckStatus::Expired { .. }) => "expired",
-                Ok(LicenseCheckStatus::Error { .. }) => "error",
-                Err(_) => "unknown",
-            }
-            .to_string()
-        };
-
-        #[cfg(not(feature = "license"))]
         let license_check = "disabled".to_string();
 
         let launch_info = get_or_upsert_launch_info(app_handle);
@@ -147,10 +122,14 @@ pub(crate) async fn cmd_dismiss_notification<R: Runtime>(
 }
 
 async fn get_kv<R: Runtime>(app_handle: &AppHandle<R>) -> Result<Vec<String>> {
-    match app_handle.db().get_key_value_raw("notifications", "seen") {
-        None => Ok(Vec::new()),
-        Some(v) => Ok(serde_json::from_str(&v.value)?),
-    }
+    let store = open_yaku_store(app_handle)?;
+    let Some(setting) = store
+        .get_setting(NOTIFICATIONS_SEEN_KEY)
+        .map_err(|err| crate::error::Error::GenericError(err.to_string()))?
+    else {
+        return Ok(Vec::new());
+    };
+    Ok(serde_json::from_value(setting.value)?)
 }
 
 #[allow(unused)]

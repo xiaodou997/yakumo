@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crate::error::Result;
-use crate::models_ext::QueryManagerExt;
+use crate::yaku_app_settings::load_yaku_install_id;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Listener, Manager, Runtime, WebviewWindow};
@@ -11,7 +11,6 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use tokio::time::sleep;
 use ts_rs::TS;
-use yakumo_models::util::generate_id;
 
 use url::Url;
 use yakumo_api::get_system_proxy_url;
@@ -81,8 +80,8 @@ impl YakumoUpdater {
             }
         }
 
-        let settings = window.db().get_settings();
-        let update_key = format!("{:x}", md5::compute(settings.id));
+        let install_id = load_yaku_install_id(window)?;
+        let update_key = format!("{:x}", md5::compute(install_id));
         self.last_check = Some(Instant::now());
 
         info!("Checking for updates mode={} autodl={}", mode, auto_download);
@@ -223,7 +222,7 @@ async fn start_integrated_update<R: Runtime>(
     debug!("Download path: {}", download_path.display());
     let downloaded = download_path.exists();
     let ack_wait = Duration::from_secs(3);
-    let reply_id = generate_id();
+    let reply_id = uuid::Uuid::new_v4().simple().to_string();
 
     // 1) Start listening BEFORE emitting to avoid missing a fast reply
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<UpdateResponse>();

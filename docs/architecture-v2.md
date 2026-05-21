@@ -64,8 +64,9 @@ The runtime architecture must not preserve compatibility layers.
 - `src-tauri/src/lib.rs` now registers only current app shell commands and
   explicit `cmd_yaku_*` commands. Old request, sync, git, WebSocket, gRPC,
   import, template, action, and `models_*` commands are no longer exposed.
-- `src-tauri/src/models_ext.rs` is reduced to a temporary QueryManager plugin
-  for startup/update/notification code that still reads legacy app settings.
+- `src-tauri/src/models_ext.rs` has been removed. Desktop startup, updater,
+  notification dismissal, launch analytics, and titlebar configuration now use
+  Yaku `settings` records instead of the legacy `db.sqlite` model store.
 - `crates/yakumo-models/guest-js` provides old frontend atoms and mutable model
   helpers.
 - `crates/yakumo-sync` is old model-sync oriented and should not stay on the
@@ -313,9 +314,9 @@ Phase 5: Delete old app surface.
 - Delete old model commands from `src-tauri/src/lib.rs`. Done: the invoke
   handler now exposes only app shell commands plus `cmd_yaku_*`.
 - Delete `src-tauri/src/models_ext.rs` and old request/history command modules
-  once no registered command needs them. Partially done: old request/history
-  command modules were removed or shrunk; `models_ext` remains only as a
-  temporary QueryManager plugin.
+  once no registered command needs them. Done for the desktop runtime:
+  `models_ext` is gone, old request command modules are gone, and launch
+  history now persists through Yaku settings.
 - Remove `@yakumo-internal/models` imports from `src`. Done.
 - Reassess whether `crates/yakumo-models` is still needed by non-desktop crates.
 

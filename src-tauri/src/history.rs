@@ -1,15 +1,17 @@
-use crate::models_ext::QueryManagerExt;
+use crate::yaku_app_settings::{open_yaku_store, upsert_yaku_setting};
 use chrono::{NaiveDateTime, Utc};
 use log::debug;
+use serde::de::DeserializeOwned;
+use serde_json::json;
 use std::sync::OnceLock;
 use tauri::{AppHandle, Runtime};
-use yakumo_models::util::UpdateSource;
+use yaku_store::Store;
 
-const NAMESPACE: &str = "analytics";
 const NUM_LAUNCHES_KEY: &str = "num_launches";
 const LAST_VERSION_KEY: &str = "last_tracked_version";
 const PREV_VERSION_KEY: &str = "last_tracked_version_prev";
 const VERSION_SINCE_KEY: &str = "last_tracked_version_since";
+const USER_SINCE_KEY: &str = "user_since";
 
 #[derive(Default, Debug, Clone)]
 pub struct LaunchEventInfo {
@@ -26,49 +28,55 @@ static LAUNCH_INFO: OnceLock<LaunchEventInfo> = OnceLock::new();
 pub fn get_or_upsert_launch_info<R: Runtime>(app_handle: &AppHandle<R>) -> &LaunchEventInfo {
     LAUNCH_INFO.get_or_init(|| {
         let now = Utc::now().naive_utc();
+        let store = open_yaku_store(app_handle).expect("Failed to open Yaku store");
         let mut info = LaunchEventInfo {
-            version_since: app_handle.db().get_key_value_dte(NAMESPACE, VERSION_SINCE_KEY, now),
+            version_since: get_history_value(&store, VERSION_SINCE_KEY).unwrap_or(now),
             current_version: app_handle.package_info().version.to_string(),
-            user_since: app_handle.db().get_settings().created_at,
-            num_launches: app_handle.db().get_key_value_int(NAMESPACE, NUM_LAUNCHES_KEY, 0) + 1,
+            user_since: get_history_value(&store, USER_SINCE_KEY).unwrap_or(now),
+            num_launches: get_history_value::<i32>(&store, NUM_LAUNCHES_KEY).unwrap_or(0) + 1,
 
             // The rest will be set below
             ..Default::default()
         };
 
-        app_handle
-            .with_tx(|tx| {
-                // Load the previously tracked version
-                let curr_db = tx.get_key_value_str(NAMESPACE, LAST_VERSION_KEY, "");
-                let prev_db = tx.get_key_value_str(NAMESPACE, PREV_VERSION_KEY, "");
+        let curr_db = get_history_value::<String>(&store, LAST_VERSION_KEY).unwrap_or_default();
+        let prev_db = get_history_value::<String>(&store, PREV_VERSION_KEY).unwrap_or_default();
+        if !curr_db.is_empty() && info.current_version != curr_db {
+            info.launched_after_update = true;
+        }
+        if info.launched_after_update {
+            info.previous_version = curr_db;
+            info.version_since = now;
+        } else {
+            info.previous_version = prev_db;
+        }
 
-                // We just updated if the app version is different from the last tracked version we stored
-                if !curr_db.is_empty() && info.current_version != curr_db {
-                    info.launched_after_update = true;
-                }
-
-                // If we just updated, track the previous version as the "previous" current version
-                if info.launched_after_update {
-                    info.previous_version = curr_db.clone();
-                    info.version_since = now;
-                } else {
-                    info.previous_version = prev_db.clone();
-                }
-
-                // Rotate stored versions: move previous into the "prev" slot before overwriting
-                let source = &UpdateSource::Background;
-
-                tx.set_key_value_str(NAMESPACE, PREV_VERSION_KEY, &info.previous_version, source);
-                tx.set_key_value_str(NAMESPACE, LAST_VERSION_KEY, &info.current_version, source);
-                tx.set_key_value_dte(NAMESPACE, VERSION_SINCE_KEY, info.version_since, source);
-                tx.set_key_value_int(NAMESPACE, NUM_LAUNCHES_KEY, info.num_launches, source);
-
-                Ok(())
-            })
-            .unwrap();
+        set_history_value(&store, PREV_VERSION_KEY, json!(info.previous_version));
+        set_history_value(&store, LAST_VERSION_KEY, json!(info.current_version));
+        set_history_value(&store, VERSION_SINCE_KEY, json!(info.version_since));
+        set_history_value(&store, USER_SINCE_KEY, json!(info.user_since));
+        set_history_value(&store, NUM_LAUNCHES_KEY, json!(info.num_launches));
 
         debug!("Initialized launch info");
 
         info
     })
+}
+
+fn get_history_value<T: DeserializeOwned>(store: &Store, key: &str) -> Option<T> {
+    store
+        .get_setting(&history_key(key))
+        .ok()
+        .flatten()
+        .and_then(|setting| serde_json::from_value(setting.value).ok())
+}
+
+fn set_history_value(store: &Store, key: &str, value: serde_json::Value) {
+    if let Err(err) = upsert_yaku_setting(store, &history_key(key), value) {
+        log::warn!("Failed to persist launch history setting {key}: {err}");
+    }
+}
+
+fn history_key(key: &str) -> String {
+    format!("app.analytics.{key}")
 }
