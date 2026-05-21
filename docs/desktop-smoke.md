@@ -33,6 +33,6 @@ Run these checks against a production `.app` build before release verification. 
 ## Settings
 
 1. Open settings and confirm the shell appears quickly.
-2. Visit General, Interface, Shortcuts, Certificates, Proxy, and License tabs.
+2. Visit General, Interface, Shortcuts, Certificates, and Proxy tabs.
 3. Confirm each tab loads only after it is selected and changing a setting persists after closing and reopening settings.
 4. Confirm Escape closes settings when shown as a window or dialog.

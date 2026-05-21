@@ -1,17 +1,10 @@
 {
   "build": {
-    "features": ["updater", "license"]
+    "features": ["updater"]
   },
   "app": {
     "security": {
-      "capabilities": [
-        "default",
-        {
-          "identifier": "release",
-          "windows": ["*"],
-          "permissions": ["yakumo-license:default"]
-        }
-      ]
+      "capabilities": ["default"]
     }
   },
   "plugins": {

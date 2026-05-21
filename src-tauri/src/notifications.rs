@@ -75,8 +75,6 @@ impl YakumoNotifier {
 
         debug!("Checking for notifications");
 
-        let license_check = "disabled".to_string();
-
         let launch_info = get_or_upsert_launch_info(app_handle);
         let app_version = app_handle.package_info().version.to_string();
         let req = yakumo_api_client(ApiClientKind::App, &app_version)?
@@ -86,7 +84,6 @@ impl YakumoNotifier {
                 ("version_prev", &launch_info.previous_version),
                 ("launches", &launch_info.num_launches.to_string()),
                 ("installed", &launch_info.user_since.format("%Y-%m-%d").to_string()),
-                ("license", &license_check),
                 ("updates", &get_updater_status(app_handle).to_string()),
                 ("platform", &get_os_str().to_string()),
             ]);
