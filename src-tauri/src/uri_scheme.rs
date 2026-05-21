@@ -1,7 +1,7 @@
 use crate::error::Result;
+use crate::events::{ShowToastRequest, ToastColor};
 use log::{info, warn};
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url};
-use yakumo_features::events::{Color, ShowToastRequest};
 
 pub(crate) async fn handle_deep_link<R: Runtime>(
     app_handle: &AppHandle<R>,
@@ -24,7 +24,7 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
                 "show_toast",
                 ShowToastRequest {
                     message: "Legacy import links are disabled in the Yaku workspace. Use Yaku backup import instead.".to_string(),
-                    color: Some(Color::Danger),
+                    color: Some(ToastColor::Danger),
                     icon: None,
                     timeout: Some(5000),
                 },

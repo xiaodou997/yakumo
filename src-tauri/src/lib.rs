@@ -3,6 +3,7 @@ use crate::notifications::YakumoNotifier;
 use crate::updates::YakumoUpdater;
 use crate::uri_scheme::handle_deep_link;
 use crate::yaku_app_settings::load_yaku_app_settings;
+use events::{ShowToastRequest, ToastColor};
 use log::{debug, info, warn};
 use std::time::Duration;
 use tauri::{Emitter, RunEvent, State, is_dev};
@@ -13,10 +14,10 @@ use tauri_plugin_log::{Builder, Target, TargetKind, log};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 use tokio::sync::Mutex;
 use tokio::time;
-use yakumo_features::events::{Color, ShowToastRequest};
 use yakumo_mac_window::AppHandleMacWindowExt;
 
 mod error;
+mod events;
 mod formatting;
 mod history;
 mod metadata_commands;
@@ -113,7 +114,7 @@ pub fn run() {
                                             "Error handling deep link: {}",
                                             e.to_string()
                                         ),
-                                        color: Some(Color::Danger),
+                                        color: Some(ToastColor::Danger),
                                         icon: None,
                                         timeout: None,
                                     },

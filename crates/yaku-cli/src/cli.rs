@@ -10,7 +10,7 @@ use std::path::PathBuf;
   - Template variable syntax is ${[ my_var ]}, not {{ ... }}
   - Template function syntax is ${[ namespace.my_func(a='aaa',b='bbb') ]}
   - View JSONSchema for models before creating or updating (eg. `yaku request schema http`)
-  - Legacy CLI send currently supports HTTP only; experimental v2 supports HTTP, GraphQL, SSE, and WebSocket
+  - The default CLI path is Yaku-native; `v2` remains as a temporary compatibility alias
   - Deletion requires confirmation (--yes for non-interactive environments)
   "#)]
 pub struct Cli {
@@ -40,7 +40,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Send a request, folder, or workspace by ID
+    /// Send a request by ID
     Send(SendArgs),
 
     /// Cookie jar commands
@@ -58,7 +58,7 @@ pub enum Commands {
     /// Environment commands
     Environment(EnvironmentArgs),
 
-    /// Experimental V2 commands
+    /// Temporary compatibility alias for Yaku-native commands
     V2(V2Args),
 }
 
@@ -948,7 +948,7 @@ pub enum V2RunCommands {
 
 #[derive(Args)]
 pub struct SendArgs {
-    /// Request, folder, or workspace ID
+    /// Request ID
     pub id: String,
 
     /// Execute requests in parallel
@@ -1110,7 +1110,7 @@ pub enum RequestCommands {
 
     /// Delete a request
     Delete {
-        /// Request ID
+        /// Request tree node ID
         request_id: String,
 
         /// Skip confirmation prompt

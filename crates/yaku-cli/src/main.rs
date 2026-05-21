@@ -1,15 +1,20 @@
 mod cli;
 mod commands;
-mod context;
 mod utils;
 mod version;
 mod version_check;
 
 use clap::Parser;
-use cli::{Cli, Commands, RequestCommands};
-use context::CliContext;
+use cli::{
+    Cli, Commands, CookieJarArgs, CookieJarCommands, EnvironmentArgs, EnvironmentCommands,
+    FolderArgs, FolderCommands, RequestArgs, RequestCommands, RequestSchemaType, SendArgs, V2Args,
+    V2Commands, V2EnvironmentArgs, V2EnvironmentCommands, V2RequestArgs, V2RequestCommands,
+    V2WorkspaceArgs, V2WorkspaceCommands, WorkspaceArgs, WorkspaceCommands,
+};
+use serde_json::{Value, json};
 use std::path::PathBuf;
-use yakumo_models::queries::any_request::AnyRequest;
+use utils::confirm::confirm_delete;
+use utils::output::print_json;
 
 #[tokio::main]
 async fn main() {
@@ -43,101 +48,23 @@ async fn main() {
 
     version_check::maybe_check_for_updates().await;
 
+    if cookie_jar.is_some() {
+        eprintln!("Warning: --cookie-jar is ignored by the Yaku-native CLI path");
+    }
+    if verbose {
+        eprintln!(
+            "Warning: --verbose is currently only honored by detailed run inspection commands"
+        );
+    }
+
     let exit_code = match command {
-        Commands::Send(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            match validate_send_execution_context(
-                &context,
-                &args.id,
-                environment.as_deref(),
-                cookie_jar.as_deref(),
-            ) {
-                Ok(()) => {
-                    let exit_code = commands::send::run(
-                        &context,
-                        args,
-                        environment.as_deref(),
-                        cookie_jar.as_deref(),
-                        verbose,
-                    )
-                    .await;
-                    context.shutdown().await;
-                    exit_code
-                }
-                Err(error) => {
-                    eprintln!("Error: {error}");
-                    1
-                }
-            }
-        }
-        Commands::CookieJar(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            let exit_code = commands::cookie_jar::run(&context, args);
-            context.shutdown().await;
-            exit_code
-        }
-        Commands::Workspace(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            let exit_code = commands::workspace::run(&context, args);
-            context.shutdown().await;
-            exit_code
-        }
-        Commands::Request(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            let execution_context_result = match &args.command {
-                RequestCommands::Send { request_id } => validate_request_execution_context(
-                    &context,
-                    request_id,
-                    environment.as_deref(),
-                    cookie_jar.as_deref(),
-                ),
-                _ => Ok(()),
-            };
-            match execution_context_result {
-                Ok(()) => {
-                    let exit_code = commands::request::run(
-                        &context,
-                        args,
-                        environment.as_deref(),
-                        cookie_jar.as_deref(),
-                        verbose,
-                    )
-                    .await;
-                    context.shutdown().await;
-                    exit_code
-                }
-                Err(error) => {
-                    eprintln!("Error: {error}");
-                    1
-                }
-            }
-        }
-        Commands::Folder(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            let exit_code = commands::folder::run(&context, args);
-            context.shutdown().await;
-            exit_code
-        }
-        Commands::Environment(args) => {
-            let context = CliContext::new(data_dir.clone(), app_id);
-            let exit_code = commands::environment::run(&context, args);
-            context.shutdown().await;
-            exit_code
-        }
-        Commands::V2(args) => {
-            let environment = environment.clone();
-            match tokio::task::spawn_blocking(move || {
-                commands::v2::run(data_dir, args, environment)
-            })
-            .await
-            {
-                Ok(exit_code) => exit_code,
-                Err(error) => {
-                    eprintln!("Error: v2 command failed to join blocking task: {error}");
-                    1
-                }
-            }
-        }
+        Commands::Send(args) => run_yaku_send(data_dir, args, environment),
+        Commands::CookieJar(args) => run_cookie_jar(args),
+        Commands::Workspace(args) => run_yaku_workspace(data_dir, args, environment),
+        Commands::Request(args) => run_yaku_request(data_dir, args, environment),
+        Commands::Folder(args) => run_yaku_folder(data_dir, args, environment),
+        Commands::Environment(args) => run_yaku_environment(data_dir, args, environment),
+        Commands::V2(args) => run_v2(data_dir, args, environment),
     };
 
     if exit_code != 0 {
@@ -145,75 +72,456 @@ async fn main() {
     }
 }
 
-fn validate_send_execution_context(
-    context: &CliContext,
-    id: &str,
-    environment: Option<&str>,
-    explicit_cookie_jar_id: Option<&str>,
-) -> Result<(), String> {
-    let _ = environment;
-    if let Ok(request) = context.db().get_any_request(id) {
-        let workspace_id = match request {
-            AnyRequest::HttpRequest(r) => r.workspace_id,
-            AnyRequest::GrpcRequest(r) => r.workspace_id,
-            AnyRequest::WebsocketRequest(r) => r.workspace_id,
-        };
-        resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
-        return Ok(());
+fn run_v2(data_dir: PathBuf, args: V2Args, environment: Option<String>) -> i32 {
+    match std::thread::spawn(move || commands::v2::run(data_dir, args, environment)).join() {
+        Ok(exit_code) => exit_code,
+        Err(_) => {
+            eprintln!("Error: command failed to join blocking task");
+            1
+        }
     }
-
-    if let Ok(folder) = context.db().get_folder(id) {
-        resolve_cookie_jar_id(context, &folder.workspace_id, explicit_cookie_jar_id)?;
-        return Ok(());
-    }
-
-    if let Ok(workspace) = context.db().get_workspace(id) {
-        resolve_cookie_jar_id(context, &workspace.id, explicit_cookie_jar_id)?;
-        return Ok(());
-    }
-
-    Err(format!("Could not resolve ID '{}' as request, folder, or workspace", id))
 }
 
-fn validate_request_execution_context(
-    context: &CliContext,
-    request_id: &str,
-    environment: Option<&str>,
-    explicit_cookie_jar_id: Option<&str>,
-) -> Result<(), String> {
-    let _ = environment;
-    let request = context
-        .db()
-        .get_any_request(request_id)
-        .map_err(|e| format!("Failed to get request: {e}"))?;
+fn run_yaku_send(data_dir: PathBuf, args: SendArgs, environment: Option<String>) -> i32 {
+    if args.parallel || args.fail_fast {
+        eprintln!(
+            "Warning: --parallel and --fail-fast are not supported by the Yaku-native send path yet"
+        );
+    }
+    run_v2(data_dir, V2Args { command: V2Commands::Send { request_id: args.id } }, environment)
+}
 
-    let workspace_id = match request {
-        AnyRequest::HttpRequest(r) => r.workspace_id,
-        AnyRequest::GrpcRequest(r) => r.workspace_id,
-        AnyRequest::WebsocketRequest(r) => r.workspace_id,
+fn run_cookie_jar(args: CookieJarArgs) -> i32 {
+    match args.command {
+        CookieJarCommands::List { .. } => match print_json(&Vec::<Value>::new(), "cookie jar list")
+        {
+            Ok(()) => 0,
+            Err(error) => {
+                eprintln!("Error: {error}");
+                1
+            }
+        },
+    }
+}
+
+fn run_yaku_workspace(data_dir: PathBuf, args: WorkspaceArgs, environment: Option<String>) -> i32 {
+    let command = match args.command {
+        WorkspaceCommands::List => V2Commands::Workspace(V2WorkspaceArgs {
+            command: V2WorkspaceCommands::List { cursor: None, limit: 500 },
+        }),
+        WorkspaceCommands::Schema { pretty } => return print_schema("workspace", pretty),
+        WorkspaceCommands::Show { workspace_id } => V2Commands::Workspace(V2WorkspaceArgs {
+            command: V2WorkspaceCommands::Get { workspace_id },
+        }),
+        WorkspaceCommands::Create { name, json, json_input } => {
+            match workspace_create_args(name, json, json_input) {
+                Ok(command) => command,
+                Err(error) => return print_error(error),
+            }
+        }
+        WorkspaceCommands::Update { .. } => {
+            return print_error(
+                "workspace update is not supported by the Yaku-native CLI yet".to_string(),
+            );
+        }
+        WorkspaceCommands::Delete { workspace_id, yes } => {
+            if !confirm_or_abort("workspace", &workspace_id, yes) {
+                return 0;
+            }
+            V2Commands::Workspace(V2WorkspaceArgs {
+                command: V2WorkspaceCommands::Delete { workspace_id },
+            })
+        }
     };
-    resolve_cookie_jar_id(context, &workspace_id, explicit_cookie_jar_id)?;
-
-    Ok(())
+    run_v2(data_dir, V2Args { command }, environment)
 }
 
-fn resolve_cookie_jar_id(
-    context: &CliContext,
-    workspace_id: &str,
-    explicit_cookie_jar_id: Option<&str>,
-) -> Result<Option<String>, String> {
-    if let Some(cookie_jar_id) = explicit_cookie_jar_id {
-        return Ok(Some(cookie_jar_id.to_string()));
-    }
+fn run_yaku_environment(
+    data_dir: PathBuf,
+    args: EnvironmentArgs,
+    environment: Option<String>,
+) -> i32 {
+    let command = match args.command {
+        EnvironmentCommands::List { workspace_id } => match workspace_id {
+            Some(workspace_id) => V2Commands::Environment(V2EnvironmentArgs {
+                command: V2EnvironmentCommands::List { workspace_id },
+            }),
+            None => return print_error("environment list requires a workspace ID".to_string()),
+        },
+        EnvironmentCommands::Schema { pretty } => return print_schema("environment", pretty),
+        EnvironmentCommands::Show { environment_id } => {
+            V2Commands::Environment(V2EnvironmentArgs {
+                command: V2EnvironmentCommands::Get { environment_id },
+            })
+        }
+        EnvironmentCommands::Create { workspace_id, name, json } => {
+            match environment_create_args(workspace_id, name, json) {
+                Ok(command) => command,
+                Err(error) => return print_error(error),
+            }
+        }
+        EnvironmentCommands::Update { json, json_input } => {
+            match environment_update_args(json, json_input) {
+                Ok(command) => command,
+                Err(error) => return print_error(error),
+            }
+        }
+        EnvironmentCommands::Delete { environment_id, yes } => {
+            if !confirm_or_abort("environment", &environment_id, yes) {
+                return 0;
+            }
+            V2Commands::Environment(V2EnvironmentArgs {
+                command: V2EnvironmentCommands::Delete { environment_id },
+            })
+        }
+    };
+    run_v2(data_dir, V2Args { command }, environment)
+}
 
-    let default_cookie_jar = context
-        .db()
-        .list_cookie_jars(workspace_id)
-        .map_err(|e| format!("Failed to list cookie jars: {e}"))?
-        .into_iter()
-        .min_by_key(|jar| jar.created_at)
-        .map(|jar| jar.id);
-    Ok(default_cookie_jar)
+fn run_yaku_folder(data_dir: PathBuf, args: FolderArgs, environment: Option<String>) -> i32 {
+    let command = match args.command {
+        FolderCommands::List { workspace_id } => match workspace_id {
+            Some(workspace_id) => V2Commands::Request(V2RequestArgs {
+                command: V2RequestCommands::List { workspace_id, cursor: None, limit: 500 },
+            }),
+            None => return print_error("folder list requires a workspace ID".to_string()),
+        },
+        FolderCommands::Schema { pretty } => return print_schema("folder", pretty),
+        FolderCommands::Show { folder_id } => V2Commands::Request(V2RequestArgs {
+            command: V2RequestCommands::GetNode { node_id: folder_id },
+        }),
+        FolderCommands::Create { workspace_id, name, json } => {
+            match folder_create_args(workspace_id, name, json) {
+                Ok(command) => command,
+                Err(error) => return print_error(error),
+            }
+        }
+        FolderCommands::Update { .. } => {
+            return print_error("folder update is not supported by the Yaku-native CLI yet; use the desktop workspace tree".to_string());
+        }
+        FolderCommands::Delete { folder_id, yes } => {
+            if !confirm_or_abort("folder", &folder_id, yes) {
+                return 0;
+            }
+            V2Commands::Request(V2RequestArgs {
+                command: V2RequestCommands::Delete { node_id: folder_id },
+            })
+        }
+    };
+    run_v2(data_dir, V2Args { command }, environment)
+}
+
+fn run_yaku_request(data_dir: PathBuf, args: RequestArgs, environment: Option<String>) -> i32 {
+    let command = match args.command {
+        RequestCommands::List { workspace_id } => match workspace_id {
+            Some(workspace_id) => V2Commands::Request(V2RequestArgs {
+                command: V2RequestCommands::List { workspace_id, cursor: None, limit: 500 },
+            }),
+            None => return print_error("request list requires a workspace ID".to_string()),
+        },
+        RequestCommands::Show { request_id } => {
+            V2Commands::Request(V2RequestArgs { command: V2RequestCommands::Get { request_id } })
+        }
+        RequestCommands::Send { request_id } => V2Commands::Send { request_id },
+        RequestCommands::Schema { request_type, pretty } => {
+            return print_request_schema(request_type, pretty);
+        }
+        RequestCommands::Create { workspace_id, name, method, url, json } => {
+            match request_create_args(workspace_id, name, method, url, json) {
+                Ok(command) => command,
+                Err(error) => return print_error(error),
+            }
+        }
+        RequestCommands::Update { json, json_input } => match request_update_args(json, json_input)
+        {
+            Ok(command) => command,
+            Err(error) => return print_error(error),
+        },
+        RequestCommands::Delete { request_id, yes } => {
+            if !confirm_or_abort("request", &request_id, yes) {
+                return 0;
+            }
+            V2Commands::Request(V2RequestArgs {
+                command: V2RequestCommands::Delete { node_id: request_id },
+            })
+        }
+    };
+    run_v2(data_dir, V2Args { command }, environment)
+}
+
+fn workspace_create_args(
+    name: Option<String>,
+    json: Option<String>,
+    json_input: Option<String>,
+) -> Result<V2Commands, String> {
+    let payload = parse_optional_payload(json, json_input, "workspace create")?;
+    let (name, description) = match payload {
+        Some(payload) => (
+            string_field(&payload, "name")?
+                .ok_or_else(|| "workspace create JSON requires name".to_string())?,
+            string_field(&payload, "description")?.unwrap_or_default(),
+        ),
+        None => (
+            name.ok_or_else(|| {
+                "workspace create requires --name unless JSON payload is provided".to_string()
+            })?,
+            String::new(),
+        ),
+    };
+    Ok(V2Commands::Workspace(V2WorkspaceArgs {
+        command: V2WorkspaceCommands::Create { name, description },
+    }))
+}
+
+fn environment_create_args(
+    workspace_id: Option<String>,
+    name: Option<String>,
+    json: Option<String>,
+) -> Result<V2Commands, String> {
+    let json_shorthand = workspace_id.as_deref().filter(|value| is_json(value)).map(str::to_owned);
+    let workspace_id_arg = workspace_id.filter(|value| !is_json(value));
+    let payload = parse_optional_payload(json, json_shorthand, "environment create")?;
+    let (workspace_id, name, variables_json) = match payload {
+        Some(payload) => (
+            string_field(&payload, "workspaceId")?
+                .or_else(|| string_field(&payload, "workspace_id").ok().flatten())
+                .or(workspace_id_arg)
+                .ok_or_else(|| "environment create requires workspaceId".to_string())?,
+            string_field(&payload, "name")?
+                .ok_or_else(|| "environment create JSON requires name".to_string())?,
+            json_field_string(&payload, "variables").unwrap_or_else(|| "{}".to_string()),
+        ),
+        None => (
+            workspace_id_arg
+                .ok_or_else(|| "environment create requires a workspace ID".to_string())?,
+            name.ok_or_else(|| {
+                "environment create requires --name unless JSON payload is provided".to_string()
+            })?,
+            "{}".to_string(),
+        ),
+    };
+    Ok(V2Commands::Environment(V2EnvironmentArgs {
+        command: V2EnvironmentCommands::Create { workspace_id, name, variables_json },
+    }))
+}
+
+fn environment_update_args(
+    json: Option<String>,
+    json_input: Option<String>,
+) -> Result<V2Commands, String> {
+    let payload = parse_required_payload(json, json_input, "environment update")?;
+    let environment_id = id_field(&payload, "environment update")?;
+    Ok(V2Commands::Environment(V2EnvironmentArgs {
+        command: V2EnvironmentCommands::Update {
+            environment_id,
+            name: string_field(&payload, "name")?,
+            variables_json: json_field_string(&payload, "variables"),
+        },
+    }))
+}
+
+fn folder_create_args(
+    workspace_id: Option<String>,
+    name: Option<String>,
+    json: Option<String>,
+) -> Result<V2Commands, String> {
+    let json_shorthand = workspace_id.as_deref().filter(|value| is_json(value)).map(str::to_owned);
+    let workspace_id_arg = workspace_id.filter(|value| !is_json(value));
+    let payload = parse_optional_payload(json, json_shorthand, "folder create")?;
+    let (workspace_id, name, parent_id) = match payload {
+        Some(payload) => (
+            string_field(&payload, "workspaceId")?
+                .or_else(|| string_field(&payload, "workspace_id").ok().flatten())
+                .or(workspace_id_arg)
+                .ok_or_else(|| "folder create requires workspaceId".to_string())?,
+            string_field(&payload, "name")?
+                .ok_or_else(|| "folder create JSON requires name".to_string())?,
+            string_field(&payload, "parentId")?
+                .or_else(|| string_field(&payload, "folderId").ok().flatten()),
+        ),
+        None => (
+            workspace_id_arg.ok_or_else(|| "folder create requires a workspace ID".to_string())?,
+            name.ok_or_else(|| {
+                "folder create requires --name unless JSON payload is provided".to_string()
+            })?,
+            None,
+        ),
+    };
+    Ok(V2Commands::Request(V2RequestArgs {
+        command: V2RequestCommands::CreateFolder { workspace_id, name, parent_id, sort_key: None },
+    }))
+}
+
+fn request_create_args(
+    workspace_id: Option<String>,
+    name: Option<String>,
+    method: Option<String>,
+    url: Option<String>,
+    json: Option<String>,
+) -> Result<V2Commands, String> {
+    let json_shorthand = workspace_id.as_deref().filter(|value| is_json(value)).map(str::to_owned);
+    let workspace_id_arg = workspace_id.filter(|value| !is_json(value));
+    let payload = parse_optional_payload(json, json_shorthand, "request create")?;
+    let (workspace_id, name, method, url) = match payload {
+        Some(payload) => (
+            string_field(&payload, "workspaceId")?
+                .or_else(|| string_field(&payload, "workspace_id").ok().flatten())
+                .or(workspace_id_arg)
+                .ok_or_else(|| "request create requires workspaceId".to_string())?,
+            string_field(&payload, "name")?.unwrap_or_default(),
+            string_field(&payload, "method")?.unwrap_or_else(|| "GET".to_string()),
+            string_field(&payload, "url")?.unwrap_or_default(),
+        ),
+        None => (
+            workspace_id_arg.ok_or_else(|| "request create requires a workspace ID".to_string())?,
+            name.unwrap_or_default(),
+            method.unwrap_or_else(|| "GET".to_string()),
+            url.unwrap_or_default(),
+        ),
+    };
+    Ok(V2Commands::Request(V2RequestArgs {
+        command: V2RequestCommands::Create {
+            workspace_id,
+            name,
+            method,
+            url,
+            headers: Vec::new(),
+            query: Vec::new(),
+            body: None,
+            timeout_ms: None,
+            no_follow_redirects: false,
+            parent_id: None,
+            sort_key: None,
+        },
+    }))
+}
+
+fn request_update_args(
+    json: Option<String>,
+    json_input: Option<String>,
+) -> Result<V2Commands, String> {
+    let payload = parse_required_payload(json, json_input, "request update")?;
+    let request_id = id_field(&payload, "request update")?;
+    let method = string_field(&payload, "method")?;
+    let url = string_field(&payload, "url")?;
+    let name = string_field(&payload, "name")?;
+    if method.is_some() || url.is_some() {
+        Ok(V2Commands::Request(V2RequestArgs {
+            command: V2RequestCommands::PatchHttp {
+                request_id,
+                name,
+                method,
+                url,
+                headers: Vec::new(),
+                query: Vec::new(),
+                body: string_field(&payload, "body")?,
+                clear_body: false,
+                timeout_ms: None,
+                follow_redirects: false,
+                no_follow_redirects: false,
+            },
+        }))
+    } else {
+        Ok(V2Commands::Request(V2RequestArgs {
+            command: V2RequestCommands::Update {
+                request_id,
+                name,
+                description: string_field(&payload, "description")?,
+                config_json: json_field_string(&payload, "config"),
+            },
+        }))
+    }
+}
+
+fn print_schema(kind: &str, pretty: bool) -> i32 {
+    let schema = json!({
+        "title": format!("Yaku {kind}"),
+        "type": "object",
+        "description": "Yaku-native CLI schema. Prefer explicit flags; legacy AnyModel payloads are no longer accepted.",
+        "x-yaku": true,
+    });
+    let output =
+        if pretty { serde_json::to_string_pretty(&schema) } else { serde_json::to_string(&schema) };
+    match output {
+        Ok(output) => {
+            println!("{output}");
+            0
+        }
+        Err(error) => print_error(format!("Failed to serialize schema: {error}")),
+    }
+}
+
+fn print_request_schema(request_type: RequestSchemaType, pretty: bool) -> i32 {
+    let kind = match request_type {
+        RequestSchemaType::Http => "http request",
+        RequestSchemaType::Grpc => "grpc request",
+        RequestSchemaType::Websocket => "websocket request",
+    };
+    print_schema(kind, pretty)
+}
+
+fn confirm_or_abort(kind: &str, id: &str, yes: bool) -> bool {
+    if yes {
+        return true;
+    }
+    match confirm_delete(kind, id) {
+        Ok(true) => true,
+        Ok(false) => {
+            println!("Aborted");
+            false
+        }
+        Err(error) => {
+            eprintln!("Error: {error}");
+            false
+        }
+    }
+}
+
+fn parse_optional_payload(
+    json: Option<String>,
+    json_input: Option<String>,
+    context: &str,
+) -> Result<Option<Value>, String> {
+    let Some(raw) = json.or(json_input) else {
+        return Ok(None);
+    };
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|error| format!("Failed to parse {context} JSON: {error}"))
+}
+
+fn parse_required_payload(
+    json: Option<String>,
+    json_input: Option<String>,
+    context: &str,
+) -> Result<Value, String> {
+    parse_optional_payload(json, json_input, context)?
+        .ok_or_else(|| format!("{context} requires a JSON payload"))
+}
+
+fn id_field(payload: &Value, context: &str) -> Result<String, String> {
+    string_field(payload, "id")?.ok_or_else(|| format!("{context} JSON requires id"))
+}
+
+fn string_field(payload: &Value, key: &str) -> Result<Option<String>, String> {
+    match payload.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        Some(value) => Err(format!("Field '{key}' must be a string, got {value}")),
+    }
+}
+
+fn json_field_string(payload: &Value, key: &str) -> Option<String> {
+    payload.get(key).filter(|value| !value.is_null()).map(Value::to_string)
+}
+
+fn is_json(value: &str) -> bool {
+    value.trim_start().starts_with('{')
+}
+
+fn print_error(error: String) -> i32 {
+    eprintln!("Error: {error}");
+    1
 }
 
 fn resolve_data_dir(app_id: &str) -> Result<PathBuf, String> {
@@ -237,9 +545,6 @@ fn wsl_data_dir(app_id: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // We're in WSL, so try to resolve the Yakumo app's data directory in Windows
-
-    // Get the Windows %APPDATA% path via cmd.exe
     let appdata_output =
         std::process::Command::new("cmd.exe").args(["/C", "echo", "%APPDATA%"]).output().ok()?;
 
@@ -248,7 +553,6 @@ fn wsl_data_dir(app_id: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // Convert Windows path to WSL path using wslpath (handles custom mount points)
     let wslpath_output = std::process::Command::new("wslpath").arg(&win_path).output().ok()?;
 
     let wsl_appdata = String::from_utf8(wslpath_output.stdout).ok()?.trim().to_string();
@@ -257,6 +561,5 @@ fn wsl_data_dir(app_id: &str) -> Option<PathBuf> {
     }
 
     let wsl_path = PathBuf::from(wsl_appdata).join(app_id);
-
     if wsl_path.exists() { Some(wsl_path) } else { None }
 }

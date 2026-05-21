@@ -22,6 +22,17 @@ pub struct ClientCertificateConfig {
     pub passphrase: Option<String>,
 }
 
+#[derive(Clone, Default)]
+pub struct ClientCertificate {
+    pub host: String,
+    pub port: Option<i32>,
+    pub crt_file: Option<String>,
+    pub key_file: Option<String>,
+    pub pfx_file: Option<String>,
+    pub passphrase: Option<String>,
+    pub enabled: bool,
+}
+
 pub fn get_tls_config(
     validate_certificates: bool,
     with_alpn: bool,
@@ -234,7 +245,7 @@ impl ServerCertVerifier for NoVerifier {
 
 pub fn find_client_certificate(
     url_string: &str,
-    certificates: &[yakumo_models::models::ClientCertificate],
+    certificates: &[ClientCertificate],
 ) -> Option<ClientCertificateConfig> {
     let url = url::Url::from_str(url_string).ok()?;
     let host = url.host_str()?;
@@ -278,8 +289,7 @@ pub fn find_client_certificate(
 
 #[cfg(test)]
 mod tests {
-    use super::find_client_certificate;
-    use yakumo_models::models::ClientCertificate;
+    use super::{find_client_certificate, ClientCertificate};
 
     fn cert(host: &str, port: Option<i32>, enabled: bool) -> ClientCertificate {
         ClientCertificate {

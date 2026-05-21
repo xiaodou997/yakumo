@@ -13,4 +13,3 @@ rustls-platform-verifier = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = "2.0.17"
 url = "2.5"
-yakumo-models = { workspace = true }

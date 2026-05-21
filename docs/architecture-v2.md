@@ -319,6 +319,13 @@ Phase 5: Delete old app surface.
   history now persists through Yaku settings.
 - Remove `@yakumo-internal/models` imports from `src`. Done.
 - Reassess whether `crates/yakumo-models` is still needed by non-desktop crates.
+  Done for the app and CLI runtime surfaces: `crates/yaku-cli/src` now uses the
+  Yaku store/engine path for default workspace/request/folder/environment/send
+  commands, old CLI command modules plus legacy integration tests were removed,
+  and the `yaku-cli` dependency tree no longer includes `yakumo-models`.
+  `yakumo-app` no longer depends on `yakumo-features` for toast events either;
+  the small `show_toast` payload type lives inside `src-tauri`. Remaining
+  `yakumo-models` usage is isolated to old non-runtime crates.
 
 Phase 6: Rebuild optional capabilities.
 
@@ -330,7 +337,9 @@ Phase 6: Rebuild optional capabilities.
   with guidance to use Yaku backup import.
 - Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
   implemented through `app.settings`; secrets remain follow-up work.
-- Yaku CLI parity for protocols beyond HTTP.
+- Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
+  the Yaku-native command path; `v2` remains as a temporary compatibility alias
+  while command names and docs are cleaned up.
 
 ## Proposed Commit Sequence
 

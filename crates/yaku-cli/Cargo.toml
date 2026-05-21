@@ -10,24 +10,16 @@ name = "yaku"
 path = "src/main.rs"
 
 [dependencies]
-arboard = "3"
-base64 = "0.22"
 chrono = { workspace = true, features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 console = "0.15"
 dirs = "6"
 env_logger = "0.11"
-futures = "0.3"
-inquire = { version = "0.7", features = ["editor"] }
 hex = { workspace = true }
-keyring = { workspace = true, features = ["apple-native", "windows-native", "sync-secret-service"] }
 log = { workspace = true }
 rand = "0.8"
-reqwest = { workspace = true }
-schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { workspace = true }
 tokio = { workspace = true, features = [
   "rt-multi-thread",
   "macros",
@@ -36,13 +28,8 @@ tokio = { workspace = true, features = [
   "signal",
   "time",
 ] }
-yakumo = { workspace = true }
-yakumo-crypto = { workspace = true }
 yaku-domain = { workspace = true }
 yaku-engine = { workspace = true }
-yakumo-http = { workspace = true }
-yakumo-models = { workspace = true }
-yakumo-features = { workspace = true }
 yaku-store = { workspace = true }
 
 [dev-dependencies]

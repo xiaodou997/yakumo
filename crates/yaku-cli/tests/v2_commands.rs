@@ -209,6 +209,52 @@ fn v2_workspace_and_request_round_trip() {
 }
 
 #[test]
+fn top_level_commands_use_yaku_store() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+
+    let create_workspace = cli_cmd(data_dir)
+        .args(["workspace", "create", "--name", "Top Workspace"])
+        .assert()
+        .success()
+        .stdout(contains("\"name\":\"Top Workspace\""));
+    let workspace_id = parse_created_id(&create_workspace.get_output().stdout, "workspace create");
+
+    cli_cmd(data_dir)
+        .args(["workspace", "list"])
+        .assert()
+        .success()
+        .stdout(contains(format!(r#""id":"{workspace_id}""#)));
+
+    let create_request = cli_cmd(data_dir)
+        .args([
+            "request",
+            "create",
+            &workspace_id,
+            "--name",
+            "Top Request",
+            "--method",
+            "GET",
+            "--url",
+            "https://example.test",
+        ])
+        .assert()
+        .success()
+        .stdout(contains("\"name\":\"Top Request\""));
+    let request_id = parse_created_id(&create_request.get_output().stdout, "request create");
+
+    cli_cmd(data_dir)
+        .args(["request", "show", &request_id])
+        .assert()
+        .success()
+        .stdout(contains("\"protocol\":\"http\""));
+
+    assert!(data_dir.join("yaku.sqlite").exists());
+    assert!(!data_dir.join("db.sqlite").exists());
+    assert!(!data_dir.join("blobs.sqlite").exists());
+}
+
+#[test]
 fn v2_environment_round_trip() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();

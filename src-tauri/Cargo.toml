@@ -74,7 +74,6 @@ yakumo-tauri-utils = { workspace = true }
 yaku-domain = { workspace = true }
 yakumo-fonts = { workspace = true }
 yakumo-mac-window = { workspace = true }
-yakumo-features = { workspace = true }
 yakumo-templates = { workspace = true }
 yaku-engine = { workspace = true }
 yaku-store = { workspace = true }
