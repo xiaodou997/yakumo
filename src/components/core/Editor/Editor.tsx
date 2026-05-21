@@ -8,12 +8,9 @@ import { emacs } from "@replit/codemirror-emacs";
 import { vim } from "@replit/codemirror-vim";
 
 import { vscodeKeymap } from "@replit/codemirror-vscode-keymap";
-import type { EditorKeymap } from "@yakumo-internal/models";
-import { settingsAtom } from "@yakumo-internal/models";
-import type { EditorLanguage, TemplateFunction } from "@yakumo/features";
+import type { EditorLanguage } from "@yakumo/features";
 import classNames from "classnames";
 import type { GraphQLSchema } from "graphql";
-import { useAtomValue } from "jotai";
 import { md5 } from "js-md5";
 import type { ReactNode, RefObject } from "react";
 import {
@@ -26,19 +23,14 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { activeEnvironmentAtom } from "../../../hooks/useActiveEnvironment";
-import type { WrappedEnvironmentVariable } from "../../../hooks/useEnvironmentVariables";
-import { useEnvironmentVariables } from "../../../hooks/useEnvironmentVariables";
 import { eventMatchesHotkey } from "../../../hooks/useHotKey";
-import { useRequestEditor } from "../../../hooks/useRequestEditor";
-import { useTemplateFunctionCompletionOptions } from "../../../hooks/useTemplateFunctions";
 import { tryFormatHtml, tryFormatJson, tryFormatXml } from "../../../lib/formatters";
-import { jotaiStore } from "../../../lib/jotai";
-import { withEncryptionEnabled } from "../../../lib/setupOrConfigureEncryption";
-import { TemplateFunctionDialog } from "../../TemplateFunctionDialog";
+import type { YakuAppSettings } from "../../../lib/yaku-client";
+import { useYakuSettings } from "../../../lib/yaku-settings";
 import { IconButton } from "../IconButton";
 import { HStack } from "../Stacks";
 import "./Editor.css";
+import type { WrappedEnvironmentVariable } from "./environmentVariables";
 import {
   baseExtensions,
   multiLineExtensions,
@@ -48,16 +40,21 @@ import type { GenericCompletionConfig } from "./genericCompletion";
 import type { LanguageExtensionConfig } from "./languageExtensions";
 import { createLanguageExtensionConfigurator } from "./languageExtensionLoader";
 import { singleLineExtensions } from "./singleLine";
+import type { TwigCompletionOption } from "./twig/completion";
 
 // VSCode's Tab actions mess with the single-line editor tab actions, so remove it.
 const vsCodeWithoutTab = vscodeKeymap.filter((k) => k.key !== "Tab");
 
-const keymapExtensions: Record<EditorKeymap, Extension> = {
+const keymapExtensions: Record<YakuAppSettings["editorKeymap"], Extension> = {
   vim: vim(),
   emacs: emacs(),
   vscode: keymap.of(vsCodeWithoutTab),
   default: [],
 };
+
+function keymapExtensionFor(keymapName: YakuAppSettings["editorKeymap"]): Extension {
+  return keymapExtensions[keymapName] ?? keymapExtensions.default;
+}
 
 export interface EditorProps {
   actions?: ReactNode;
@@ -101,6 +98,7 @@ const stateFields = { history: historyField, folds: foldState };
 
 const emptyVariables: WrappedEnvironmentVariable[] = [];
 const emptyExtension: Extension = [];
+const emptyCompletionOptions: TwigCompletionOption[] = [];
 
 export function Editor(props: EditorProps) {
   return <EditorInner key={props.stateKey} {...props} />;
@@ -118,7 +116,6 @@ function EditorInner({
   disableTabIndent,
   disabled,
   extraExtensions,
-  forcedEnvironmentId,
   forceUpdateKey,
   format,
   heightMode,
@@ -141,16 +138,10 @@ function EditorInner({
   wrapLines,
   setRef,
 }: EditorProps) {
-  const settings = useAtomValue(settingsAtom);
+  const settings = useYakuSettings();
 
-  const allEnvironmentVariables = useEnvironmentVariables(forcedEnvironmentId ?? null);
   const useTemplating = !!(autocompleteFunctions || autocompleteVariables || autocomplete);
-  const environmentVariables = useMemo(() => {
-    if (!autocompleteVariables) return emptyVariables;
-    return typeof autocompleteVariables === "function"
-      ? allEnvironmentVariables.filter(autocompleteVariables)
-      : allEnvironmentVariables;
-  }, [allEnvironmentVariables, autocompleteVariables]);
+  const environmentVariables = emptyVariables;
 
   if (settings && wrapLines === undefined) {
     wrapLines = settings.editorSoftWrap;
@@ -251,7 +242,7 @@ function EditorInner({
       if (settings.editorKeymap === "vscode" && current === keymapExtensions.vscode) return; // Nothing to do
       if (settings.editorKeymap === "emacs" && current === keymapExtensions.emacs) return; // Nothing to do
 
-      const ext = keymapExtensions[settings.editorKeymap] ?? keymapExtensions.default;
+      const ext = keymapExtensionFor(settings.editorKeymap);
       const effects = keymapCompartment.current.reconfigure(ext);
       cm.current.view.dispatch({ effects });
     },
@@ -292,51 +283,10 @@ function EditorInner({
     [disableTabIndent],
   );
 
-  const onClickFunction = useCallback(
-    async (fn: TemplateFunction, tagValue: string, startPos: number) => {
-      const show = () => {
-        if (cm.current === null) return;
-        TemplateFunctionDialog.show(fn, tagValue, startPos, cm.current.view);
-      };
-
-      if (fn.name === "secure") {
-        withEncryptionEnabled(show);
-      } else {
-        show();
-      }
-    },
-    [],
-  );
-
-  const onClickVariable = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (v: WrappedEnvironmentVariable, _tagValue: string, _startPos: number) => {
-      const { editEnvironment } = await import("../../../lib/editEnvironment");
-      await editEnvironment(v.environment, { addOrFocusVariable: v.variable });
-    },
-    [],
-  );
-
-  const onClickMissingVariable = useCallback(async (name: string) => {
-    const activeEnvironment = jotaiStore.get(activeEnvironmentAtom);
-    const { editEnvironment } = await import("../../../lib/editEnvironment");
-    await editEnvironment(activeEnvironment, {
-      addOrFocusVariable: { name, value: "", enabled: true },
-    });
-  }, []);
-
-  const [, { focusParamValue }] = useRequestEditor();
-  const onClickPathParameter = useCallback(
-    async (name: string) => {
-      focusParamValue(name);
-    },
-    [focusParamValue],
-  );
-
-  const completionOptions = useTemplateFunctionCompletionOptions(
-    onClickFunction,
-    !!autocompleteFunctions,
-  );
+  const onClickVariable = useCallback(() => {}, []);
+  const onClickMissingVariable = useCallback(() => {}, []);
+  const onClickPathParameter = useCallback(() => {}, []);
+  const completionOptions = emptyCompletionOptions;
 
   const languageExtensionConfig = useMemo<LanguageExtensionConfig>(
     () => ({
@@ -357,9 +307,7 @@ function EditorInner({
       language,
       lintExtension,
       hideGutter,
-      environmentVariables,
       autocomplete,
-      completionOptions,
       onClickVariable,
       onClickMissingVariable,
       onClickPathParameter,
@@ -397,9 +345,7 @@ function EditorInner({
           tabIndentCompartment.current.of(
             !disableTabIndent ? keymap.of([indentWithTab]) : emptyExtension,
           ),
-          keymapCompartment.current.of(
-            keymapExtensions[settings.editorKeymap] ?? keymapExtensions.default,
-          ),
+          keymapCompartment.current.of(keymapExtensionFor(settings.editorKeymap)),
           ...getExtensions({
             container,
             readOnly,

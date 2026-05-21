@@ -1,5 +1,3 @@
-import type { Folder, HttpRequest } from "@yakumo-internal/models";
-import { httpRequestsAtom } from "@yakumo-internal/models";
 import type {
   FormInput,
   FormInputCheckbox,
@@ -12,14 +10,10 @@ import type {
   JsonPrimitive,
 } from "@yakumo/features";
 import classNames from "classnames";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
-import { useActiveRequest } from "../hooks/useActiveRequest";
-import { foldersByIdAtom } from "../hooks/useModelLookupMaps";
 import { useRandomKey } from "../hooks/useRandomKey";
 import { capitalize } from "../lib/capitalize";
 import { showDialog } from "../lib/dialog";
-import { resolvedModelName } from "../lib/resolvedModelName";
 import { Banner } from "./core/Banner";
 import { Checkbox } from "./core/Checkbox";
 import { DetailsBanner } from "./core/DetailsBanner";
@@ -495,15 +489,11 @@ function HttpRequestArg({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const foldersById = useAtomValue(foldersByIdAtom);
-  const httpRequests = useAtomValue(httpRequestsAtom);
-  const activeHttpRequest = useActiveRequest("http_request");
-
   useEffect(() => {
-    if (value === DYNAMIC_FORM_NULL_ARG && activeHttpRequest) {
-      onChange(activeHttpRequest.id);
+    if (value === DYNAMIC_FORM_NULL_ARG) {
+      onChange("");
     }
-  }, [activeHttpRequest, onChange, value]);
+  }, [onChange, value]);
 
   return (
     <Select
@@ -513,37 +503,9 @@ function HttpRequestArg({
       help={arg.description}
       value={value}
       disabled={arg.disabled}
-      options={httpRequests.map((r) => {
-        return {
-          label:
-            buildRequestBreadcrumbs(r, foldersById).join(" / ") +
-            (r.id === activeHttpRequest?.id ? " (current)" : ""),
-          value: r.id,
-        };
-      })}
+      options={[]}
     />
   );
-}
-
-function buildRequestBreadcrumbs(
-  request: HttpRequest,
-  foldersById: Map<string, Folder>,
-): string[] {
-  const ancestors: (HttpRequest | Folder)[] = [request];
-
-  const next = () => {
-    const latest = ancestors[0];
-    if (latest == null) return [];
-
-    const parent = latest.folderId == null ? null : foldersById.get(latest.folderId);
-    if (parent == null) return;
-
-    ancestors.unshift(parent);
-    next();
-  };
-  next();
-
-  return ancestors.map((a) => (a.model === "folder" ? a.name : resolvedModelName(a)));
 }
 
 function CheckboxArg({

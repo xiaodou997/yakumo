@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::models_ext::QueryManagerExt;
 use crate::window_menu::app_menu;
+use crate::yaku_app_settings::load_yaku_app_settings;
 use log::{info, warn};
 use rand::random;
 use tauri::{
@@ -97,7 +97,7 @@ pub(crate) fn create_window<R: Runtime>(
         });
     }
 
-    let settings = handle.db().get_settings();
+    let settings = load_yaku_app_settings(handle);
     if config.hide_titlebar && !settings.use_native_titlebar {
         #[cfg(target_os = "macos")]
         {

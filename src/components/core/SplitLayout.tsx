@@ -1,8 +1,6 @@
 import classNames from "classnames";
-import { useAtomValue } from "jotai";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useMemo, useRef } from "react";
-import { activeWorkspaceAtom } from "../../hooks/useActiveWorkspace";
 import { useContainerSize } from "../../hooks/useContainerQuery";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { clamp } from "../../lib/clamp";
@@ -49,13 +47,8 @@ export function SplitLayout({
   minWidthPx = 10,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const activeWorkspace = useAtomValue(activeWorkspaceAtom);
-  const [widthRaw, setWidth] = useLocalStorage<number>(
-    `${name}_width::${activeWorkspace?.id ?? "n/a"}`,
-  );
-  const [heightRaw, setHeight] = useLocalStorage<number>(
-    `${name}_height::${activeWorkspace?.id ?? "n/a"}`,
-  );
+  const [widthRaw, setWidth] = useLocalStorage<number>(`${name}_width`);
+  const [heightRaw, setHeight] = useLocalStorage<number>(`${name}_height`);
   const width = widthRaw ?? defaultRatio;
   let height = heightRaw ?? defaultRatio;
 

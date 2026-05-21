@@ -1,17 +1,15 @@
-// Listen for settings changes, the re-compute theme
-import { listen } from "@tauri-apps/api/event";
-import type { ModelPayload } from "@yakumo-internal/models";
 import { fireAndForget } from "./lib/fireAndForget";
-import { getSettings } from "./lib/settings";
+import { loadYakuAppSettings, YAKU_SETTINGS_CHANGED_EVENT } from "./lib/yaku-settings";
 
 function setFontSizeOnDocument(fontSize: number) {
   document.documentElement.style.fontSize = `${fontSize}px`;
 }
 
-listen<ModelPayload>("model_write", async (event) => {
-  if (event.payload.change.type !== "upsert") return;
-  if (event.payload.model.model !== "settings") return;
-  setFontSizeOnDocument(event.payload.model.interfaceFontSize);
-}).catch(console.error);
+window.addEventListener(YAKU_SETTINGS_CHANGED_EVENT, (event) => {
+  const settings = (event as CustomEvent<Awaited<ReturnType<typeof loadYakuAppSettings>>>).detail;
+  setFontSizeOnDocument(settings.interfaceFontSize);
+});
 
-fireAndForget(getSettings().then((settings) => setFontSizeOnDocument(settings.interfaceFontSize)));
+fireAndForget(
+  loadYakuAppSettings().then((settings) => setFontSizeOnDocument(settings.interfaceFontSize)),
+);

@@ -12,7 +12,7 @@ import {
 import { basename } from "@tauri-apps/api/path";
 import classNames from "classnames";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WrappedEnvironmentVariable } from "../../hooks/useEnvironmentVariables";
+import type { WrappedEnvironmentVariable } from "./Editor/environmentVariables";
 import { useRandomKey } from "../../hooks/useRandomKey";
 import { useToggle } from "../../hooks/useToggle";
 import { languageFromContentType } from "../../lib/contentType";

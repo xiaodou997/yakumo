@@ -1,18 +1,16 @@
-import type { KeyValue } from "@yakumo-internal/models";
-import { createGlobalModel, keyValuesAtom, patchModel } from "@yakumo-internal/models";
 import { atom } from "jotai";
 import { jotaiStore } from "./jotai";
 
-export const keyValuesByNamespaceAndKeyAtom = atom((get) => {
-  const keyValuesByNamespaceAndKey = new Map<string, KeyValue>();
-  for (const keyValue of get(keyValuesAtom)) {
-    keyValuesByNamespaceAndKey.set(
-      buildKeyValueLookupKey(keyValue.namespace, keyValue.key),
-      keyValue,
-    );
-  }
-  return keyValuesByNamespaceAndKey;
-});
+export interface KeyValue {
+  namespace: string;
+  key: string;
+  value: string;
+}
+
+const storagePrefix = "yaku.kv.";
+const memoryStore = new Map<string, string>();
+
+export const keyValuesByNamespaceAndKeyAtom = atom<Map<string, KeyValue>>(readAllKeyValues());
 
 export async function setKeyValue<T>({
   namespace = "global",
@@ -26,12 +24,19 @@ export async function setKeyValue<T>({
   const kv = getKeyValueRaw({ namespace, key: keyOrKeys });
   const key = buildKeyValueKey(keyOrKeys);
   const value = JSON.stringify(rawValue);
+  const next = { namespace, key, value };
 
   if (kv) {
-    await patchModel(kv, { namespace, key, value });
+    writeStoredValue(namespace, key, value);
   } else {
-    await createGlobalModel({ model: "key_value", namespace, key, value });
+    writeStoredValue(namespace, key, value);
   }
+
+  jotaiStore.set(keyValuesByNamespaceAndKeyAtom, (prev) => {
+    const copy = new Map(prev);
+    copy.set(buildKeyValueLookupKey(namespace, key), next);
+    return copy;
+  });
 }
 
 export function getKeyValueRaw({
@@ -85,4 +90,52 @@ export function buildKeyValueKey(key: string | string[]): string {
 
 export function buildKeyValueLookupKey(namespace: string, key: string | string[]): string {
   return JSON.stringify([namespace, buildKeyValueKey(key)]);
+}
+
+function buildStorageKey(namespace: string, key: string) {
+  return `${storagePrefix}${namespace}.${key}`;
+}
+
+function readAllKeyValues() {
+  const values = new Map<string, KeyValue>();
+  if (typeof localStorage === "undefined") {
+    for (const [storageKey, value] of memoryStore) {
+      const parsed = parseStorageKey(storageKey);
+      if (parsed == null) continue;
+      values.set(buildKeyValueLookupKey(parsed.namespace, parsed.key), { ...parsed, value });
+    }
+    return values;
+  }
+
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const storageKey = localStorage.key(i);
+    if (storageKey == null || !storageKey.startsWith(storagePrefix)) continue;
+    const parsed = parseStorageKey(storageKey);
+    if (parsed == null) continue;
+    values.set(buildKeyValueLookupKey(parsed.namespace, parsed.key), {
+      ...parsed,
+      value: localStorage.getItem(storageKey) ?? "null",
+    });
+  }
+  return values;
+}
+
+function writeStoredValue(namespace: string, key: string, value: string) {
+  const storageKey = buildStorageKey(namespace, key);
+  if (typeof localStorage === "undefined") {
+    memoryStore.set(storageKey, value);
+    return;
+  }
+  localStorage.setItem(storageKey, value);
+}
+
+function parseStorageKey(storageKey: string) {
+  if (!storageKey.startsWith(storagePrefix)) return null;
+  const remainder = storageKey.slice(storagePrefix.length);
+  const dotIndex = remainder.indexOf(".");
+  if (dotIndex < 0) return null;
+  return {
+    namespace: remainder.slice(0, dotIndex),
+    key: remainder.slice(dotIndex + 1),
+  };
 }

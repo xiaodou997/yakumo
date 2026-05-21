@@ -3,7 +3,7 @@ import { LRLanguage } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { parseMixed } from "@lezer/common";
 import type { LRParser } from "@lezer/lr";
-import type { WrappedEnvironmentVariable } from "../../../../hooks/useEnvironmentVariables";
+import type { WrappedEnvironmentVariable } from "../environmentVariables";
 import type { GenericCompletionConfig } from "../genericCompletion";
 import { genericCompletion } from "../genericCompletion";
 import type { TwigCompletionOption } from "./completion";

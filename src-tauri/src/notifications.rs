@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::history::get_or_upsert_launch_info;
 use crate::models_ext::QueryManagerExt;
+use crate::yaku_app_settings::load_yaku_app_settings;
 use chrono::{DateTime, Utc};
 use log::{debug, info};
 use reqwest::Method;
@@ -75,7 +76,7 @@ impl YakumoNotifier {
 
         self.last_check = Some(Instant::now());
 
-        if !app_handle.db().get_settings().check_notifications {
+        if !load_yaku_app_settings(app_handle).check_notifications {
             info!("Notifications are disabled. Skipping check.");
             return Ok(());
         }
@@ -162,7 +163,7 @@ fn get_updater_status<R: Runtime>(app_handle: &AppHandle<R>) -> &'static str {
 
     #[cfg(all(feature = "updater", target_os = "linux"))]
     {
-        let settings = app_handle.db().get_settings();
+        let settings = load_yaku_app_settings(app_handle);
         if !settings.autoupdate {
             // Updates are explicitly disabled
             "disabled"
@@ -177,7 +178,7 @@ fn get_updater_status<R: Runtime>(app_handle: &AppHandle<R>) -> &'static str {
 
     #[cfg(all(feature = "updater", not(target_os = "linux")))]
     {
-        let settings = app_handle.db().get_settings();
+        let settings = load_yaku_app_settings(app_handle);
         if settings.autoupdate { "enabled" } else { "disabled" }
     }
 }

@@ -1,12 +1,10 @@
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { setWindowTheme } from "@yakumo-internal/mac-window";
-import type { ModelPayload } from "@yakumo-internal/models";
-import { getSettings } from "./lib/settings";
 import type { Appearance } from "./lib/theme/appearance";
 import { getCSSAppearance, subscribeToPreferredAppearance } from "./lib/theme/appearance";
 import { getResolvedTheme } from "./lib/theme/themes";
 import { addThemeStylesToDocument, setThemeOnDocument } from "./lib/theme/window";
+import { loadYakuAppSettings, YAKU_SETTINGS_CHANGED_EVENT } from "./lib/yaku-settings";
 
 // NOTE: CSS appearance isn't as accurate as getting it async from the window (next step), but we want
 //  a good appearance guess so we're not waiting too long
@@ -25,17 +23,12 @@ configureTheme().then(
   (err) => console.log("Failed to configure theme", err),
 );
 
-// Listen for settings changes, the re-compute theme
-listen<ModelPayload>("model_write", async (event) => {
-  if (event.payload.change.type !== "upsert") return;
-
-  const model = event.payload.model.model;
-  if (model !== "settings") return;
+window.addEventListener(YAKU_SETTINGS_CHANGED_EVENT, async () => {
   await configureTheme();
-}).catch(console.error);
+});
 
 async function configureTheme() {
-  const settings = await getSettings();
+  const settings = await loadYakuAppSettings();
   const theme = await getResolvedTheme(
     preferredAppearance,
     settings.appearance,

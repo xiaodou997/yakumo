@@ -61,10 +61,11 @@ The runtime architecture must not preserve compatibility layers.
 - Legacy workspace surface components have been removed from `src/components`:
   old `Workspace`, sidebar, request panes, response panes, GraphQL panes,
   command palette, and header/dropdown surface are no longer compiled.
-- `src-tauri/src/lib.rs` registers both new commands and old `models_ext`,
-  request, sync, history, WebSocket, gRPC, import, and template command paths.
-- `src-tauri/src/models_ext.rs` initializes and exposes the old `AnyModel`
-  store.
+- `src-tauri/src/lib.rs` now registers only current app shell commands and
+  explicit `cmd_yaku_*` commands. Old request, sync, git, WebSocket, gRPC,
+  import, template, action, and `models_*` commands are no longer exposed.
+- `src-tauri/src/models_ext.rs` is reduced to a temporary QueryManager plugin
+  for startup/update/notification code that still reads legacy app settings.
 - `crates/yakumo-models/guest-js` provides old frontend atoms and mutable model
   helpers.
 - `crates/yakumo-sync` is old model-sync oriented and should not stay on the
@@ -97,7 +98,8 @@ Rewrite:
 Delete after replacement:
 
 - Remaining old utility/dialog/settings components that still import
-  `@yakumo-internal/models`.
+  `@yakumo-internal/models`. Current `src` no longer imports
+  `@yakumo-internal/models` or `@yakumo-internal/sync`.
 - `crates/yakumo-models/guest-js` usage from the app.
 - `models_ext` commands from the desktop bridge.
 - Old sync/import/export paths that only serialize `AnyModel`.
@@ -305,13 +307,16 @@ Phase 4: Rename core crates.
 Phase 5: Delete old app surface.
 
 - Delete old workspace components and hooks that import
-  `@yakumo-internal/models`. The old routed workspace surface is deleted; some
-  global dialogs/settings/import-export helpers still depend on old models and
-  move to Phase 6 replacement.
-- Delete old model commands from `src-tauri/src/lib.rs`.
+  `@yakumo-internal/models`. Done for the desktop frontend: old model-backed
+  workspace dialogs, git/sync UI, template/auth subscriptions, response viewers,
+  and request hooks were removed from `src`.
+- Delete old model commands from `src-tauri/src/lib.rs`. Done: the invoke
+  handler now exposes only app shell commands plus `cmd_yaku_*`.
 - Delete `src-tauri/src/models_ext.rs` and old request/history command modules
-  once no registered command needs them.
-- Remove `@yakumo-internal/models` imports from `src`.
+  once no registered command needs them. Partially done: old request/history
+  command modules were removed or shrunk; `models_ext` remains only as a
+  temporary QueryManager plugin.
+- Remove `@yakumo-internal/models` imports from `src`. Done.
 - Reassess whether `crates/yakumo-models` is still needed by non-desktop crates.
 
 Phase 6: Rebuild optional capabilities.
@@ -322,8 +327,8 @@ Phase 6: Rebuild optional capabilities.
   Legacy AnyModel import/export dialogs, commands, and the old importer module
   are removed from the desktop surface; `import-data` deep links now fail closed
   with guidance to use Yaku backup import.
-- Yaku settings/secrets UI. Baseline app settings are implemented; secrets,
-  proxy, and certificate UX remain follow-up work.
+- Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
+  implemented through `app.settings`; secrets remain follow-up work.
 - Yaku CLI parity for protocols beyond HTTP.
 
 ## Proposed Commit Sequence

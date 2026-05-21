@@ -734,6 +734,20 @@ impl Store {
             .collect())
     }
 
+    pub fn list_runs_by_state(&self, state: RunState) -> Result<Vec<Run>> {
+        let state_json = serde_json::to_string(&state)?;
+        let mut stmt = self.conn.prepare(
+            r#"
+                SELECT rowid, id, workspace_id, request_id, protocol, state, started_at, completed_at, status_code, error
+                FROM runs
+                WHERE state = ?1
+                ORDER BY rowid DESC
+            "#,
+        )?;
+        let rows = stmt.query_map([state_json], row_to_run)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
     pub fn list_run_page_for_workspace(
         &self,
         workspace_id: &str,

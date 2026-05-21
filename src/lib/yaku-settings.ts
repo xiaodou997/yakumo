@@ -11,7 +11,10 @@ import {
 } from "./yaku-client";
 import { jotaiStore } from "./jotai";
 
+export type { YakuAppSettings } from "./yaku-client";
+
 export const YAKU_APP_SETTINGS_KEY = "app.settings";
+export const YAKU_SETTINGS_CHANGED_EVENT = "yaku-settings-changed";
 
 export const defaultYakuAppSettings: YakuAppSettings = {
   appearance: "system",
@@ -103,6 +106,10 @@ export function getCurrentYakuSettings() {
   return jotaiStore.get(yakuSettingsAtom);
 }
 
+export async function loadYakuAppSettings() {
+  return normalizeYakuAppSettings((await getYakuSetting(YAKU_APP_SETTINGS_KEY))?.value);
+}
+
 export function useYakuSettings() {
   return useAtomValue(yakuSettingsAtom);
 }
@@ -111,7 +118,7 @@ export function useYakuSettingsSync() {
   const setSettings = useSetAtom(yakuSettingsAtom);
   const query = useQuery({
     queryKey: yakuQueryKeys.setting(YAKU_APP_SETTINGS_KEY),
-    queryFn: async () => normalizeYakuAppSettings((await getYakuSetting(YAKU_APP_SETTINGS_KEY))?.value),
+    queryFn: loadYakuAppSettings,
     staleTime: 30_000,
   });
 
@@ -134,6 +141,7 @@ export function useUpdateYakuSettings() {
     onSuccess: (settings) => {
       setSettings(settings);
       queryClient.setQueryData(yakuQueryKeys.setting(YAKU_APP_SETTINGS_KEY), settings);
+      window.dispatchEvent(new CustomEvent(YAKU_SETTINGS_CHANGED_EVENT, { detail: settings }));
     },
   });
 }

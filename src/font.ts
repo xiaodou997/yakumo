@@ -1,10 +1,11 @@
-// Listen for settings changes, the re-compute theme
-import { listen } from "@tauri-apps/api/event";
-import type { ModelPayload, Settings } from "@yakumo-internal/models";
 import { fireAndForget } from "./lib/fireAndForget";
-import { getSettings } from "./lib/settings";
+import {
+  loadYakuAppSettings,
+  YAKU_SETTINGS_CHANGED_EVENT,
+  type YakuAppSettings,
+} from "./lib/yaku-settings";
 
-function setFonts(settings: Settings) {
+function setFonts(settings: YakuAppSettings) {
   document.documentElement.style.setProperty("--font-family-editor", settings.editorFont ?? "");
   document.documentElement.style.setProperty(
     "--font-family-interface",
@@ -12,10 +13,8 @@ function setFonts(settings: Settings) {
   );
 }
 
-listen<ModelPayload>("model_write", async (event) => {
-  if (event.payload.change.type !== "upsert") return;
-  if (event.payload.model.model !== "settings") return;
-  setFonts(event.payload.model);
-}).catch(console.error);
+window.addEventListener(YAKU_SETTINGS_CHANGED_EVENT, (event) => {
+  setFonts((event as CustomEvent<YakuAppSettings>).detail);
+});
 
-fireAndForget(getSettings().then((settings) => setFonts(settings)));
+fireAndForget(loadYakuAppSettings().then((settings) => setFonts(settings)));

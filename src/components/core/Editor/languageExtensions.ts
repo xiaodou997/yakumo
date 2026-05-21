@@ -4,8 +4,8 @@ import { linter, lintGutter } from "@codemirror/lint";
 import type { Extension } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import type { GraphQLSchema } from "graphql";
-import type { WrappedEnvironmentVariable } from "../../../hooks/useEnvironmentVariables";
 import type { EditorProps } from "./Editor";
+import type { WrappedEnvironmentVariable } from "./environmentVariables";
 import type { TwigCompletionOption } from "./twig/completion";
 
 export type LanguageExtensionConfig = {
@@ -67,18 +67,9 @@ export async function getLanguageExtension({
 
   // GraphQL is a special exception
   if (language === "graphql") {
-    const [
-      { graphql },
-      { activeRequestIdAtom },
-      { jotaiStore },
-      { renderMarkdown },
-      { showGraphQLDocExplorerAtom },
-    ] = await Promise.all([
+    const [{ graphql }, { renderMarkdown }] = await Promise.all([
       import("cm6-graphql"),
-      import("../../../hooks/useActiveRequestId"),
-      import("../../../lib/jotai"),
       import("../../../lib/markdown"),
-      import("../../graphql/graphqlAtoms"),
     ]);
 
     return [
@@ -89,14 +80,6 @@ export async function getLanguageExtension({
           const span = document.createElement("span");
           span.innerHTML = innerHTML;
           return span;
-        },
-        onShowInDocs(field, type, parentType) {
-          const activeRequestId = jotaiStore.get(activeRequestIdAtom);
-          if (activeRequestId == null) return;
-          jotaiStore.set(showGraphQLDocExplorerAtom, (v) => ({
-            ...v,
-            [activeRequestId]: { field, type, parentType },
-          }));
         },
       }),
       extraExtensions,

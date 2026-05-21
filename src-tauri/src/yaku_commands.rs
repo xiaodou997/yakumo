@@ -422,6 +422,30 @@ fn finish_run_if_running(
         .map_err(|e| Error::GenericError(e.to_string()))
 }
 
+pub(crate) fn cancel_running_runs_on_startup<R: Runtime>(app_handle: &AppHandle<R>) -> Result<u64> {
+    let data_dir = app_data_dir(app_handle)?;
+    let store = open_store_from_dir(&data_dir)?;
+    let service = yaku_domain::DomainService::new(store);
+    let running_runs = service
+        .repository()
+        .list_runs_by_state(RunState::Running)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+    let mut cancelled = 0;
+    for run in running_runs {
+        service
+            .finish_run(FinishRun {
+                run_id: run.id,
+                state: RunState::Cancelled,
+                status_code: None,
+                error: Some("Run was cancelled during app startup cleanup".to_string()),
+                now: Utc::now(),
+            })
+            .map_err(|e| Error::GenericError(e.to_string()))?;
+        cancelled += 1;
+    }
+    Ok(cancelled)
+}
+
 #[tauri::command]
 pub(crate) fn cmd_yaku_workspace_list<R: Runtime>(
     app_handle: AppHandle<R>,
