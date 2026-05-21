@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { RedirectToLatestWorkspace } from "../components/RedirectToLatestWorkspace";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  return <RedirectToLatestWorkspace />;
+  return <Navigate to="/workspaces" replace />;
 }

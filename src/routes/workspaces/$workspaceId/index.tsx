@@ -1,48 +1,76 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { startTransition, useCallback, useMemo } from "react";
+import {
+  YakuWorkspaceShell,
+  cleanYakuWorkspaceSearch,
+  validateYakuWorkspaceSearch,
+  type YakuWorkspaceSearch,
+} from "../../../features/yaku-workspace";
 
-const Workspace = lazy(() =>
-  import("../../../components/Workspace").then((m) => ({ default: m.Workspace })),
-);
-
-type WorkspaceSearchSchema = {
+type LegacyWorkspaceSearch = {
   environment_id?: string | null;
   cookie_jar_id?: string | null;
-} & (
-  | {
-      request_id: string;
-    }
-  | {
-      folder_id: string;
-    }
-  // oxlint-disable-next-line no-restricted-types -- Needed to support empty
-  | {}
-);
+  request_id?: string | null;
+  folder_id?: string | null;
+};
+
+type WorkspaceRouteSearch = YakuWorkspaceSearch & LegacyWorkspaceSearch;
 
 export const Route = createFileRoute("/workspaces/$workspaceId/")({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): WorkspaceSearchSchema => {
-    const base: Pick<WorkspaceSearchSchema, "environment_id" | "cookie_jar_id"> = {
-      environment_id: search.environment_id as string,
-      cookie_jar_id: search.cookie_jar_id as string,
-    };
-
-    const requestId = search.request_id as string | undefined;
-    const folderId = search.folder_id as string | undefined;
-    if (requestId != null) {
-      return { ...base, request_id: requestId };
-    }
-    if (folderId) {
-      return { ...base, folder_id: folderId };
-    }
-    return base;
-  },
+  validateSearch: validateWorkspaceSearch,
 });
 
 function RouteComponent() {
-  return (
-    <Suspense fallback={<div className="h-full flex items-center justify-center">Loading...</div>}>
-      <Workspace />
-    </Suspense>
+  const { workspaceId } = Route.useParams();
+  const routeSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const search = useMemo(
+    () => cleanYakuWorkspaceSearch({ ...routeSearch, workspaceId }),
+    [routeSearch, workspaceId],
   );
+
+  const setSearch = useCallback(
+    (patch: Partial<YakuWorkspaceSearch>) => {
+      startTransition(() => {
+        const next = cleanYakuWorkspaceSearch({ ...search, ...patch });
+        const nextWorkspaceId = next.workspaceId ?? workspaceId;
+        const { workspaceId: _workspaceId, ...rest } = next;
+
+        navigate({
+          to: "/workspaces/$workspaceId",
+          params: { workspaceId: nextWorkspaceId },
+          replace: true,
+          search: rest,
+        });
+      });
+    },
+    [navigate, search, workspaceId],
+  );
+
+  return <YakuWorkspaceShell search={search} setSearch={setSearch} />;
+}
+
+function validateWorkspaceSearch(search: Record<string, unknown>): WorkspaceRouteSearch {
+  const yakuSearch = validateYakuWorkspaceSearch(search);
+  const legacySearch = {
+    request_id: asOptionalString(search.request_id),
+    folder_id: asOptionalString(search.folder_id),
+    environment_id: asOptionalString(search.environment_id),
+    cookie_jar_id: asOptionalString(search.cookie_jar_id),
+  };
+
+  return {
+    ...legacySearch,
+    ...cleanYakuWorkspaceSearch({
+      ...yakuSearch,
+      requestId: yakuSearch.requestId ?? legacySearch.request_id ?? undefined,
+      folderId: yakuSearch.folderId ?? legacySearch.folder_id ?? undefined,
+      environmentId: yakuSearch.environmentId ?? legacySearch.environment_id ?? undefined,
+    }),
+  };
+}
+
+function asOptionalString(value: unknown) {
+  return typeof value === "string" && value !== "" ? value : undefined;
 }

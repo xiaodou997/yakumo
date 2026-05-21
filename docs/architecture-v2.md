@@ -40,26 +40,27 @@ The runtime architecture must not preserve compatibility layers.
 
 ## Code Audit
 
-### Current Yaku/V2 Assets To Keep And Rename
+### Current Yaku Assets To Keep
 
-- `crates/yakumo-domain` -> `crates/yaku-domain`.
-- `crates/yakumo-store` -> `crates/yaku-store`.
-- `crates/yakumo-engine` -> `crates/yaku-engine`.
+- `crates/yaku-domain`.
+- `crates/yaku-store`.
+- `crates/yaku-engine`.
 - `src-tauri/src/yaku_commands.rs`.
-- `src/lib/v2.ts` -> split under `src/lib/yaku-client`.
-- `src/routes/v2.tsx` -> temporary source material for
-  `src/features/yaku-workspace`.
+- `src/lib/yaku-client`.
+- `src/features/yaku-workspace`.
+- `src/routes/v2.tsx` remains as a thin compatibility/debug route wrapper.
 - Shared UI primitives under `src/components/core`, tree components, editor
   infrastructure, dialog/toast helpers, router, and query client.
 
 ### Current Legacy Choke Points To Remove
 
-- `src/main.tsx` calls `initModelStore(jotaiStore)` and `initSync()`.
-- `src/components/StartupGate.tsx` calls `changeModelStoreWorkspace(null)`.
-- `src/routes/workspaces/$workspaceId/index.tsx` lazy-loads
-  `src/components/Workspace.tsx`.
-- `src/components/Workspace.tsx` and related hooks are driven by
-  `@yakumo-internal/models`.
+- `src/main.tsx` no longer calls `initModelStore(jotaiStore)` or `initSync()`.
+- `src/components/StartupGate.tsx` has been removed; startup no longer calls
+  `changeModelStoreWorkspace(null)`.
+- `src/components/Workspace.tsx` is no longer the `/workspaces` route target
+  after the Yaku shell cutover, but it and related hooks are still driven by
+  `@yakumo-internal/models` and should be deleted in the legacy surface removal
+  phase.
 - `src-tauri/src/lib.rs` registers both new commands and old `models_ext`,
   request, sync, history, WebSocket, gRPC, import, and template command paths.
 - `src-tauri/src/models_ext.rs` initializes and exposes the old `AnyModel`
@@ -208,19 +209,21 @@ import `@yakumo-internal/models`.
 
 ## Send Runtime
 
-Current `cmd_yaku_send_request` is blocking. Replace it with:
+`cmd_yaku_send_request` remains as a compatibility blocking command. The main
+workspace uses the non-blocking lifecycle:
 
 - `cmd_yaku_run_start(requestId, environmentId?) -> Run`
 - `cmd_yaku_run_cancel(runId) -> Run`
 - `cmd_yaku_run_events(runId, cursor?, limit?)`
 - `cmd_yaku_run_bodies(runId)`
-- Tauri event stream: `yaku://run-event`, `yaku://run-updated`,
-  `yaku://run-body-recorded`
+- Tauri event stream: `yaku_run_lifecycle`
 
 Runtime ownership:
 
 - Tauri owns a run task registry keyed by `run_id`.
-- `yaku-engine` receives a cancellation token and event sink.
+- `yaku-engine` can reuse a pre-created running run. Cancellation currently
+  marks the stored run as cancelled and prevents terminal-state overwrite; true
+  transport-level abort remains a follow-up.
 - Engines append events to the store before emitting UI events.
 - UI subscribes to Tauri events and invalidates specific run queries.
 
@@ -230,9 +233,7 @@ Use generated Rust TS bindings as the canonical frontend domain types.
 
 Required changes:
 
-- Rename generated domain import path from
-  `crates/yakumo-domain/bindings/gen_domain.ts` to
-  `crates/yaku-domain/bindings/gen_domain.ts`.
+- Import generated domain types from `crates/yaku-domain/bindings/gen_domain.ts`.
 - Add generated command DTOs for page responses, GC reports, delete responses,
   and event payloads.
 - Add `src/lib/yaku-client/types.ts` as the only app-facing type barrel.
@@ -249,12 +250,12 @@ Required changes:
 - Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
 - `/v2` route to `/debug/yaku`, then remove once `/workspaces` is Yaku.
 
-### Rename During Core Cutover
+### Renamed During Core Cutover
 
-- `yakumo-domain` -> `yaku-domain`.
-- `yakumo-store` -> `yaku-store`.
-- `yakumo-engine` -> `yaku-engine`.
-- Update workspace Cargo dependencies and crate imports.
+- `yaku-domain`.
+- `yaku-store`.
+- `yaku-engine`.
+- Workspace Cargo dependencies and crate imports now use the Yaku names.
 
 ### Rename Later Or Only With Explicit Approval
 
@@ -277,10 +278,11 @@ Phase 1: Establish Yaku main path.
 
 Phase 2: Remove startup dependency on old models.
 
-- Remove `initModelStore(jotaiStore)` from `src/main.tsx`.
+- Remove `initModelStore(jotaiStore)` from `src/main.tsx`. Done.
 - Remove `initSync()` from startup unless a Yaku sync/import replacement exists.
-- Replace `StartupGate` with a Yaku startup check that opens/creates the Yaku
-  store.
+  Done.
+- Remove `StartupGate`; Yaku commands open the Yaku store lazily instead of
+  blocking app startup on global model loading. Done.
 - Stop registering `models_ext::init()` once no legacy route is compiled.
 
 Phase 3: Replace send and response panes.
@@ -337,8 +339,7 @@ Run after each commit:
 - `bun run --cwd src typecheck`
 - `bun run --cwd src build`
 - `cargo check -p yakumo-app`
-- `cargo test -p yakumo-domain --lib` until crate rename
-- `cargo test -p yaku-domain --lib` after crate rename
+- `cargo test -p yaku-domain --lib`
 - `cargo test -p yakumo-app yaku_commands --lib`
 
 Run before large deletions:
