@@ -5,7 +5,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
-    Domain(#[from] yakumo_domain::Error),
+    Domain(#[from] yaku_domain::Error),
 
     #[error("invalid request config: {0}")]
     InvalidConfig(String),

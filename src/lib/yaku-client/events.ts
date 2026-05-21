@@ -1,7 +1,5 @@
 export const yakuEventNames = {
-  runEvent: "yaku://run-event",
-  runUpdated: "yaku://run-updated",
-  runBodyRecorded: "yaku://run-body-recorded",
+  runLifecycle: "yaku_run_lifecycle",
 } as const;
 
 export type YakuEventName = (typeof yakuEventNames)[keyof typeof yakuEventNames];

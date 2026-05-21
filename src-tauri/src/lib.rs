@@ -300,6 +300,9 @@ pub fn run() {
             let ws_manager = yakumo_ws::WebsocketManager::new();
             app.manage(Mutex::new(ws_manager));
 
+            // Add Yaku run lifecycle registry
+            app.manage(yaku_commands::YakuRunRegistry::default());
+
             // Specific settings
             let settings = app.db().get_settings();
             app.app_handle().set_native_titlebar(settings.use_native_titlebar);
@@ -387,6 +390,8 @@ pub fn run() {
             yaku_commands::cmd_yaku_run_events,
             yaku_commands::cmd_yaku_run_bodies,
             yaku_commands::cmd_yaku_run_body_bytes,
+            yaku_commands::cmd_yaku_run_start,
+            yaku_commands::cmd_yaku_run_cancel,
             yaku_commands::cmd_yaku_run_delete,
             yaku_commands::cmd_yaku_run_prune,
             yaku_commands::cmd_yaku_run_retention_get,

@@ -10,8 +10,8 @@ use predicates::str::contains;
 use serde_json::json;
 use std::fs;
 use tempfile::TempDir;
-use yakumo_domain::{BodyStorageKind, Page, RunEventKind, Setting};
-use yakumo_store::Store;
+use yaku_domain::{BodyStorageKind, Page, RunEventKind, Setting};
+use yaku_store::Store;
 
 fn backup_core(value: &serde_json::Value) -> serde_json::Value {
     json!({

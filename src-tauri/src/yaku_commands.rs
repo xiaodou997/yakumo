@@ -4,20 +4,55 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager, Runtime};
-use yakumo_domain::{
-    BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateWorkspace,
-    MoveRequestNode, Page, Protocol, Request, Run, RunBody, RunEvent, RunEventKind, Setting,
-    UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
-use yakumo_engine::{
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
+use yaku_domain::{
+    BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,
+    FinishRun, MoveRequestNode, Page, Protocol, Request, Run, RunBody, RunEvent, RunEventKind,
+    RunState, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
+};
+use yaku_engine::{
     GrpcEngine, HttpEngine, ReflectionGrpcSender, ReqwestHttpSender, ReqwestSseSender, SendGrpc,
     SendHttp, SendSse, SendWebSocket, SseEngine, ThresholdBodyStore, TungsteniteWebSocketSender,
     WebSocketEngine, render_config,
 };
-use yakumo_store::{RequestNodePageItem, RunPageItem, Store, WorkspacePageItem};
+use yaku_store::{RequestNodePageItem, RunPageItem, Store, WorkspacePageItem};
 
 const DEFAULT_PAGE_LIMIT: u32 = 100;
+const YAKU_RUN_LIFECYCLE_EVENT: &str = "yaku_run_lifecycle";
+
+#[derive(Clone, Default)]
+pub(crate) struct YakuRunRegistry {
+    runs: Arc<Mutex<BTreeMap<String, Arc<YakuRunTask>>>>,
+}
+
+#[derive(Default)]
+struct YakuRunTask {
+    cancelled: AtomicBool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum YakuRunLifecycleKind {
+    Started,
+    Finished,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YakuRunLifecycleEvent {
+    kind: YakuRunLifecycleKind,
+    run_id: String,
+    request_id: String,
+    workspace_id: String,
+    run: Option<Run>,
+    error: Option<String>,
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +112,31 @@ where
 {
     let next_cursor = items.last().map(CursorValue::cursor);
     PageResponse { items, next_cursor }
+}
+
+impl YakuRunRegistry {
+    fn insert(&self, run_id: String, task: Arc<YakuRunTask>) -> Result<()> {
+        self.runs
+            .lock()
+            .map_err(|_| Error::GenericError("Yaku run registry lock poisoned".to_string()))?
+            .insert(run_id, task);
+        Ok(())
+    }
+
+    fn get(&self, run_id: &str) -> Result<Option<Arc<YakuRunTask>>> {
+        Ok(self
+            .runs
+            .lock()
+            .map_err(|_| Error::GenericError("Yaku run registry lock poisoned".to_string()))?
+            .get(run_id)
+            .cloned())
+    }
+
+    fn remove(&self, run_id: &str) {
+        if let Ok(mut runs) = self.runs.lock() {
+            runs.remove(run_id);
+        }
+    }
 }
 
 fn app_data_dir<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
@@ -233,11 +293,12 @@ fn decode_hex(input: &str) -> std::result::Result<Vec<u8>, String> {
 
 fn send_request_inner(
     data_dir: PathBuf,
+    run_id: String,
     request_id: String,
     environment_id: Option<String>,
 ) -> Result<Run> {
     let store = open_store_from_dir(&data_dir)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     let request = service
         .repository()
         .get_request(&request_id)
@@ -256,7 +317,6 @@ fn send_request_inner(
         None => None,
     };
 
-    let run_id = prefixed_id("run");
     let bodies_dir = bodies_dir(&data_dir);
 
     let run = match request.protocol {
@@ -299,6 +359,57 @@ fn send_request_inner(
     Ok(run)
 }
 
+fn emit_run_lifecycle<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    kind: YakuRunLifecycleKind,
+    run: Option<Run>,
+    run_id: String,
+    request_id: String,
+    workspace_id: String,
+    error: Option<String>,
+) {
+    if let Err(err) = app_handle.emit(
+        YAKU_RUN_LIFECYCLE_EVENT,
+        YakuRunLifecycleEvent { kind, run_id, request_id, workspace_id, run, error },
+    ) {
+        log::warn!("Failed to emit Yaku run lifecycle event: {err}");
+    }
+}
+
+fn get_run_from_dir(data_dir: &Path, run_id: &str) -> Result<Option<Run>> {
+    let store = open_store_from_dir(data_dir)?;
+    store.get_run(run_id).map_err(|e| Error::GenericError(e.to_string()))
+}
+
+fn finish_run_if_running(
+    data_dir: &Path,
+    run_id: &str,
+    state: RunState,
+    status_code: Option<i32>,
+    error: Option<String>,
+) -> Result<Option<Run>> {
+    let store = open_store_from_dir(data_dir)?;
+    let service = yaku_domain::DomainService::new(store);
+    let Some(run) =
+        service.repository().get_run(run_id).map_err(|e| Error::GenericError(e.to_string()))?
+    else {
+        return Ok(None);
+    };
+    if run.state != RunState::Running {
+        return Ok(Some(run));
+    }
+    service
+        .finish_run(FinishRun {
+            run_id: run_id.to_string(),
+            state,
+            status_code,
+            error,
+            now: Utc::now(),
+        })
+        .map(Some)
+        .map_err(|e| Error::GenericError(e.to_string()))
+}
+
 #[tauri::command]
 pub(crate) fn cmd_yaku_workspace_list<R: Runtime>(
     app_handle: AppHandle<R>,
@@ -328,7 +439,7 @@ pub(crate) fn cmd_yaku_workspace_create<R: Runtime>(
     description: Option<String>,
 ) -> Result<Workspace> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .create_workspace(CreateWorkspace {
             id: prefixed_id("wk"),
@@ -346,7 +457,7 @@ pub(crate) fn cmd_yaku_workspace_delete<R: Runtime>(
 ) -> Result<DeleteResponse> {
     let data_dir = app_data_dir(&app_handle)?;
     let store = open_store_from_dir(&data_dir)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service.delete_workspace(&workspace_id).map_err(|e| Error::GenericError(e.to_string()))?;
     let body_gc = gc_body_files(service.repository(), &bodies_dir(&data_dir), false)?;
     Ok(DeleteResponse { deleted: true, body_gc: Some(body_gc) })
@@ -356,7 +467,7 @@ pub(crate) fn cmd_yaku_workspace_delete<R: Runtime>(
 pub(crate) fn cmd_yaku_environment_list<R: Runtime>(
     app_handle: AppHandle<R>,
     workspace_id: String,
-) -> Result<Vec<yakumo_domain::Environment>> {
+) -> Result<Vec<yaku_domain::Environment>> {
     let store = open_store(&app_handle)?;
     store.list_environments(&workspace_id).map_err(|e| Error::GenericError(e.to_string()))
 }
@@ -365,7 +476,7 @@ pub(crate) fn cmd_yaku_environment_list<R: Runtime>(
 pub(crate) fn cmd_yaku_environment_get<R: Runtime>(
     app_handle: AppHandle<R>,
     environment_id: String,
-) -> Result<Option<yakumo_domain::Environment>> {
+) -> Result<Option<yaku_domain::Environment>> {
     let store = open_store(&app_handle)?;
     store.get_environment(&environment_id).map_err(|e| Error::GenericError(e.to_string()))
 }
@@ -376,9 +487,9 @@ pub(crate) fn cmd_yaku_environment_create<R: Runtime>(
     workspace_id: String,
     name: String,
     variables: BTreeMap<String, Value>,
-) -> Result<yakumo_domain::Environment> {
+) -> Result<yaku_domain::Environment> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .create_environment(CreateEnvironment {
             id: prefixed_id("env"),
@@ -396,9 +507,9 @@ pub(crate) fn cmd_yaku_environment_update<R: Runtime>(
     environment_id: String,
     name: Option<String>,
     variables: Option<BTreeMap<String, Value>>,
-) -> Result<yakumo_domain::Environment> {
+) -> Result<yaku_domain::Environment> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .update_environment(UpdateEnvironment {
             id: environment_id,
@@ -415,7 +526,7 @@ pub(crate) fn cmd_yaku_environment_delete<R: Runtime>(
     environment_id: String,
 ) -> Result<DeleteResponse> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service.delete_environment(&environment_id).map_err(|e| Error::GenericError(e.to_string()))?;
     Ok(DeleteResponse { deleted: true, body_gc: None })
 }
@@ -447,7 +558,7 @@ pub(crate) fn cmd_yaku_request_get<R: Runtime>(
 pub(crate) fn cmd_yaku_request_node_get<R: Runtime>(
     app_handle: AppHandle<R>,
     node_id: String,
-) -> Result<Option<yakumo_domain::RequestNode>> {
+) -> Result<Option<yaku_domain::RequestNode>> {
     let store = open_store(&app_handle)?;
     store.get_request_node(&node_id).map_err(|e| Error::GenericError(e.to_string()))
 }
@@ -459,9 +570,9 @@ pub(crate) fn cmd_yaku_folder_create<R: Runtime>(
     name: String,
     parent_id: Option<String>,
     sort_key: Option<String>,
-) -> Result<yakumo_domain::RequestNode> {
+) -> Result<yaku_domain::RequestNode> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .create_folder(CreateFolder {
             id: prefixed_id("folder"),
@@ -479,9 +590,9 @@ pub(crate) fn cmd_yaku_folder_update<R: Runtime>(
     app_handle: AppHandle<R>,
     folder_id: String,
     name: Option<String>,
-) -> Result<yakumo_domain::RequestNode> {
+) -> Result<yaku_domain::RequestNode> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .update_folder(UpdateFolder { id: folder_id, name, now: Utc::now() })
         .map_err(|e| Error::GenericError(e.to_string()))
@@ -499,7 +610,7 @@ pub(crate) fn cmd_yaku_request_create<R: Runtime>(
     description: Option<String>,
 ) -> Result<Request> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .create_request(CreateRequest {
             id: prefixed_id("rq"),
@@ -525,7 +636,7 @@ pub(crate) fn cmd_yaku_request_update<R: Runtime>(
     config: Option<BTreeMap<String, Value>>,
 ) -> Result<Request> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .update_request(UpdateRequest {
             id: request_id,
@@ -543,9 +654,9 @@ pub(crate) fn cmd_yaku_request_node_move<R: Runtime>(
     node_id: String,
     parent_id: Option<String>,
     sort_key: Option<String>,
-) -> Result<yakumo_domain::RequestNode> {
+) -> Result<yaku_domain::RequestNode> {
     let store = open_store(&app_handle)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service
         .move_request_node(MoveRequestNode {
             id: node_id,
@@ -563,7 +674,7 @@ pub(crate) fn cmd_yaku_request_node_delete<R: Runtime>(
 ) -> Result<DeleteResponse> {
     let data_dir = app_data_dir(&app_handle)?;
     let store = open_store_from_dir(&data_dir)?;
-    let service = yakumo_domain::DomainService::new(store);
+    let service = yaku_domain::DomainService::new(store);
     service.delete_request_node(&node_id).map_err(|e| Error::GenericError(e.to_string()))?;
     let body_gc = gc_body_files(service.repository(), &bodies_dir(&data_dir), false)?;
     Ok(DeleteResponse { deleted: true, body_gc: Some(body_gc) })
@@ -734,14 +845,159 @@ pub(crate) fn cmd_yaku_gc_bodies<R: Runtime>(
 }
 
 #[tauri::command]
+pub(crate) fn cmd_yaku_run_start<R: Runtime>(
+    app_handle: AppHandle<R>,
+    registry: State<'_, YakuRunRegistry>,
+    request_id: String,
+    environment_id: Option<String>,
+) -> Result<Run> {
+    let data_dir = app_data_dir(&app_handle)?;
+    let store = open_store_from_dir(&data_dir)?;
+    let service = yaku_domain::DomainService::new(store);
+    let request = service
+        .repository()
+        .get_request(&request_id)
+        .map_err(|e| Error::GenericError(e.to_string()))?
+        .ok_or_else(|| Error::GenericError(format!("Request '{request_id}' not found")))?;
+    let run = service
+        .create_run(CreateRun {
+            id: prefixed_id("run"),
+            request_id: request.id.clone(),
+            now: Utc::now(),
+        })
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+
+    let task = Arc::new(YakuRunTask::default());
+    registry.insert(run.id.clone(), task.clone())?;
+    emit_run_lifecycle(
+        &app_handle,
+        YakuRunLifecycleKind::Started,
+        Some(run.clone()),
+        run.id.clone(),
+        run.request_id.clone(),
+        run.workspace_id.clone(),
+        None,
+    );
+
+    let app_handle_local = app_handle.clone();
+    let registry_local = registry.inner().clone();
+    let run_id = run.id.clone();
+    let request_id = run.request_id.clone();
+    let workspace_id = run.workspace_id.clone();
+    std::thread::spawn(move || {
+        let result = send_request_inner(
+            data_dir.clone(),
+            run_id.clone(),
+            request_id.clone(),
+            environment_id,
+        );
+        let current_run = get_run_from_dir(&data_dir, &run_id).ok().flatten();
+        let is_cancelled = task.cancelled.load(Ordering::SeqCst)
+            || current_run.as_ref().is_some_and(|run| run.state == RunState::Cancelled);
+
+        if is_cancelled {
+            emit_run_lifecycle(
+                &app_handle_local,
+                YakuRunLifecycleKind::Cancelled,
+                current_run,
+                run_id.clone(),
+                request_id.clone(),
+                workspace_id.clone(),
+                None,
+            );
+            registry_local.remove(&run_id);
+            return;
+        }
+
+        match result {
+            Ok(run) if run.state == RunState::Failed => {
+                emit_run_lifecycle(
+                    &app_handle_local,
+                    YakuRunLifecycleKind::Failed,
+                    Some(run.clone()),
+                    run.id.clone(),
+                    run.request_id.clone(),
+                    run.workspace_id.clone(),
+                    run.error.clone(),
+                );
+            }
+            Ok(run) => {
+                emit_run_lifecycle(
+                    &app_handle_local,
+                    YakuRunLifecycleKind::Finished,
+                    Some(run.clone()),
+                    run.id.clone(),
+                    run.request_id.clone(),
+                    run.workspace_id.clone(),
+                    None,
+                );
+            }
+            Err(err) => {
+                let error = err.to_string();
+                let failed_run = finish_run_if_running(
+                    &data_dir,
+                    &run_id,
+                    RunState::Failed,
+                    None,
+                    Some(error.clone()),
+                )
+                .ok()
+                .flatten();
+                emit_run_lifecycle(
+                    &app_handle_local,
+                    YakuRunLifecycleKind::Failed,
+                    failed_run,
+                    run_id.clone(),
+                    request_id.clone(),
+                    workspace_id.clone(),
+                    Some(error),
+                );
+            }
+        }
+
+        registry_local.remove(&run_id);
+    });
+
+    Ok(run)
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_run_cancel<R: Runtime>(
+    app_handle: AppHandle<R>,
+    registry: State<'_, YakuRunRegistry>,
+    run_id: String,
+) -> Result<Run> {
+    if let Some(task) = registry.get(&run_id)? {
+        task.cancelled.store(true, Ordering::SeqCst);
+    }
+
+    let data_dir = app_data_dir(&app_handle)?;
+    let run = finish_run_if_running(&data_dir, &run_id, RunState::Cancelled, None, None)?
+        .ok_or_else(|| Error::GenericError(format!("Run '{run_id}' not found")))?;
+    if run.state == RunState::Cancelled {
+        emit_run_lifecycle(
+            &app_handle,
+            YakuRunLifecycleKind::Cancelled,
+            Some(run.clone()),
+            run.id.clone(),
+            run.request_id.clone(),
+            run.workspace_id.clone(),
+            None,
+        );
+    }
+    Ok(run)
+}
+
+#[tauri::command]
 pub(crate) async fn cmd_yaku_send_request<R: Runtime>(
     app_handle: AppHandle<R>,
     request_id: String,
     environment_id: Option<String>,
 ) -> Result<Run> {
     let data_dir = app_data_dir(&app_handle)?;
+    let run_id = prefixed_id("run");
     tauri::async_runtime::spawn_blocking(move || {
-        send_request_inner(data_dir, request_id, environment_id)
+        send_request_inner(data_dir, run_id, request_id, environment_id)
     })
     .await
     .map_err(|e| Error::GenericError(format!("V2 send failed to join blocking task: {e}")))?

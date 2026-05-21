@@ -11,17 +11,17 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use yakumo_domain::{
+use yaku_domain::{
     BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateWorkspace,
     DomainService, DuplicateRequest, MoveRequestNode, Page, Protocol, PruneRuns, PruneRunsScope,
     RunEventKind, Setting, UpdateEnvironment, UpdateRequest,
 };
-use yakumo_engine::{
+use yaku_engine::{
     GrpcEngine, Header, HttpEngine, QueryParam, ReflectionGrpcSender, ReqwestHttpSender,
     ReqwestSseSender, SendGrpc, SendHttp, SendSse, SendWebSocket, SseEngine, ThresholdBodyStore,
     TungsteniteWebSocketSender, WebSocketEngine, render_config,
 };
-use yakumo_store::{BackupManifest, Store, WorkspaceBackup};
+use yaku_store::{BackupManifest, Store, WorkspaceBackup};
 
 pub fn run(data_dir: PathBuf, args: V2Args, environment_id: Option<String>) -> i32 {
     match run_inner(data_dir, args, environment_id) {
@@ -1276,25 +1276,25 @@ trait HasCursor {
     fn cursor(&self) -> i64;
 }
 
-impl HasCursor for yakumo_store::RunPageItem {
+impl HasCursor for yaku_store::RunPageItem {
     fn cursor(&self) -> i64 {
         self.cursor
     }
 }
 
-impl HasCursor for yakumo_store::RequestNodePageItem {
+impl HasCursor for yaku_store::RequestNodePageItem {
     fn cursor(&self) -> i64 {
         self.cursor
     }
 }
 
-impl HasCursor for yakumo_store::WorkspacePageItem {
+impl HasCursor for yaku_store::WorkspacePageItem {
     fn cursor(&self) -> i64 {
         self.cursor
     }
 }
 
-impl HasCursor for yakumo_store::BackupManifestPageItem {
+impl HasCursor for yaku_store::BackupManifestPageItem {
     fn cursor(&self) -> i64 {
         self.cursor
     }

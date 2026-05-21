@@ -448,6 +448,10 @@ where
             .get_run(&input.run_id)?
             .ok_or_else(|| Error::NotFound(format!("run {}", input.run_id)))?;
 
+        if matches!(run.state, RunState::Completed | RunState::Failed | RunState::Cancelled) {
+            return Ok(run);
+        }
+
         match input.state {
             RunState::Completed | RunState::Failed | RunState::Cancelled => {}
             RunState::Created | RunState::Running => {

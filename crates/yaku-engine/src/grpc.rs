@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use yakumo_domain::{
+use yaku_domain::{
     AppendRunEvent, CreateRun, DomainService, FinishRun, Protocol, RequestRepository, Run,
     RunBodyRepository, RunEventKind, RunRepository, RunState, WorkspaceRepository,
 };
@@ -131,9 +131,10 @@ where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
         let now = chrono::Utc::now();
-        let request = service.repository().get_request(&input.request_id)?.ok_or_else(|| {
-            yakumo_domain::Error::NotFound(format!("request {}", input.request_id))
-        })?;
+        let request = service
+            .repository()
+            .get_request(&input.request_id)?
+            .ok_or_else(|| yaku_domain::Error::NotFound(format!("request {}", input.request_id)))?;
 
         if request.protocol != Protocol::Grpc {
             return Err(Error::InvalidConfig(format!(
@@ -144,11 +145,14 @@ where
 
         let effective_config = input.config_override.unwrap_or_else(|| request.config.clone());
         let config = parse_config(effective_config.clone())?;
-        let run = service.create_run(CreateRun {
-            id: input.run_id,
-            request_id: request.id.clone(),
-            now,
-        })?;
+        let run = match service.repository().get_run(&input.run_id)? {
+            Some(run) => run,
+            None => service.create_run(CreateRun {
+                id: input.run_id.clone(),
+                request_id: request.id.clone(),
+                now,
+            })?,
+        };
 
         service.append_run_event(AppendRunEvent {
             run_id: run.id.clone(),
@@ -333,8 +337,8 @@ mod tests {
     use tonic::transport::Server;
     use tonic::{Request, Response, Status};
     use tonic_reflection::server::Builder;
-    use yakumo_domain::{CreateRequest, CreateWorkspace, Page};
-    use yakumo_store::Store;
+    use yaku_domain::{CreateRequest, CreateWorkspace, Page};
+    use yaku_store::Store;
 
     #[test]
     fn unsupported_grpc_sender_records_failed_run() {

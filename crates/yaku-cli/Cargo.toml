@@ -38,12 +38,12 @@ tokio = { workspace = true, features = [
 ] }
 yakumo = { workspace = true }
 yakumo-crypto = { workspace = true }
-yakumo-domain = { workspace = true }
-yakumo-engine = { workspace = true }
+yaku-domain = { workspace = true }
+yaku-engine = { workspace = true }
 yakumo-http = { workspace = true }
 yakumo-models = { workspace = true }
 yakumo-features = { workspace = true }
-yakumo-store = { workspace = true }
+yaku-store = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = "2"

@@ -9134,14 +9134,62 @@ dependencies = [
  "tonic",
  "tonic-prost",
  "tonic-reflection",
+ "yaku-domain",
+ "yaku-engine",
+ "yaku-store",
  "yakumo",
  "yakumo-crypto",
- "yakumo-domain",
- "yakumo-engine",
  "yakumo-features",
  "yakumo-http",
  "yakumo-models",
- "yakumo-store",
+]
+
+[[package]]
+name = "yaku-domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "ts-rs",
+]
+
+[[package]]
+name = "yaku-engine"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "prost",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tonic",
+ "tonic-prost",
+ "tonic-reflection",
+ "yaku-domain",
+ "yaku-store",
+ "yakumo-grpc",
+]
+
+[[package]]
+name = "yaku-store"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.18",
+ "yaku-domain",
 ]
 
 [[package]]
@@ -9214,13 +9262,14 @@ dependencies = [
  "ts-rs",
  "url",
  "uuid",
+ "yaku-domain",
+ "yaku-engine",
+ "yaku-store",
  "yakumo",
  "yakumo-api",
  "yakumo-common",
  "yakumo-core",
  "yakumo-crypto",
- "yakumo-domain",
- "yakumo-engine",
  "yakumo-features",
  "yakumo-fonts",
  "yakumo-git",
@@ -9230,7 +9279,6 @@ dependencies = [
  "yakumo-mac-window",
  "yakumo-models",
  "yakumo-sse",
- "yakumo-store",
  "yakumo-sync",
  "yakumo-tauri-utils",
  "yakumo-templates",
@@ -9265,40 +9313,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "yakumo-models",
-]
-
-[[package]]
-name = "yakumo-domain"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "ts-rs",
-]
-
-[[package]]
-name = "yakumo-engine"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "futures-util",
- "prost",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-stream",
- "tokio-tungstenite",
- "tonic",
- "tonic-prost",
- "tonic-reflection",
- "yakumo-domain",
- "yakumo-grpc",
- "yakumo-store",
 ]
 
 [[package]]
@@ -9485,20 +9499,6 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "ts-rs",
-]
-
-[[package]]
-name = "yakumo-store"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "hex",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "thiserror 2.0.18",
- "yakumo-domain",
 ]
 
 [[package]]

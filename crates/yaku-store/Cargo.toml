@@ -1,5 +1,5 @@
 [package]
-name = "yakumo-store"
+name = "yaku-store"
 version = "0.1.0"
 edition = "2024"
 publish = false
@@ -12,4 +12,4 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
-yakumo-domain = { workspace = true }
+yaku-domain = { workspace = true }

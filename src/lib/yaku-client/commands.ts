@@ -156,6 +156,17 @@ export async function getV2RunBodyBytes(bodyId: string) {
   return invokeCmd<number[]>("cmd_yaku_run_body_bytes", { bodyId });
 }
 
+export async function startV2Run(requestId: string, environmentId?: string | null) {
+  return invokeCmd<V2Run>("cmd_yaku_run_start", {
+    requestId,
+    environmentId: environmentId ?? null,
+  });
+}
+
+export async function cancelV2Run(runId: string) {
+  return invokeCmd<V2Run>("cmd_yaku_run_cancel", { runId });
+}
+
 export async function deleteV2Run(runId: string) {
   return invokeCmd<V2DeleteResponse>("cmd_yaku_run_delete", { runId });
 }

@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use std::path::{Path, PathBuf};
-use yakumo_domain::BodyStorageKind;
+use yaku_domain::BodyStorageKind;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StoredBody {

@@ -14,7 +14,7 @@ import type {
   RunState as DomainRunState,
   Setting as DomainSetting,
   Workspace as DomainWorkspace,
-} from "../../../crates/yakumo-domain/bindings/gen_domain";
+} from "../../../crates/yaku-domain/bindings/gen_domain";
 
 export type V2Protocol = DomainProtocol;
 export type V2RequestNodeKind = DomainRequestNodeKind;
@@ -58,6 +58,17 @@ export type V2Setting = DomainSetting;
 export type V2WorkspacePageItem = V2Workspace & { cursor: number };
 export type V2RequestNodePageItem = V2RequestNode & { cursor: number };
 export type V2RunPageItem = V2Run & { cursor: number };
+
+export type YakuRunLifecycleKind = "started" | "finished" | "failed" | "cancelled";
+
+export interface YakuRunLifecycleEvent {
+  kind: YakuRunLifecycleKind;
+  runId: string;
+  requestId: string;
+  workspaceId: string;
+  run: V2Run | null;
+  error: string | null;
+}
 
 export const V2_RUN_EVENT_KIND_OPTIONS: Array<{
   value: "all" | V2RunEventKind;

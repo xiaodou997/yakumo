@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use thiserror::Error;
-use yakumo_domain::{
+use yaku_domain::{
     BodyRole, BodyStorageKind, Environment, EnvironmentRepository, Page, Protocol, Request,
     RequestNode, RequestNodeKind, RequestRepository, Run, RunBody, RunBodyRepository, RunEvent,
     RunEventKind, RunRepository, RunState, SecretMetadata, Setting, Workspace, WorkspaceRepository,
@@ -1085,81 +1085,77 @@ impl Store {
 }
 
 impl WorkspaceRepository for Store {
-    fn upsert_workspace(&self, workspace: &Workspace) -> yakumo_domain::Result<()> {
+    fn upsert_workspace(&self, workspace: &Workspace) -> yaku_domain::Result<()> {
         Store::upsert_workspace(self, workspace).map_err(domain_error)
     }
 
-    fn get_workspace(&self, id: &str) -> yakumo_domain::Result<Option<Workspace>> {
+    fn get_workspace(&self, id: &str) -> yaku_domain::Result<Option<Workspace>> {
         Store::get_workspace(self, id).map_err(domain_error)
     }
 
-    fn list_workspaces(&self) -> yakumo_domain::Result<Vec<Workspace>> {
+    fn list_workspaces(&self) -> yaku_domain::Result<Vec<Workspace>> {
         Store::list_workspaces(self).map_err(domain_error)
     }
 
-    fn delete_workspace(&self, id: &str) -> yakumo_domain::Result<bool> {
+    fn delete_workspace(&self, id: &str) -> yaku_domain::Result<bool> {
         Store::delete_workspace(self, id).map_err(domain_error)
     }
 }
 
 impl RequestRepository for Store {
-    fn upsert_request(&self, request: &Request, node: &RequestNode) -> yakumo_domain::Result<()> {
+    fn upsert_request(&self, request: &Request, node: &RequestNode) -> yaku_domain::Result<()> {
         Store::upsert_request(self, request, node).map_err(domain_error)
     }
 
-    fn upsert_request_node(&self, node: &RequestNode) -> yakumo_domain::Result<()> {
+    fn upsert_request_node(&self, node: &RequestNode) -> yaku_domain::Result<()> {
         Store::upsert_request_node(self, node).map_err(domain_error)
     }
 
-    fn get_request(&self, id: &str) -> yakumo_domain::Result<Option<Request>> {
+    fn get_request(&self, id: &str) -> yaku_domain::Result<Option<Request>> {
         Store::get_request(self, id).map_err(domain_error)
     }
 
-    fn get_request_node(&self, id: &str) -> yakumo_domain::Result<Option<RequestNode>> {
+    fn get_request_node(&self, id: &str) -> yaku_domain::Result<Option<RequestNode>> {
         Store::get_request_node(self, id).map_err(domain_error)
     }
 
-    fn list_request_tree(&self, workspace_id: &str) -> yakumo_domain::Result<Vec<RequestNode>> {
+    fn list_request_tree(&self, workspace_id: &str) -> yaku_domain::Result<Vec<RequestNode>> {
         Store::list_request_tree(self, workspace_id).map_err(domain_error)
     }
 
-    fn delete_request_node(&self, id: &str) -> yakumo_domain::Result<bool> {
+    fn delete_request_node(&self, id: &str) -> yaku_domain::Result<bool> {
         Store::delete_request_node(self, id).map_err(domain_error)
     }
 }
 
 impl EnvironmentRepository for Store {
-    fn upsert_environment(&self, environment: &Environment) -> yakumo_domain::Result<()> {
+    fn upsert_environment(&self, environment: &Environment) -> yaku_domain::Result<()> {
         Store::upsert_environment(self, environment).map_err(domain_error)
     }
 
-    fn get_environment(&self, id: &str) -> yakumo_domain::Result<Option<Environment>> {
+    fn get_environment(&self, id: &str) -> yaku_domain::Result<Option<Environment>> {
         Store::get_environment(self, id).map_err(domain_error)
     }
 
-    fn list_environments(&self, workspace_id: &str) -> yakumo_domain::Result<Vec<Environment>> {
+    fn list_environments(&self, workspace_id: &str) -> yaku_domain::Result<Vec<Environment>> {
         Store::list_environments(self, workspace_id).map_err(domain_error)
     }
 
-    fn delete_environment(&self, id: &str) -> yakumo_domain::Result<bool> {
+    fn delete_environment(&self, id: &str) -> yaku_domain::Result<bool> {
         Store::delete_environment(self, id).map_err(domain_error)
     }
 }
 
 impl RunRepository for Store {
-    fn upsert_run(&self, run: &Run) -> yakumo_domain::Result<()> {
+    fn upsert_run(&self, run: &Run) -> yaku_domain::Result<()> {
         Store::upsert_run(self, run).map_err(domain_error)
     }
 
-    fn get_run(&self, id: &str) -> yakumo_domain::Result<Option<Run>> {
+    fn get_run(&self, id: &str) -> yaku_domain::Result<Option<Run>> {
         Store::get_run(self, id).map_err(domain_error)
     }
 
-    fn list_runs_for_request(
-        &self,
-        request_id: &str,
-        page: Page,
-    ) -> yakumo_domain::Result<Vec<Run>> {
+    fn list_runs_for_request(&self, request_id: &str, page: Page) -> yaku_domain::Result<Vec<Run>> {
         Store::list_runs_for_request(self, request_id, page).map_err(domain_error)
     }
 
@@ -1167,19 +1163,15 @@ impl RunRepository for Store {
         &self,
         workspace_id: &str,
         page: Page,
-    ) -> yakumo_domain::Result<Vec<Run>> {
+    ) -> yaku_domain::Result<Vec<Run>> {
         Store::list_runs_for_workspace(self, workspace_id, page).map_err(domain_error)
     }
 
-    fn delete_run(&self, id: &str) -> yakumo_domain::Result<bool> {
+    fn delete_run(&self, id: &str) -> yaku_domain::Result<bool> {
         Store::delete_run(self, id).map_err(domain_error)
     }
 
-    fn prune_runs_for_request(
-        &self,
-        request_id: &str,
-        keep_last: u32,
-    ) -> yakumo_domain::Result<u64> {
+    fn prune_runs_for_request(&self, request_id: &str, keep_last: u32) -> yaku_domain::Result<u64> {
         Store::prune_runs_for_request(self, request_id, keep_last).map_err(domain_error)
     }
 
@@ -1187,15 +1179,15 @@ impl RunRepository for Store {
         &self,
         workspace_id: &str,
         keep_last: u32,
-    ) -> yakumo_domain::Result<u64> {
+    ) -> yaku_domain::Result<u64> {
         Store::prune_runs_for_workspace(self, workspace_id, keep_last).map_err(domain_error)
     }
 
-    fn append_run_event(&self, event: &RunEvent) -> yakumo_domain::Result<i64> {
+    fn append_run_event(&self, event: &RunEvent) -> yaku_domain::Result<i64> {
         Store::append_run_event(self, event).map_err(domain_error)
     }
 
-    fn list_run_events(&self, run_id: &str, page: Page) -> yakumo_domain::Result<Vec<RunEvent>> {
+    fn list_run_events(&self, run_id: &str, page: Page) -> yaku_domain::Result<Vec<RunEvent>> {
         Store::list_run_events(self, run_id, page).map_err(domain_error)
     }
 
@@ -1204,7 +1196,7 @@ impl RunRepository for Store {
         run_id: &str,
         kind: RunEventKind,
         page: Page,
-    ) -> yakumo_domain::Result<Vec<RunEvent>> {
+    ) -> yaku_domain::Result<Vec<RunEvent>> {
         Store::list_run_events_by_kind(self, run_id, kind, page).map_err(domain_error)
     }
 
@@ -1212,23 +1204,23 @@ impl RunRepository for Store {
         &self,
         run_id: &str,
         kind: RunEventKind,
-    ) -> yakumo_domain::Result<Option<RunEvent>> {
+    ) -> yaku_domain::Result<Option<RunEvent>> {
         Store::latest_run_event_by_kind(self, run_id, kind).map_err(domain_error)
     }
 }
 
 impl RunBodyRepository for Store {
-    fn upsert_run_body(&self, body: &RunBody) -> yakumo_domain::Result<()> {
+    fn upsert_run_body(&self, body: &RunBody) -> yaku_domain::Result<()> {
         Store::upsert_run_body(self, body).map_err(domain_error)
     }
 
-    fn list_run_bodies(&self, run_id: &str) -> yakumo_domain::Result<Vec<RunBody>> {
+    fn list_run_bodies(&self, run_id: &str) -> yaku_domain::Result<Vec<RunBody>> {
         Store::list_run_bodies(self, run_id).map_err(domain_error)
     }
 }
 
-fn domain_error(err: Error) -> yakumo_domain::Error {
-    yakumo_domain::Error::Repository(err.to_string())
+fn domain_error(err: Error) -> yaku_domain::Error {
+    yaku_domain::Error::Repository(err.to_string())
 }
 
 fn validate_workspace_backup(backup: &WorkspaceBackup) -> Result<String> {
@@ -1774,7 +1766,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::collections::BTreeMap;
-    use yakumo_domain::{
+    use yaku_domain::{
         AppendRunEvent, CreateRequest, CreateRun, CreateWorkspace, DomainService, FinishRun,
     };
 
@@ -1926,7 +1918,7 @@ mod tests {
             })
             .expect("workspace create");
         let folder = service
-            .create_folder(yakumo_domain::CreateFolder {
+            .create_folder(yaku_domain::CreateFolder {
                 id: "folder_v2".to_string(),
                 workspace_id: workspace.id.clone(),
                 parent_id: None,
@@ -1976,7 +1968,7 @@ mod tests {
             })
             .expect("workspace create");
         let folder = service
-            .create_folder(yakumo_domain::CreateFolder {
+            .create_folder(yaku_domain::CreateFolder {
                 id: "folder_v2".to_string(),
                 workspace_id: workspace.id.clone(),
                 parent_id: None,
@@ -2001,7 +1993,7 @@ mod tests {
             .expect("request create");
 
         let updated = service
-            .update_request(yakumo_domain::UpdateRequest {
+            .update_request(yaku_domain::UpdateRequest {
                 id: request.id.clone(),
                 name: Some("Ping".to_string()),
                 description: None,
@@ -2012,7 +2004,7 @@ mod tests {
         assert_eq!(updated.name, "Ping");
 
         let moved = service
-            .move_request_node(yakumo_domain::MoveRequestNode {
+            .move_request_node(yaku_domain::MoveRequestNode {
                 id: "node_v2".to_string(),
                 parent_id: None,
                 sort_key: "z".to_string(),
@@ -2379,7 +2371,7 @@ mod tests {
                 })
                 .expect("run create");
             let event = service
-                .append_run_event(yakumo_domain::AppendRunEvent {
+                .append_run_event(yaku_domain::AppendRunEvent {
                     run_id: run.id.clone(),
                     sequence: 0,
                     kind: RunEventKind::ResponseBody,
@@ -2388,7 +2380,7 @@ mod tests {
                 })
                 .expect("event append");
             service
-                .record_run_body(yakumo_domain::RecordRunBody {
+                .record_run_body(yaku_domain::RecordRunBody {
                     id: format!("body_{index}"),
                     run_id: run.id,
                     event_id: Some(event.id),
@@ -2403,8 +2395,8 @@ mod tests {
         }
 
         let deleted = service
-            .prune_runs(yakumo_domain::PruneRuns {
-                scope: yakumo_domain::PruneRunsScope::Request { request_id: request.id.clone() },
+            .prune_runs(yaku_domain::PruneRuns {
+                scope: yaku_domain::PruneRunsScope::Request { request_id: request.id.clone() },
                 keep_last: 1,
             })
             .expect("prune runs");

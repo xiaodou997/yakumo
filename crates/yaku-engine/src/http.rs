@@ -3,7 +3,7 @@ use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
-use yakumo_domain::{
+use yaku_domain::{
     AppendRunEvent, BodyRole, CreateRun, DomainService, FinishRun, Protocol, RecordRunBody,
     RequestRepository, Run, RunBodyRepository, RunEventKind, RunRepository, RunState,
     WorkspaceRepository,
@@ -139,9 +139,10 @@ where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
         let now = chrono::Utc::now();
-        let request = service.repository().get_request(&input.request_id)?.ok_or_else(|| {
-            yakumo_domain::Error::NotFound(format!("request {}", input.request_id))
-        })?;
+        let request = service
+            .repository()
+            .get_request(&input.request_id)?
+            .ok_or_else(|| yaku_domain::Error::NotFound(format!("request {}", input.request_id)))?;
 
         if request.protocol != Protocol::Http && request.protocol != Protocol::Graphql {
             return Err(Error::InvalidConfig(format!(
@@ -152,11 +153,14 @@ where
 
         let effective_config = input.config_override.unwrap_or_else(|| request.config.clone());
         let config = parse_config(effective_config.clone())?;
-        let run = service.create_run(CreateRun {
-            id: input.run_id,
-            request_id: request.id.clone(),
-            now,
-        })?;
+        let run = match service.repository().get_run(&input.run_id)? {
+            Some(run) => run,
+            None => service.create_run(CreateRun {
+                id: input.run_id.clone(),
+                request_id: request.id.clone(),
+                now,
+            })?,
+        };
 
         service.append_run_event(AppendRunEvent {
             run_id: run.id.clone(),
@@ -368,8 +372,8 @@ mod tests {
     use std::net::SocketAddr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
-    use yakumo_domain::{CreateRequest, CreateWorkspace, Page};
-    use yakumo_store::Store;
+    use yaku_domain::{CreateRequest, CreateWorkspace, Page};
+    use yaku_store::Store;
 
     #[test]
     fn mock_http_send_writes_run_events_and_completes() {
@@ -558,7 +562,7 @@ mod tests {
                 now,
             })
             .expect("request create");
-        let dir = std::env::temp_dir().join(format!("yakumo-engine-body-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("yaku-engine-body-{}", std::process::id()));
         let engine = HttpEngine::with_body_store(
             MockHttpSender::ok(200, b"larger-than-limit".to_vec()),
             ThresholdBodyStore::new(&dir, 4),
@@ -577,7 +581,7 @@ mod tests {
         let store = service.into_inner();
         let bodies = store.list_run_bodies(&run.id).expect("bodies");
         assert_eq!(bodies.len(), 1);
-        assert_eq!(bodies[0].storage_kind, yakumo_domain::BodyStorageKind::File);
+        assert_eq!(bodies[0].storage_kind, yaku_domain::BodyStorageKind::File);
         let path = bodies[0].storage_ref.strip_prefix("file:").expect("file ref");
         assert_eq!(std::fs::read(path).expect("body file"), b"larger-than-limit");
     }
