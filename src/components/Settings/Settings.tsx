@@ -1,11 +1,9 @@
 import { useSearch } from "@tanstack/react-router";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { type } from "@tauri-apps/plugin-os";
-import { useLicense } from "@yakumo-internal/license";
 import classNames from "classnames";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useDocumentKey } from "../../hooks/useDocumentKey";
-import { appInfo } from "../../lib/appInfo";
 import { useTranslate } from "../../lib/i18n";
 import type { MessageKey } from "../../lib/i18n/messages";
 import { useYakuSettings } from "../../lib/yaku-settings";
@@ -24,15 +22,7 @@ const TAB_INTERFACE = "interface";
 const TAB_SHORTCUTS = "shortcuts";
 const TAB_CERTIFICATES = "certificates";
 const TAB_PROXY = "proxy";
-const TAB_LICENSE = "license";
-const tabs = [
-  TAB_GENERAL,
-  TAB_INTERFACE,
-  TAB_SHORTCUTS,
-  TAB_CERTIFICATES,
-  TAB_PROXY,
-  TAB_LICENSE,
-] as const;
+const tabs = [TAB_GENERAL, TAB_INTERFACE, TAB_SHORTCUTS, TAB_CERTIFICATES, TAB_PROXY] as const;
 export type SettingsTab = (typeof tabs)[number];
 
 const SettingsGeneral = lazy(() =>
@@ -50,9 +40,6 @@ const SettingsCertificates = lazy(() =>
 const SettingsProxy = lazy(() =>
   import("./SettingsProxy").then((m) => ({ default: m.SettingsProxy })),
 );
-const SettingsLicense = lazy(() =>
-  import("./SettingsLicense").then((m) => ({ default: m.SettingsLicense })),
-);
 
 const tabLabels: Record<SettingsTab, MessageKey> = {
   [TAB_GENERAL]: "settings.general",
@@ -60,7 +47,6 @@ const tabLabels: Record<SettingsTab, MessageKey> = {
   [TAB_SHORTCUTS]: "settings.shortcuts",
   [TAB_CERTIFICATES]: "settings.certificates",
   [TAB_PROXY]: "settings.proxy",
-  [TAB_LICENSE]: "settings.license",
 };
 
 function isSettingsTab(value: string | undefined): value is SettingsTab {
@@ -77,7 +63,6 @@ export default function Settings({ hide }: Props) {
     isSettingsTab(mainTab) ? mainTab : TAB_GENERAL,
   );
   const settings = useYakuSettings();
-  const licenseCheck = useLicense();
 
   useEffect(() => {
     if (isSettingsTab(mainTab)) {
@@ -139,7 +124,6 @@ export default function Settings({ hide }: Props) {
           (value): TabItem => ({
             value,
             label: t(tabLabels[value]),
-            hidden: !appInfo.featureLicense && value === TAB_LICENSE,
             leftSlot:
               value === TAB_GENERAL ? (
                 <Icon icon="settings" className="text-secondary" />
@@ -151,16 +135,12 @@ export default function Settings({ hide }: Props) {
                 <Icon icon="shield_check" className="text-secondary" />
               ) : value === TAB_PROXY ? (
                 <Icon icon="wifi" className="text-secondary" />
-              ) : value === TAB_LICENSE ? (
-                <Icon icon="key_round" className="text-secondary" />
               ) : null,
             rightSlot:
               value === TAB_CERTIFICATES ? (
                 <CountBadge count={settings.clientCertificates.length} />
               ) : value === TAB_PROXY && settings.proxy?.type === "enabled" ? (
                 <CountBadge count />
-              ) : value === TAB_LICENSE && licenseCheck.check.data?.status === "personal_use" ? (
-                <CountBadge count color="notice" />
               ) : null,
           }),
         )}
@@ -183,10 +163,8 @@ export function SettingsTabContent({ value }: { value: SettingsTab }) {
           <SettingsHotkeys />
         ) : value === TAB_CERTIFICATES ? (
           <SettingsCertificates />
-        ) : value === TAB_PROXY ? (
-          <SettingsProxy />
         ) : (
-          <SettingsLicense />
+          <SettingsProxy />
         )}
       </Suspense>
     </TabContent>

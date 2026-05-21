@@ -3,12 +3,11 @@ import { appInfo } from "../lib/appInfo";
 
 interface Props {
   children: ReactNode;
-  feature: "updater" | "license";
+  feature: "updater";
 }
 
 const featureMap: Record<Props["feature"], boolean> = {
   updater: appInfo.featureUpdater,
-  license: appInfo.featureLicense,
 };
 
 export function CargoFeature({ children, feature }: Props) {

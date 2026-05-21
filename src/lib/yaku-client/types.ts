@@ -107,7 +107,6 @@ export interface YakuAppSettings {
   editorFontSize: number;
   editorKeymap: YakuEditorKeymap;
   editorSoftWrap: boolean;
-  hideLicenseBadge: boolean;
   hideWindowControls: boolean;
   hotkeys: Record<string, string[]>;
   interfaceFont: string | null;

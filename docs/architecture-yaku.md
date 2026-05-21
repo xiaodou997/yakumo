@@ -47,8 +47,6 @@ The runtime architecture must not preserve compatibility layers.
 - `src-tauri/src/yaku_commands.rs`.
 - `src/lib/yaku-client`.
 - `src/features/yaku-workspace`.
-- `/debug/yaku` remains as a thin debug route wrapper for the Yaku workspace
-  shell.
 - Shared UI primitives under `src/components/core`, tree components, editor
   infrastructure, dialog/toast helpers, router, and query client.
 
@@ -184,11 +182,8 @@ Target routes:
 
 - `/workspaces`: list/create/select Yaku workspaces.
 - `/workspaces/$workspaceId`: Yaku workspace shell.
-- `/workspaces/$workspaceId/requests/$requestId`: optional direct request focus
-  route if useful.
-- `/debug/yaku`: optional temporary inspector route, replacing current `/v2`.
 
-`/v2` should not remain a product route.
+`/v2` and `/debug/yaku` do not remain product routes.
 
 ## Yaku Workspace Shell
 
@@ -255,7 +250,8 @@ Current state:
 - `src-tauri/src/yaku_commands.rs`.
 - Tauri commands use `cmd_yaku_*`.
 - Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
-- `/v2` route moved to `/debug/yaku`.
+- `/v2`, `/debug/yaku`, and deprecated request-path focus routes are removed;
+  `/workspaces` is the only workspace shell entry.
 
 ### Renamed During Core Cutover
 
@@ -281,7 +277,8 @@ Phase 1: Establish Yaku main path.
   `queries.ts`, `types.ts`, and `events.ts`. Done; the old shim is deleted.
 - Create `src/features/yaku-workspace`.
 - Point `/workspaces` and `/workspaces/$workspaceId` at Yaku components.
-- Move current `/v2` to `/debug/yaku` or delete it after parity. Done.
+- Delete `/v2`, `/debug/yaku`, and deprecated request-path focus routes after
+  `/workspaces` parity. Done.
 
 Phase 2: Remove startup dependency on old models.
 
@@ -336,8 +333,8 @@ Phase 6: Rebuild optional capabilities.
 - Yaku backup/export/import. Baseline native workspace backup import/export is
   implemented through `cmd_yaku_backup_export` and `cmd_yaku_backup_import`.
   Legacy AnyModel import/export dialogs, commands, and the old importer module
-  are removed from the desktop surface; `import-data` deep links now fail closed
-  with guidance to use Yaku backup import.
+  are removed from the desktop surface. `import-data` deep-link handling is also
+  removed; Yaku backup import/export is the only supported desktop backup path.
 - Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
   implemented through `app.settings`; secrets remain follow-up work.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by

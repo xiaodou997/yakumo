@@ -11,14 +11,6 @@ vi.mock("@tauri-apps/plugin-os", () => ({
   type: () => "macos",
 }));
 
-vi.mock("@yakumo-internal/license", () => ({
-  useLicense: () => ({ check: { data: null } }),
-}));
-
-vi.mock("../../lib/appInfo", () => ({
-  appInfo: { featureLicense: true },
-}));
-
 vi.mock("./SettingsGeneral", () => ({
   SettingsGeneral: () => <div data-testid="settings-general">General</div>,
 }));
@@ -37,10 +29,6 @@ vi.mock("./SettingsCertificates", () => ({
 
 vi.mock("./SettingsProxy", () => ({
   SettingsProxy: () => <div data-testid="settings-proxy">Proxy</div>,
-}));
-
-vi.mock("./SettingsLicense", () => ({
-  SettingsLicense: () => <div data-testid="settings-license">License</div>,
 }));
 
 function renderTab(value: SettingsTab) {

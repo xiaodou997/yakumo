@@ -15,7 +15,6 @@ pub(crate) struct AppMetaData {
     app_log_dir: String,
     default_project_dir: String,
     feature_updater: bool,
-    feature_license: bool,
 }
 
 #[tauri::command]
@@ -32,7 +31,6 @@ pub(crate) async fn cmd_metadata(app_handle: AppHandle) -> YakumoResult<AppMetaD
         app_data_dir: app_data_dir.to_string_lossy().to_string(),
         app_log_dir: app_log_dir.to_string_lossy().to_string(),
         default_project_dir: default_project_dir.to_string_lossy().to_string(),
-        feature_license: false,
         feature_updater: cfg!(feature = "updater"),
     })
 }

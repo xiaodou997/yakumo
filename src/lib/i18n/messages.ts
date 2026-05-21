@@ -63,17 +63,14 @@ export const en = {
   "settings.certificates": "Certificates",
   "settings.general": "General",
   "settings.interface": "Interface",
-  "settings.license": "License",
   "settings.proxy": "Proxy",
   "settings.shortcuts": "Shortcuts",
   "settings.theme": "Theme",
   "settings.interface.colorizeMethods": "Colorize request methods",
-  "settings.interface.confirmPersonalUse": "Confirm Personal Use",
   "settings.interface.editorFont": "Editor font",
   "settings.interface.editorFontSize": "Editor Font Size",
   "settings.interface.editorKeymap": "Editor keymap",
   "settings.interface.heading": "Interface",
-  "settings.interface.hideLicenseBadge": "Hide personal use badge",
   "settings.interface.hideWindowControls": "Hide window controls",
   "settings.interface.hideWindowControlsHelp":
     "Hide the close/maximize/minimize controls on Windows or Linux",
@@ -91,15 +88,6 @@ export const en = {
   "settings.interface.optionAlwaysAsk": "Always ask",
   "settings.interface.optionCurrentWindow": "Open in current window",
   "settings.interface.optionNewWindow": "Open in new window",
-  "settings.interface.personalUseGreeting": "Hey there 👋🏼",
-  "settings.interface.personalUseLicenseRequired":
-    "If you’re using Yakumo at work, a license is required.",
-  "settings.interface.personalUseMessage":
-    "Yakumo is free for personal projects and learning.",
-  "settings.interface.personalUsePurchase": "Purchase a License →",
-  "settings.interface.personalUseSupport":
-    "Licenses help keep Yakumo independent and sustainable.",
-  "settings.interface.requirePersonalUse": "Personal Use",
   "settings.interface.subtitle":
     "Tweak settings related to the user interface.",
   "settings.interface.wrapEditorLines": "Wrap editor lines",
@@ -110,7 +98,6 @@ export const en = {
   "settings.menu.installCli": "Install CLI",
   "settings.menu.keyboardShortcuts": "Keyboard shortcuts",
   "settings.menu.mainMenu": "Main Menu",
-  "settings.menu.purchaseLicense": "Purchase License",
   "settings.menu.shareWorkspaces": "Share Workspace(s)",
 
   // General Settings
@@ -264,17 +251,14 @@ export const zhCN: typeof en = {
   "settings.certificates": "证书",
   "settings.general": "通用",
   "settings.interface": "界面",
-  "settings.license": "许可证",
   "settings.proxy": "代理",
   "settings.shortcuts": "快捷键",
   "settings.theme": "主题",
   "settings.interface.colorizeMethods": "为请求方法着色",
-  "settings.interface.confirmPersonalUse": "确认个人使用",
   "settings.interface.editorFont": "编辑器字体",
   "settings.interface.editorFontSize": "编辑器字号",
   "settings.interface.editorKeymap": "编辑器键位",
   "settings.interface.heading": "界面",
-  "settings.interface.hideLicenseBadge": "隐藏个人使用标识",
   "settings.interface.hideWindowControls": "隐藏窗口控制按钮",
   "settings.interface.hideWindowControlsHelp":
     "在 Windows 或 Linux 上隐藏关闭、最大化、最小化按钮",
@@ -292,14 +276,6 @@ export const zhCN: typeof en = {
   "settings.interface.optionAlwaysAsk": "总是询问",
   "settings.interface.optionCurrentWindow": "在当前窗口打开",
   "settings.interface.optionNewWindow": "在新窗口打开",
-  "settings.interface.personalUseGreeting": "你好 👋🏼",
-  "settings.interface.personalUseLicenseRequired":
-    "如果你在工作中使用 Yakumo，则需要许可证。",
-  "settings.interface.personalUseMessage": "Yakumo 可免费用于个人项目和学习。",
-  "settings.interface.personalUsePurchase": "购买许可证 →",
-  "settings.interface.personalUseSupport":
-    "许可证能帮助 Yakumo 保持独立并持续发展。",
-  "settings.interface.requirePersonalUse": "个人使用",
   "settings.interface.subtitle": "调整与用户界面相关的设置。",
   "settings.interface.wrapEditorLines": "编辑器自动换行",
   "settings.menu.changelog": "更新日志",
@@ -309,7 +285,6 @@ export const zhCN: typeof en = {
   "settings.menu.installCli": "安装 CLI",
   "settings.menu.keyboardShortcuts": "键盘快捷键",
   "settings.menu.mainMenu": "主菜单",
-  "settings.menu.purchaseLicense": "购买许可证",
   "settings.menu.shareWorkspaces": "共享工作区",
 
   // General Settings

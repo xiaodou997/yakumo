@@ -1,7 +1,6 @@
 use crate::error::Result;
-use crate::events::{ShowToastRequest, ToastColor};
 use log::{info, warn};
-use tauri::{AppHandle, Emitter, Manager, Runtime, Url};
+use tauri::{AppHandle, Manager, Runtime, Url};
 
 pub(crate) async fn handle_deep_link<R: Runtime>(
     app_handle: &AppHandle<R>,
@@ -17,23 +16,8 @@ pub(crate) async fn handle_deep_link<R: Runtime>(
         ));
     };
 
-    match command {
-        "import-data" => {
-            _ = window.set_focus();
-            window.emit(
-                "show_toast",
-                ShowToastRequest {
-                    message: "Legacy import links are disabled in the Yaku workspace. Use Yaku backup import instead.".to_string(),
-                    color: Some(ToastColor::Danger),
-                    icon: None,
-                    timeout: Some(5000),
-                },
-            )?;
-        }
-        _ => {
-            warn!("Unknown deep link command: {command}");
-        }
-    }
+    _ = window.set_focus();
+    warn!("Unknown deep link command: {command}");
 
     Ok(())
 }

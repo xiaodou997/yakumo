@@ -27,7 +27,6 @@ export const defaultYakuAppSettings: YakuAppSettings = {
   editorFontSize: 12,
   editorKeymap: "default",
   editorSoftWrap: true,
-  hideLicenseBadge: false,
   hideWindowControls: false,
   hotkeys: {},
   interfaceFont: null,
@@ -72,10 +71,6 @@ export function normalizeYakuAppSettings(value: unknown): YakuAppSettings {
       typeof input.editorSoftWrap === "boolean"
         ? input.editorSoftWrap
         : defaultYakuAppSettings.editorSoftWrap,
-    hideLicenseBadge:
-      typeof input.hideLicenseBadge === "boolean"
-        ? input.hideLicenseBadge
-        : defaultYakuAppSettings.hideLicenseBadge,
     hideWindowControls:
       typeof input.hideWindowControls === "boolean"
         ? input.hideWindowControls

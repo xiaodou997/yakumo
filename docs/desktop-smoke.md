@@ -17,17 +17,18 @@ Run these checks against a production `.app` build before release verification. 
 3. WebSocket: connect to a WebSocket endpoint, send a message, receive a message, disconnect, and reconnect.
 4. SSE: start an SSE request and confirm streamed events append without blocking the rest of the UI.
 
-## HTTP State
+## Network Settings
 
-1. Cookie jar: send a request that stores cookies, confirm the cookie count updates, then send a follow-up request that includes the stored cookie.
-2. Client certificates: add or select a certificate in settings, send a request requiring it, then remove or disable it and confirm the UI updates.
-3. Proxy: enable a proxy setting, send a request through it, then disable proxy and repeat the request.
+1. Client certificates: add or select a certificate in settings, send a request requiring it, then remove or disable it and confirm the UI updates.
+2. Proxy: enable a proxy setting, send a request through it, then disable proxy and repeat the request.
+3. Cookie jar is intentionally out of this smoke path until a Yaku-native cookie store is designed.
 
-## Workspace And Sync
+## Workspace
 
-1. Git or sync: perform a normal sync operation for a workspace and confirm status and conflicts display correctly.
-2. Switch workspaces and confirm requests, folders, environments, and settings load for the selected workspace.
-3. Create, rename, duplicate, and delete a request to verify model updates reach the sidebar and editor.
+1. Switch workspaces and confirm requests, folders, environments, and settings load for the selected workspace.
+2. Create, rename, duplicate, move, and delete a request to verify Yaku store updates reach the tree and editor.
+3. Create, rename, move, and delete a folder to verify tree persistence.
+4. Export a Yaku workspace backup and import it into an empty workspace profile.
 
 ## Settings
 

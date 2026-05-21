@@ -10,7 +10,6 @@ export interface AppInfo {
   appLogDir: string;
   defaultProjectDir: string;
   identifier: string;
-  featureLicense: boolean;
   featureUpdater: boolean;
 }
 

@@ -8,10 +8,15 @@ interface SettingsSearchSchema {
   tab?: SettingsTab;
 }
 
+const settingsTabs = new Set<string>(["general", "interface", "shortcuts", "certificates", "proxy"]);
+
 export const Route = createFileRoute("/workspaces/$workspaceId/settings")({
   component: RouteComponent,
   validateSearch: (search: Record<string, unknown>): SettingsSearchSchema => ({
-    tab: (search.tab ?? "general") as SettingsTab,
+    tab:
+      typeof search.tab === "string" && settingsTabs.has(search.tab)
+        ? (search.tab as SettingsTab)
+        : "general",
   }),
 });
 

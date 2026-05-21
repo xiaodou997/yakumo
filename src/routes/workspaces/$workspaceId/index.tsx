@@ -7,15 +7,6 @@ import {
   type YakuWorkspaceSearch,
 } from "../../../features/yaku-workspace";
 
-type LegacyWorkspaceSearch = {
-  environment_id?: string | null;
-  cookie_jar_id?: string | null;
-  request_id?: string | null;
-  folder_id?: string | null;
-};
-
-type WorkspaceRouteSearch = YakuWorkspaceSearch & LegacyWorkspaceSearch;
-
 export const Route = createFileRoute("/workspaces/$workspaceId/")({
   component: RouteComponent,
   validateSearch: validateWorkspaceSearch,
@@ -51,26 +42,7 @@ function RouteComponent() {
   return <YakuWorkspaceShell search={search} setSearch={setSearch} />;
 }
 
-function validateWorkspaceSearch(search: Record<string, unknown>): WorkspaceRouteSearch {
+function validateWorkspaceSearch(search: Record<string, unknown>): YakuWorkspaceSearch {
   const yakuSearch = validateYakuWorkspaceSearch(search);
-  const legacySearch = {
-    request_id: asOptionalString(search.request_id),
-    folder_id: asOptionalString(search.folder_id),
-    environment_id: asOptionalString(search.environment_id),
-    cookie_jar_id: asOptionalString(search.cookie_jar_id),
-  };
-
-  return {
-    ...legacySearch,
-    ...cleanYakuWorkspaceSearch({
-      ...yakuSearch,
-      requestId: yakuSearch.requestId ?? legacySearch.request_id ?? undefined,
-      folderId: yakuSearch.folderId ?? legacySearch.folder_id ?? undefined,
-      environmentId: yakuSearch.environmentId ?? legacySearch.environment_id ?? undefined,
-    }),
-  };
-}
-
-function asOptionalString(value: unknown) {
-  return typeof value === "string" && value !== "" ? value : undefined;
+  return cleanYakuWorkspaceSearch(yakuSearch);
 }

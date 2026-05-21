@@ -11,10 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces/index'
-import { Route as DebugYakuRouteImport } from './routes/debug/yaku'
 import { Route as WorkspacesWorkspaceIdIndexRouteImport } from './routes/workspaces/$workspaceId/index'
 import { Route as WorkspacesWorkspaceIdSettingsRouteImport } from './routes/workspaces/$workspaceId/settings'
-import { Route as WorkspacesWorkspaceIdRequestsRequestIdRouteImport } from './routes/workspaces/$workspaceId/requests/$requestId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,11 +22,6 @@ const IndexRoute = IndexRouteImport.update({
 const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
   id: '/workspaces/',
   path: '/workspaces/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DebugYakuRoute = DebugYakuRouteImport.update({
-  id: '/debug/yaku',
-  path: '/debug/yaku',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspacesWorkspaceIdIndexRoute =
@@ -43,72 +36,52 @@ const WorkspacesWorkspaceIdSettingsRoute =
     path: '/workspaces/$workspaceId/settings',
     getParentRoute: () => rootRouteImport,
   } as any)
-const WorkspacesWorkspaceIdRequestsRequestIdRoute =
-  WorkspacesWorkspaceIdRequestsRequestIdRouteImport.update({
-    id: '/workspaces/$workspaceId/requests/$requestId',
-    path: '/workspaces/$workspaceId/requests/$requestId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/debug/yaku': typeof DebugYakuRoute
   '/workspaces/': typeof WorkspacesIndexRoute
   '/workspaces/$workspaceId/settings': typeof WorkspacesWorkspaceIdSettingsRoute
   '/workspaces/$workspaceId/': typeof WorkspacesWorkspaceIdIndexRoute
-  '/workspaces/$workspaceId/requests/$requestId': typeof WorkspacesWorkspaceIdRequestsRequestIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/debug/yaku': typeof DebugYakuRoute
   '/workspaces': typeof WorkspacesIndexRoute
   '/workspaces/$workspaceId/settings': typeof WorkspacesWorkspaceIdSettingsRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdIndexRoute
-  '/workspaces/$workspaceId/requests/$requestId': typeof WorkspacesWorkspaceIdRequestsRequestIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/debug/yaku': typeof DebugYakuRoute
   '/workspaces/': typeof WorkspacesIndexRoute
   '/workspaces/$workspaceId/settings': typeof WorkspacesWorkspaceIdSettingsRoute
   '/workspaces/$workspaceId/': typeof WorkspacesWorkspaceIdIndexRoute
-  '/workspaces/$workspaceId/requests/$requestId': typeof WorkspacesWorkspaceIdRequestsRequestIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/debug/yaku'
     | '/workspaces/'
     | '/workspaces/$workspaceId/settings'
     | '/workspaces/$workspaceId/'
-    | '/workspaces/$workspaceId/requests/$requestId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/debug/yaku'
     | '/workspaces'
     | '/workspaces/$workspaceId/settings'
     | '/workspaces/$workspaceId'
-    | '/workspaces/$workspaceId/requests/$requestId'
   id:
     | '__root__'
     | '/'
-    | '/debug/yaku'
     | '/workspaces/'
     | '/workspaces/$workspaceId/settings'
     | '/workspaces/$workspaceId/'
-    | '/workspaces/$workspaceId/requests/$requestId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DebugYakuRoute: typeof DebugYakuRoute
   WorkspacesIndexRoute: typeof WorkspacesIndexRoute
   WorkspacesWorkspaceIdSettingsRoute: typeof WorkspacesWorkspaceIdSettingsRoute
   WorkspacesWorkspaceIdIndexRoute: typeof WorkspacesWorkspaceIdIndexRoute
-  WorkspacesWorkspaceIdRequestsRequestIdRoute: typeof WorkspacesWorkspaceIdRequestsRequestIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,13 +100,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/debug/yaku': {
-      id: '/debug/yaku'
-      path: '/debug/yaku'
-      fullPath: '/debug/yaku'
-      preLoaderRoute: typeof DebugYakuRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/workspaces/$workspaceId/': {
       id: '/workspaces/$workspaceId/'
       path: '/workspaces/$workspaceId'
@@ -148,24 +114,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/workspaces/$workspaceId/requests/$requestId': {
-      id: '/workspaces/$workspaceId/requests/$requestId'
-      path: '/workspaces/$workspaceId/requests/$requestId'
-      fullPath: '/workspaces/$workspaceId/requests/$requestId'
-      preLoaderRoute: typeof WorkspacesWorkspaceIdRequestsRequestIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DebugYakuRoute: DebugYakuRoute,
   WorkspacesIndexRoute: WorkspacesIndexRoute,
   WorkspacesWorkspaceIdSettingsRoute: WorkspacesWorkspaceIdSettingsRoute,
   WorkspacesWorkspaceIdIndexRoute: WorkspacesWorkspaceIdIndexRoute,
-  WorkspacesWorkspaceIdRequestsRequestIdRoute:
-    WorkspacesWorkspaceIdRequestsRequestIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

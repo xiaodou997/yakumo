@@ -19,14 +19,14 @@
 |------|------|------|
 | Workspace / Folder / Environment | 已实现 | App 与 CLI 均保留基础 CRUD 路径。 |
 | 请求/响应历史 | 已实现 | 桌面 App 保留历史模型和清理命令。 |
-| Git / 文件系统同步 | 已实现 | 功能入口保留；同步目录解析、基础 git 状态/操作入口和 git 相对路径边界已复核。 |
+| Git / 文件系统同步 | 已移除 | 旧 AnyModel sync 路径已退出桌面入口；如需同步，后续按 Yaku-native 数据模型重建。 |
 
 ## 安全与认证
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | Basic / Bearer / API Key / JWT / OAuth2 | 已实现 | 内置 auth registry 已覆盖摘要标签、字段名、默认值和敏感字段配置回归。 |
-| Workspace secrets | 已实现 | `cmd_secure_template` / `cmd_decrypt_template` 和 `secure()` 渲染使用 `EncryptionManager`。 |
+| Workspace secrets | 待实现 | 旧 secure/template 命令已移除；后续需要 Yaku-native secrets store 与模板渲染。 |
 | Client certificates | 已实现 | 设置路径保留；HTTP/gRPC/WebSocket 发送路径均接入证书匹配，已补 URL/端口匹配回归。 |
 
 ## 模板函数
@@ -42,20 +42,20 @@
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
-| Curl 导入 | 已实现 | `cmd_curl_to_request` 和文件导入路径均使用内置 curl importer。 |
-| Yakumo native JSON | 已实现 | 内置 importer 已补样例回归，覆盖 workspace/folder/http/gRPC/websocket 资源读取。 |
-| Postman / Insomnia / OpenAPI 3 / Swagger 2 | 已实现 | 内置 importer 已支持主要 JSON 导入路径，并补了基础样例测试。 |
-| 导出 JSON | 已实现 | 桌面导出命令保留。 |
+| Yaku workspace backup | 已实现 | 桌面和 CLI 均支持 Yaku-native workspace backup import/export。 |
+| Curl 导入 | 待实现 | 旧导入入口已移除；后续需要按 Yaku request config 重建。 |
+| Yakumo legacy JSON | 已移除 | 不做启动自动迁移；如需要，只能后续做显式 one-way importer。 |
+| Postman / Insomnia / OpenAPI 3 / Swagger 2 | 待实现 | 旧 AnyModel importer 已退出桌面入口；后续按 Yaku-native importer 重建。 |
 
 ## Actions 与响应处理
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
-| Copy as curl | 已实现 | 内置 HTTP request action 写入剪贴板。 |
-| Copy as grpcurl | 已实现 | 内置 gRPC request action 写入剪贴板。 |
-| Workspace / Folder / WebSocket actions | 已实现 | 内置 actions 已返回真实列表；Folder 支持 `Send All`（HTTP）与复制 ID。 |
-| 响应 body 读取 | 已实现 | `cmd_http_response_body` 已注册。 |
-| JSONPath / XPath 响应过滤 | 已实现 | 内置 JSONPath / XPath 过滤已接入响应体读取路径。 |
+| Copy as curl | 待实现 | 旧 action surface 已移除；后续应基于 Yaku request config 重建。 |
+| Copy as grpcurl | 待实现 | 旧 action surface 已移除；后续应基于 Yaku gRPC config 重建。 |
+| Workspace / Folder / WebSocket actions | 待实现 | 旧 action registry 已移除；Yaku tree/context menu 只保留基础 CRUD/send。 |
+| 响应 body 读取 | 已实现 | Yaku run body 通过 `cmd_yaku_run_body_bytes` 读取。 |
+| JSONPath / XPath 响应过滤 | 待实现 | 旧响应过滤入口已移除；后续在 Yaku body viewer 重建。 |
 | JSON / GraphQL 格式化 | 已实现 | Tauri 格式化命令保留。 |
 
 ## CLI
@@ -64,8 +64,7 @@
 |------|------|------|
 | `yaku` binary | 已实现 | 源码构建，本阶段不发布 npm 包。 |
 | schema/list/show/create/update/delete | 已实现 | workspace/folder/environment/request 主路径已统一为稳定 JSON 输出，folder schema 也已补齐。 |
-| HTTP send | 已实现 | 当前 CLI send 只支持 HTTP。 |
-| gRPC / WebSocket send | 待实现 | 第一阶段明确 HTTP-only。 |
+| HTTP / GraphQL / SSE / WebSocket / gRPC send | 已实现 | CLI send 走 `yaku-engine`，与桌面 Yaku send runtime 对齐。 |
 
 ## 已移除
 
@@ -75,5 +74,6 @@
 | npm CLI 发布 | 已移除 | `yaku` 仅源码构建。 |
 | plugin API npm 发布 | 已移除 | 不维护旧插件 API 发布链路。 |
 | Flatpak / sponsors / 旧 Yaak release 链路 | 已移除 | 后续按 Yakumo release scope 重建。 |
+| License UI/runtime | 已移除 | 旧 license 插件和 Settings tab 不再作为 Yaku 第一阶段入口。 |
 
-Last updated: 2026-04-27
+Last updated: 2026-05-21
