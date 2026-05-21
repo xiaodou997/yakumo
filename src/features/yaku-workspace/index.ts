@@ -2,5 +2,5 @@ export {
   YakuWorkspaceShell,
   cleanYakuWorkspaceSearch,
   validateYakuWorkspaceSearch,
-  type YakuWorkspaceSearch,
 } from "./YakuWorkspaceShell";
+export type { YakuWorkspaceSearch } from "./types";

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import classNames from "classnames";
 import {
@@ -24,17 +24,8 @@ import {
   deleteYakuEnvironment,
   deleteYakuRequestNode,
   exportYakuWorkspaceBackup,
-  getYakuRequest,
-  getYakuRunBodyBytes,
-  getYakuRunRetention,
   gcYakuBodies,
   importYakuWorkspaceBackup,
-  listYakuEnvironments,
-  listYakuRequests,
-  listYakuRunBodies,
-  listYakuRunEvents,
-  listYakuRunsForRequest,
-  listYakuWorkspaces,
   setYakuRunRetention,
   startYakuRun,
   moveYakuRequestNode,
@@ -42,7 +33,6 @@ import {
   updateYakuFolder,
   updateYakuRequest,
   type YakuProtocol,
-  type YakuRequestNodePageItem,
   type YakuRunBody,
   type YakuRunEventKind,
   type YakuRunLifecycleEvent,
@@ -58,20 +48,12 @@ import { RunEventTimelinePanel, RunHistoryPanel } from "./RunPanels";
 import { WorkspaceContextPanel } from "./WorkspaceContextPanel";
 import { WorkspacePanel as Panel } from "./WorkspacePanels";
 import { WorkspaceTreePanel } from "./WorkspaceTreePanel";
+import { useYakuWorkspaceQueries } from "./useYakuWorkspaceQueries";
 import {
   buildRequestConfigDraft,
   draftFromRequestConfig,
 } from "./requestConfig";
-import type { ConfigPair, WorkspaceTreeItem } from "./types";
-import { buildWorkspaceTree } from "./workspaceTree";
-
-export type YakuWorkspaceSearch = {
-  workspaceId?: string;
-  folderId?: string;
-  requestId?: string;
-  runId?: string;
-  environmentId?: string;
-};
+import type { ConfigPair, WorkspaceTreeItem, YakuWorkspaceSearch } from "./types";
 
 type YakuWorkspaceShellProps = {
   search: YakuWorkspaceSearch;
@@ -144,99 +126,37 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const [requestEditWebSocketMessages, setRequestEditWebSocketMessages] = useState("");
   const [requestEditWebSocketMaxMessages, setRequestEditWebSocketMaxMessages] = useState("1");
 
-  const workspacesQuery = useQuery({
-    queryKey: ["yaku", "workspaces"],
-    queryFn: () => listYakuWorkspaces(),
-    placeholderData: (prev) => prev,
-  });
-  const workspaces = workspacesQuery.data?.items ?? [];
-  const selectedWorkspaceId = resolveSelectedId(workspaces, search.workspaceId);
-  const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null;
-
-  const environmentsQuery = useQuery({
-    enabled: selectedWorkspaceId != null,
-    queryKey: ["yaku", "environments", selectedWorkspaceId],
-    queryFn: () => listYakuEnvironments(selectedWorkspaceId!),
-    placeholderData: (prev) => prev,
-  });
-  const environments = environmentsQuery.data ?? [];
-  const selectedEnvironmentId = resolveSelectedId(environments, search.environmentId);
-  const selectedEnvironment =
-    environments.find((environment) => environment.id === selectedEnvironmentId) ?? null;
-
-  const retentionQuery = useQuery({
-    enabled: selectedWorkspaceId != null,
-    queryKey: ["yaku", "run-retention", selectedWorkspaceId],
-    queryFn: () => getYakuRunRetention(selectedWorkspaceId!),
-    placeholderData: (prev) => prev,
-  });
-
-  const requestsQuery = useQuery({
-    enabled: selectedWorkspaceId != null,
-    queryKey: ["yaku", "requests", selectedWorkspaceId],
-    queryFn: () => listYakuRequests(selectedWorkspaceId!),
-    placeholderData: (prev) => prev,
-  });
-  const requestNodes = useMemo(
-    () =>
-      (requestsQuery.data?.items ?? []).filter(
-        (item): item is YakuRequestNodePageItem & { requestId: string } => item.requestId != null,
-      ),
-    [requestsQuery.data?.items],
-  );
-  const requestTreeNodes = requestsQuery.data?.items ?? [];
-  const folderNodes = useMemo(
-    () => requestTreeNodes.filter((item) => item.kind === "folder"),
-    [requestTreeNodes],
-  );
-  const workspaceTree = useMemo(
-    () => buildWorkspaceTree(selectedWorkspace, requestTreeNodes),
-    [requestTreeNodes, selectedWorkspace],
-  );
-  const selectedFolderNode = folderNodes.find((node) => node.id === search.folderId) ?? null;
-  const selectedRequestId =
-    search.folderId != null
-      ? search.requestId ?? undefined
-      : resolveSelectedRequestId(requestNodes, search.requestId);
-  const selectedRequestNode =
-    requestNodes.find((node) => node.requestId === selectedRequestId) ?? null;
   const treeRef = useRef<TreeHandle>(null);
-
-  const requestQuery = useQuery({
-    enabled: selectedRequestId != null,
-    queryKey: ["yaku", "request", selectedRequestId],
-    queryFn: () => getYakuRequest(selectedRequestId!),
+  const {
+    workspacesQuery,
+    workspaces,
+    selectedWorkspaceId,
+    selectedWorkspace,
+    environmentsQuery,
+    environments,
+    selectedEnvironmentId,
+    selectedEnvironment,
+    retentionQuery,
+    requestsQuery,
+    requestNodes,
+    folderNodes,
+    workspaceTree,
+    selectedFolderNode,
+    selectedRequestId,
+    selectedRequestNode,
+    requestQuery,
+    runsQuery,
+    runs,
+    selectedRunId,
+    selectedRunIsRunning,
+    runEventsQuery,
+    runBodies,
+    runBodyBytesQuery,
+  } = useYakuWorkspaceQueries({
+    search,
+    eventKind,
+    selectedBodyId,
   });
-
-  const runsQuery = useQuery({
-    enabled: selectedRequestId != null,
-    queryKey: ["yaku", "runs", "request", selectedRequestId],
-    queryFn: () => listYakuRunsForRequest(selectedRequestId!),
-    placeholderData: (prev) => prev,
-    refetchInterval: (query) =>
-      query.state.data?.items.some((run) => run.state === "running") ? 750 : false,
-  });
-  const runs = runsQuery.data?.items ?? [];
-  const selectedRunId = resolveSelectedId(runs, search.runId);
-  const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
-  const selectedRunIsRunning = selectedRun?.state === "running";
-
-  const runEventsQuery = useQuery({
-    enabled: selectedRunId != null,
-    queryKey: ["yaku", "run-events", selectedRunId, eventKind],
-    queryFn: () => listYakuRunEvents(selectedRunId!, eventKind === "all" ? null : eventKind),
-    placeholderData: (prev) => prev,
-    refetchInterval: selectedRunIsRunning ? 750 : false,
-  });
-
-  const runBodiesQuery = useQuery({
-    enabled: selectedRunId != null,
-    queryKey: ["yaku", "run-bodies", selectedRunId],
-    queryFn: () => listYakuRunBodies(selectedRunId!),
-    placeholderData: (prev) => prev,
-    refetchInterval: selectedRunIsRunning ? 1000 : false,
-  });
-  const runBodies = runBodiesQuery.data ?? [];
 
   useEffect(() => {
     if (!workspacesQuery.isSuccess) return;
@@ -359,12 +279,6 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     setRequestEditWebSocketMessages(draft.webSocketMessages);
     setRequestEditWebSocketMaxMessages(draft.webSocketMaxMessages);
   }, [requestQuery.data]);
-
-  const runBodyBytesQuery = useQuery({
-    enabled: selectedBodyId !== "",
-    queryKey: ["yaku", "run-body-bytes", selectedBodyId],
-    queryFn: () => getYakuRunBodyBytes(selectedBodyId),
-  });
 
   const invalidateRunData = useCallback(
     async (runId: string, requestId: string) => {
@@ -1167,23 +1081,6 @@ function StatCard({
 function MutationErrors({ errors }: { errors: unknown[] }) {
   const error = errors.find(Boolean);
   return error ? <FormattedError>{String(error)}</FormattedError> : null;
-}
-
-function resolveSelectedId<T extends { id: string }>(items: T[], requestedId?: string) {
-  if (requestedId != null && items.some((item) => item.id === requestedId)) {
-    return requestedId;
-  }
-  return items[0]?.id;
-}
-
-function resolveSelectedRequestId(
-  items: Array<YakuRequestNodePageItem & { requestId: string }>,
-  requestedId?: string,
-) {
-  if (requestedId != null && items.some((item) => item.requestId === requestedId)) {
-    return requestedId;
-  }
-  return items[0]?.requestId;
 }
 
 function preferredBodyId(bodies: YakuRunBody[]) {

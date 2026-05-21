@@ -5,6 +5,14 @@ export type ConfigPair = {
   enabled?: boolean;
 };
 
+export type YakuWorkspaceSearch = {
+  workspaceId?: string;
+  folderId?: string;
+  requestId?: string;
+  runId?: string;
+  environmentId?: string;
+};
+
 export type WorkspaceTreeItem = {
   id: string;
   workspaceId: string;
