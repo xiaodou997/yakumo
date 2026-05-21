@@ -1,163 +1,349 @@
-# Yakumo V2 Architecture
+# Yaku-First Destructive Rewrite Plan
 
-## Goals
+Last updated: 2026-05-21
 
-Yakumo V2 is a local-first personal API client with a shared Rust core for the
-desktop app and `yaku` CLI. The desktop UI remains Tauri + React for now, but
-business rules, request execution, persistence, and backup logic must be UI
-independent.
+## Decision
 
-V2 may break all historical data and code compatibility. Existing Yaak/Yakumo
-migrations are not a constraint for the new schema.
+The long-term product and architecture name is `Yaku`. `Yakumo V2` is now only a
+transitional label for the current scaffold. The target architecture is
+Yaku-first, destructive, and not constrained by historical Yaak/Yakumo data,
+legacy `AnyModel` APIs, old workspace UI compatibility, or old model-store
+migrations.
 
-## Product Scope
+If legacy data import is needed later, it must be an explicit one-way importer.
+The runtime architecture must not preserve compatibility layers.
 
-- Supported platforms: macOS, Windows, and Linux.
-- Primary product: desktop API client.
-- First-class CLI: `yaku` must use the same domain, store, and engine crates as
-  the desktop app.
-- First V2 feature slice: HTTP, GraphQL, workspace/request tree, run history,
-  and response viewer.
-- Core protocol direction: HTTP, GraphQL, gRPC, WebSocket, and SSE all use the
-  same run/event lifecycle.
-- Backup scope: personal backup only. No team sync, cloud sync, permissions,
-  remote collaboration, or JavaScript plugin runtime.
+## Naming Policy
 
-## Non-Goals
+### Final Naming
 
-- No historical database migration requirement.
-- No JavaScript plugin system.
-- No npm CLI release path.
-- No team conflict-resolution workflow.
-- No UI framework rewrite in the first V2 phase.
+- Product/user-facing name: `Yaku`.
+- CLI binary: `yaku`.
+- New Rust crates: `yaku-domain`, `yaku-store`, `yaku-engine`.
+- New frontend feature directory: `src/features/yaku-workspace`.
+- New frontend client directory: `src/lib/yaku-client`.
+- New Tauri commands: `cmd_yaku_*`.
+- New app data files: `yaku.sqlite` and `yaku-bodies`.
+- New docs should use `Yaku`, not `Yakumo V2`.
 
-## Crate Boundaries
+### Transitional Naming
+
+- Existing committed `yakumo-*` crates can be renamed in staged phases, not all
+  at once.
+- Old `@yakumo-internal/models` code should not be mechanically renamed. It is
+  scheduled for deletion.
+- Existing app bundle identifier, updater identity, and release tag policy are
+  not renamed until explicitly approved because they affect app data locations,
+  keychain identity, release automation, and installed app behavior.
+- `docs/architecture-v2.md` keeps its current filename temporarily to avoid
+  route churn in docs references. The content is Yaku-first.
+
+## Code Audit
+
+### Current Yaku/V2 Assets To Keep And Rename
+
+- `crates/yakumo-domain` -> `crates/yaku-domain`.
+- `crates/yakumo-store` -> `crates/yaku-store`.
+- `crates/yakumo-engine` -> `crates/yaku-engine`.
+- `src-tauri/src/v2_commands.rs` -> `src-tauri/src/yaku_commands.rs`.
+- `src/lib/v2.ts` -> split under `src/lib/yaku-client`.
+- `src/routes/v2.tsx` -> temporary source material for
+  `src/features/yaku-workspace`.
+- Shared UI primitives under `src/components/core`, tree components, editor
+  infrastructure, dialog/toast helpers, router, and query client.
+
+### Current Legacy Choke Points To Remove
+
+- `src/main.tsx` calls `initModelStore(jotaiStore)` and `initSync()`.
+- `src/components/StartupGate.tsx` calls `changeModelStoreWorkspace(null)`.
+- `src/routes/workspaces/$workspaceId/index.tsx` lazy-loads
+  `src/components/Workspace.tsx`.
+- `src/components/Workspace.tsx` and related hooks are driven by
+  `@yakumo-internal/models`.
+- `src-tauri/src/lib.rs` registers both new commands and old `models_ext`,
+  request, sync, history, WebSocket, gRPC, import, and template command paths.
+- `src-tauri/src/models_ext.rs` initializes and exposes the old `AnyModel`
+  store.
+- `crates/yakumo-models/guest-js` provides old frontend atoms and mutable model
+  helpers.
+- `crates/yakumo-sync` is old model-sync oriented and should not stay on the
+  main Yaku path.
+
+### Keep Versus Rewrite
+
+Keep:
+
+- Tauri shell, window plugins, logging, updater, deep-link infrastructure where
+  still in product scope.
+- Core UI primitives, tree, dropdown, buttons, split layout, editors, and
+  response viewers where they can accept Yaku props without importing old
+  models.
+- `yakumo-templates` and built-in template functions until they are renamed or
+  replaced.
+- Protocol transport crates only when called through the new Yaku engine path.
+
+Rewrite:
+
+- Workspace shell, sidebar, request editor, run timeline, response/body panes,
+  environment editor, recent state, settings, secrets, and command palette.
+- Frontend state hooks. Yaku must use query-shaped state instead of global
+  workspace model atoms.
+- Tauri command bridge. Commands should be explicit Yaku resources and run
+  lifecycle commands, not `AnyModel`.
+- Settings/secrets. They should move into Yaku settings/secrets tables and typed
+  commands.
+
+Delete after replacement:
+
+- Old workspace UI components that import `@yakumo-internal/models`.
+- `crates/yakumo-models/guest-js` usage from the app.
+- `models_ext` commands from the desktop bridge.
+- Old sync/import/export paths that only serialize `AnyModel`.
+- Old send hooks once Yaku send supports streaming, cancel, and body viewing.
+
+## Target Architecture
 
 ```text
-React UI
-  Tauri command bridge
-    yakumo-domain
-      yakumo-engine
-      yakumo-store
-    yaku CLI
+React Yaku App
+  src/lib/yaku-client/*
+    generated Rust TS bindings
+    resource-specific command wrappers
+    resource-specific query hooks
+    event subscription helpers
+  Tauri Yaku commands + events
+    yaku-domain
+      domain services + typed protocol config
+    yaku-store
+      SQLite + body file storage
+    yaku-engine
+      HTTP / GraphQL / gRPC / WebSocket / SSE send runtime
+  yaku CLI
+    same domain/store/engine path
 ```
 
-### yakumo-domain
+The old `AnyModel` store must not initialize on app startup once the first Yaku
+workspace shell replaces `/workspaces`.
 
-Pure business types and service contracts. This crate must not depend on Tauri,
-React, rusqlite, reqwest, tonic, or filesystem-specific implementations.
+## Data Model Direction
 
-Responsibilities:
+Keep structured tables for:
 
-- Workspace and request-tree domain types.
-- Request draft and protocol-specific configuration types.
-- Run, run-event, and run-body metadata types.
-- Domain IDs and validation primitives.
-- Service traits used by desktop and CLI.
+- `workspaces`
+- `request_nodes`
+- `requests`
+- `environments`
+- `runs`
+- `run_events`
+- `run_bodies`
+- `settings`
+- `secrets`
+- `backup_manifests`
 
-### yakumo-store
+Use typed JSON config for protocol-specific request fields. This preserves fast
+protocol iteration while keeping tree, run history, event pagination, settings,
+and body metadata queryable.
 
-SQLite-backed persistence for V2. This crate owns schema creation and typed
-storage operations.
+Required schema adjustments before main UI cutover:
 
-Responsibilities:
+- Rename store file from `v2.sqlite` to `yaku.sqlite`.
+- Rename body directory from `v2-bodies` to `yaku-bodies`.
+- Add explicit destructive schema reset policy during active Yaku development.
+- Add stable request config Rust enums for HTTP, GraphQL, gRPC, WebSocket, and
+  SSE instead of exposing `BTreeMap<String, Value>` as the long-term domain API.
+- Add app-level settings records that replace old `Settings`.
+- Add workspace UI state records for active environment, recent requests, and
+  layout state.
 
-- Create a clean `schema_v2`.
-- Store workspaces, request nodes, requests, environments, runs, run events,
-  run bodies, settings, secrets metadata, and backup manifests.
-- Provide paginated reads for request tree, run history, and run events.
-- Never expose raw `AnyModel`-style writes to UI code.
+## Frontend State Model
 
-### yakumo-engine
+Replace old global Jotai model atoms with resource queries:
 
-Future crate for request execution. It will transform domain request drafts into
-protocol runs and append run events through store abstractions.
+- `useYakuWorkspaces()`
+- `useYakuWorkspace(workspaceId)`
+- `useYakuRequestTree(workspaceId)`
+- `useYakuRequest(requestId)`
+- `useYakuEnvironments(workspaceId)`
+- `useYakuRunHistory(requestId)`
+- `useYakuRunEvents(runId)`
+- `useYakuRunBodies(runId)`
+- `useYakuSettings()`
 
-Responsibilities:
+Local UI state can remain Jotai or component state. Persisted app state must go
+through Yaku settings commands. Query keys should live in one module, not be
+hand-written across pages.
 
-- HTTP and GraphQL first.
-- gRPC, WebSocket, and SSE through the same run/event lifecycle.
-- Unified cancellation, timing, headers, cookies, TLS, proxy, DNS, and body
-  capture behavior.
+## Main Route Rewrite
 
-## V2 Data Model
+Target routes:
 
-Initial tables:
+- `/workspaces`: list/create/select Yaku workspaces.
+- `/workspaces/$workspaceId`: Yaku workspace shell.
+- `/workspaces/$workspaceId/requests/$requestId`: optional direct request focus
+  route if useful.
+- `/debug/yaku`: optional temporary inspector route, replacing current `/v2`.
 
-- `workspaces`: personal API workspaces.
-- `request_nodes`: tree entries for folders and requests.
-- `requests`: protocol-agnostic request metadata plus protocol-specific config.
-- `environments`: environment variables scoped to a workspace.
-- `runs`: one execution of a request.
-- `run_events`: append-only timeline for HTTP, GraphQL, gRPC, WebSocket, and
-  SSE.
-- `run_bodies`: body/blob metadata for large request/response payloads.
-- `settings`: app-level settings.
-- `secrets`: encrypted secret metadata.
-- `backup_manifests`: personal backup bookkeeping.
+`/v2` should not remain a product route.
 
-## Run Lifecycle
+## Yaku Workspace Shell
 
-Every send creates a `run`. A run has append-only events:
+Build new components under `src/features/yaku-workspace`:
 
-```text
-created -> resolving -> connecting -> headers -> body_chunk* -> completed
-created -> ... -> failed
-created -> ... -> cancelled
-```
+- `YakuWorkspaceShell`
+- `YakuWorkspaceSidebar`
+- `YakuWorkspaceTree`
+- `YakuRequestEditor`
+- `YakuRequestEditorHttp`
+- `YakuRequestEditorGraphql`
+- `YakuRequestEditorGrpc`
+- `YakuRequestEditorWebSocket`
+- `YakuRequestEditorSse`
+- `YakuRunPanel`
+- `YakuRunTimeline`
+- `YakuBodyViewer`
+- `YakuEnvironmentPanel`
+- `YakuWorkspaceSettingsPanel`
 
-HTTP response headers, GraphQL response data, gRPC messages, WebSocket frames,
-and SSE messages are all represented as `run_events`. UI reads events by cursor
-or page size, not by loading a full workspace history.
+These components must import Yaku types and Yaku query hooks only. They must not
+import `@yakumo-internal/models`.
 
-## Frontend State
+## Send Runtime
 
-The UI must move away from a single full-workspace model store. V2 frontend
-state should be query-shaped:
+Current `cmd_v2_send_request` is blocking. Replace it with:
 
-- Workspace list.
-- Active workspace request tree.
-- Active request draft.
-- Run history page for the active request.
-- Run event page/stream for the active run.
+- `cmd_yaku_run_start(requestId, environmentId?) -> Run`
+- `cmd_yaku_run_cancel(runId) -> Run`
+- `cmd_yaku_run_events(runId, cursor?, limit?)`
+- `cmd_yaku_run_bodies(runId)`
+- Tauri event stream: `yaku://run-event`, `yaku://run-updated`,
+  `yaku://run-body-recorded`
 
-Writes must call explicit commands such as `create_request`, `move_request`,
-`send_request`, `cancel_run`, and `delete_workspace`.
+Runtime ownership:
 
-## Backup
+- Tauri owns a run task registry keyed by `run_id`.
+- `yaku-engine` receives a cancellation token and event sink.
+- Engines append events to the store before emitting UI events.
+- UI subscribes to Tauri events and invalidates specific run queries.
 
-Personal backup uses deterministic JSON or YAML files with stable ordering and
-content hashes. Secrets are excluded by default. If secret backup is enabled,
-only encrypted secret bundles are exported.
+## Type Generation
 
-## Security Baseline
+Use generated Rust TS bindings as the canonical frontend domain types.
 
-Workspace secrets are encrypted at rest. The default key source is the operating
-system keychain. V2 does not implement team permissions or a cloud threat model.
+Required changes:
 
-## Migration Strategy
+- Rename generated domain import path from
+  `crates/yakumo-domain/bindings/gen_domain.ts` to
+  `crates/yaku-domain/bindings/gen_domain.ts`.
+- Add generated command DTOs for page responses, GC reports, delete responses,
+  and event payloads.
+- Add `src/lib/yaku-client/types.ts` as the only app-facing type barrel.
+- Remove duplicate hand-written V2 types from `src/lib/v2.ts`.
 
-V2 may create a fresh database and ignore old migrations. If old data import is
-needed later, implement a one-way importer instead of preserving old schema
-compatibility in the main store.
+## Aggressive Rename Plan
 
-## First Implementation Milestones
+### Rename Now
 
-1. Add `yakumo-domain` with stable V2 domain types.
-2. Add `yakumo-store` with clean schema creation and basic workspace/request
-   persistence tests.
-3. Add `yakumo-engine` HTTP/GraphQL run execution against the V2 run/event
-   model.
-4. Switch `yaku` to the V2 domain/store/engine path.
-5. Switch Tauri commands from `AnyModel` writes to explicit V2 commands.
-6. Refactor React state to query-shaped reads and paginated run history.
+- User-facing docs and new code: `Yaku`.
+- `src/lib/v2.ts` split to `src/lib/yaku-client/*`.
+- `src-tauri/src/v2_commands.rs` to `src-tauri/src/yaku_commands.rs`.
+- Tauri commands from `cmd_v2_*` to `cmd_yaku_*`.
+- Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
+- `/v2` route to `/debug/yaku`, then remove once `/workspaces` is Yaku.
 
-## Current Scaffold Status
+### Rename During Core Cutover
 
-- `yakumo-domain` exists and exports V2 workspace, request tree, request, run,
-  run event, protocol, state, and pagination types.
-- `yakumo-store` exists with schema creation, workspace upsert/read, request
-  tree upsert/read, run upsert, run history pagination, and run event append/read
-  by cursor.
-- The scaffold is intentionally not wired into the existing Tauri UI or `yaku`
-  CLI yet. Old code remains runnable while the V2 core is built in parallel.
+- `yakumo-domain` -> `yaku-domain`.
+- `yakumo-store` -> `yaku-store`.
+- `yakumo-engine` -> `yaku-engine`.
+- Update workspace Cargo dependencies and crate imports.
+
+### Rename Later Or Only With Explicit Approval
+
+- App bundle identifier.
+- Release tags.
+- Installed app name.
+- Old crates that are scheduled for deletion.
+- Old `@yakumo-internal/models` package.
+
+## Deletion Plan
+
+Phase 1: Establish Yaku main path.
+
+- Add Yaku generated type imports.
+- Split `src/lib/v2.ts` into `src/lib/yaku-client/commands.ts`,
+  `queries.ts`, `types.ts`, and `events.ts`.
+- Create `src/features/yaku-workspace`.
+- Point `/workspaces` and `/workspaces/$workspaceId` at Yaku components.
+- Move current `/v2` to `/debug/yaku` or delete it after parity.
+
+Phase 2: Remove startup dependency on old models.
+
+- Remove `initModelStore(jotaiStore)` from `src/main.tsx`.
+- Remove `initSync()` from startup unless a Yaku sync/import replacement exists.
+- Replace `StartupGate` with a Yaku startup check that opens/creates the Yaku
+  store.
+- Stop registering `models_ext::init()` once no legacy route is compiled.
+
+Phase 3: Replace send and response panes.
+
+- Implement start/cancel/event-stream run lifecycle.
+- Move HTTP/GraphQL response viewing onto Yaku body/event data.
+- Add binary/download/content-type viewer routing.
+- Port gRPC, WebSocket, and SSE panels onto the same run/event model.
+
+Phase 4: Rename core crates.
+
+- Rename crate directories and package names.
+- Update Cargo workspace members, dependencies, imports, and generated binding
+  paths.
+- Run workspace check before deleting old crates.
+
+Phase 5: Delete old app surface.
+
+- Delete old workspace components and hooks that import
+  `@yakumo-internal/models`.
+- Delete old model commands from `src-tauri/src/lib.rs`.
+- Delete `src-tauri/src/models_ext.rs` and old request/history command modules
+  once no registered command needs them.
+- Remove `@yakumo-internal/models` imports from `src`.
+- Reassess whether `crates/yakumo-models` is still needed by non-desktop crates.
+
+Phase 6: Rebuild optional capabilities.
+
+- One-way legacy importer, if wanted.
+- Yaku backup/export/import.
+- Yaku settings/secrets UI.
+- Yaku CLI parity for protocols beyond HTTP.
+
+## Proposed Commit Sequence
+
+1. `docs: define yaku-first rewrite plan`
+2. `refactor: split yaku client from v2 bridge`
+3. `refactor: rename v2 tauri commands to yaku`
+4. `feat: add yaku workspace shell`
+5. `refactor: route workspaces to yaku shell`
+6. `refactor: remove legacy model startup`
+7. `feat: add yaku streaming run lifecycle`
+8. `refactor: rename yaku core crates`
+9. `refactor: delete legacy workspace surface`
+10. `feat: add yaku settings and import/export baseline`
+
+Each commit should compile independently unless explicitly marked as a
+mechanical rename commit with no behavior change.
+
+## Validation Baseline
+
+Run after each commit:
+
+- `bun run --cwd src typecheck`
+- `bun run --cwd src build`
+- `cargo check -p yakumo-app`
+- `cargo test -p yakumo-domain --lib` until crate rename
+- `cargo test -p yaku-domain --lib` after crate rename
+- `cargo test -p yakumo-app yaku_commands --lib`
+
+Run before large deletions:
+
+- `rg "@yakumo-internal/models" src`
+- `rg "models_ext|models_" src-tauri/src`
+- `rg "cmd_v2|v2.sqlite|v2-bodies" src src-tauri crates`
+- `cargo check --workspace`
