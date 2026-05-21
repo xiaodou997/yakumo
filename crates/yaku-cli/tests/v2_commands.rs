@@ -31,10 +31,10 @@ fn v2_workspace_and_request_round_trip() {
     let data_dir = temp_dir.path();
 
     let create_workspace = cli_cmd(data_dir)
-        .args(["v2", "workspace", "create", "--name", "V2 Workspace"])
+        .args(["v2", "workspace", "create", "--name", "Yaku Workspace"])
         .assert()
         .success()
-        .stdout(contains("\"name\":\"V2 Workspace\""));
+        .stdout(contains("\"name\":\"Yaku Workspace\""));
     let workspace_id =
         parse_created_id(&create_workspace.get_output().stdout, "v2 workspace create");
     let second_workspace = cli_cmd(data_dir)
@@ -54,7 +54,7 @@ fn v2_workspace_and_request_round_trip() {
         .args(["v2", "workspace", "get", &workspace_id])
         .assert()
         .success()
-        .stdout(contains("\"name\":\"V2 Workspace\""));
+        .stdout(contains("\"name\":\"Yaku Workspace\""));
 
     let first_workspace_page =
         cli_cmd(data_dir).args(["v2", "workspace", "list", "--limit", "1"]).assert().success();
@@ -381,7 +381,7 @@ fn v2_backup_exports_workspace_core_data() {
     assert_eq!(file_json["workspace"]["id"], workspace_id);
     assert_eq!(file_json["contentHash"], export_json["contentHash"]);
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open v2 store");
     let manifests =
         store.list_backup_manifests(Some(&workspace_id)).expect("list backup manifests");
     assert_eq!(manifests.len(), 2);
@@ -534,7 +534,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
         .stderr(contains("already exists"))
         .stderr(contains("--replace-existing"));
 
-    let target_store = Store::open(target_data_dir.join("v2.sqlite")).expect("open target store");
+    let target_store = Store::open(target_data_dir.join("yaku.sqlite")).expect("open target store");
     let mut workspace = target_store
         .get_workspace(&workspace_id)
         .expect("get target workspace")
@@ -547,7 +547,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     target_store.delete_request_node(&folder_id).expect("delete request subtree");
     target_store
         .upsert_setting(&Setting {
-            key: format!("v2.runRetention.workspace.{workspace_id}.keepLast"),
+            key: format!("yaku.runRetention.workspace.{workspace_id}.keepLast"),
             value: json!(99),
             updated_at: Utc::now(),
         })
@@ -587,7 +587,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
             .expect("parse replaced export");
     assert_eq!(backup_core(&replaced_export_json), backup_core(&source_export_json));
 
-    let source_store = Store::open(source_data_dir.join("v2.sqlite")).expect("open source store");
+    let source_store = Store::open(source_data_dir.join("yaku.sqlite")).expect("open source store");
     let source_manifests =
         source_store.list_backup_manifests(Some(&workspace_id)).expect("list source manifests");
     assert_eq!(source_manifests.len(), 2);
@@ -602,7 +602,7 @@ fn v2_backup_imports_workspace_round_trip_and_requires_replace_existing() {
     }));
 
     let final_target_store =
-        Store::open(target_data_dir.join("v2.sqlite")).expect("open final target store");
+        Store::open(target_data_dir.join("yaku.sqlite")).expect("open final target store");
     let target_manifests = final_target_store
         .list_backup_manifests(Some(&workspace_id))
         .expect("list target manifests");
@@ -864,7 +864,7 @@ fn v2_request_tree_mutation_round_trip() {
         .success();
     let request_id = parse_created_id(&create_request.get_output().stdout, "v2 request create");
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("open v2 store");
     let tree = store.list_request_tree(&workspace_id).expect("tree read");
     let request_node = tree
         .iter()
@@ -955,7 +955,7 @@ fn v2_request_tree_mutation_round_trip() {
         .success()
         .stdout(contains("\"deleted\":true"));
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen v2 store");
     assert!(store.get_request(&request_id).expect("request read").is_none());
     assert!(store.get_request(&duplicate_id).expect("duplicate read").is_none());
     assert!(store.get_request_node(&request_node_id).expect("node read").is_none());
@@ -967,7 +967,7 @@ fn v2_request_tree_mutation_round_trip() {
         .assert()
         .success()
         .stdout(contains("\"deleted\":true"));
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("reopen v2 store");
     assert!(store.get_workspace(&workspace_id).expect("workspace read").is_none());
 }
 
@@ -1108,7 +1108,7 @@ fn v2_send_records_run_events_and_response_body() {
         .success()
         .stdout(contains("hello-v2"));
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
     let events =
         store.list_run_events(&run_id, Page::first(20)).expect("Failed to list run events");
     assert!(
@@ -1131,7 +1131,7 @@ fn v2_send_records_run_events_and_response_body() {
         .success()
         .stdout(contains("\"deleted\":true"));
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to reopen v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to reopen v2 store");
     assert!(store.get_run(&run_id).expect("run read").is_none());
     assert!(store.list_run_events(&run_id, Page::first(20)).expect("events").is_empty());
     assert!(store.list_run_bodies(&run_id).expect("bodies").is_empty());
@@ -1217,7 +1217,7 @@ fn v2_run_prune_keeps_newest_runs() {
         .stdout(contains("\"deleted\":2"))
         .stdout(contains("\"keepLast\":1"));
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
     let remaining = store.list_runs_for_request(&request_id, Page::first(10)).expect("runs");
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, run_ids[2]);
@@ -1295,7 +1295,7 @@ fn v2_run_retention_auto_prunes_workspace_runs() {
         run_ids.push(parse_created_id(&send.get_output().stdout, "v2 send"));
     }
 
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
     let remaining = store.list_runs_for_workspace(&workspace_id, Page::first(10)).expect("runs");
     assert_eq!(remaining.len(), 2);
     assert_eq!(remaining[0].id, run_ids[2]);
@@ -1339,7 +1339,7 @@ fn v2_run_gc_bodies_deletes_unreferenced_body_files() {
 
     let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
     let run_id = parse_created_id(&send.get_output().stdout, "v2 send");
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
     let bodies = store.list_run_bodies(&run_id).expect("body list");
     assert_eq!(bodies.len(), 1);
     assert_eq!(bodies[0].storage_kind, BodyStorageKind::File);
@@ -1413,7 +1413,7 @@ fn v2_request_delete_runs_body_gc() {
 
     let send = cli_cmd(data_dir).args(["v2", "send", &request_id]).assert().success();
     let run_id = parse_created_id(&send.get_output().stdout, "v2 send");
-    let store = Store::open(data_dir.join("v2.sqlite")).expect("Failed to open v2 store");
+    let store = Store::open(data_dir.join("yaku.sqlite")).expect("Failed to open v2 store");
     let bodies = store.list_run_bodies(&run_id).expect("body list");
     let body_path = bodies[0]
         .storage_ref

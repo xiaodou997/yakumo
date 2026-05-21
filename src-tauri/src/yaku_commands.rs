@@ -157,8 +157,8 @@ fn app_data_dir<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
 
 fn open_store_from_dir(data_dir: &Path) -> Result<Store> {
     std::fs::create_dir_all(data_dir)?;
-    Store::open(data_dir.join("v2.sqlite"))
-        .map_err(|e| Error::GenericError(format!("Failed to open V2 store: {e}")))
+    Store::open(data_dir.join("yaku.sqlite"))
+        .map_err(|e| Error::GenericError(format!("Failed to open Yaku store: {e}")))
 }
 
 fn open_store<R: Runtime>(app_handle: &AppHandle<R>) -> Result<Store> {
@@ -167,7 +167,7 @@ fn open_store<R: Runtime>(app_handle: &AppHandle<R>) -> Result<Store> {
 }
 
 fn bodies_dir(data_dir: &Path) -> PathBuf {
-    data_dir.join("v2-bodies")
+    data_dir.join("yaku-bodies")
 }
 
 fn page(cursor: Option<i64>, limit: Option<u32>) -> Page {
@@ -212,7 +212,7 @@ fn workspace_run_retention(store: &Store, workspace_id: &str) -> Result<Option<u
 }
 
 fn workspace_run_retention_key(workspace_id: &str) -> String {
-    format!("v2.runRetention.workspace.{workspace_id}.keepLast")
+    format!("yaku.runRetention.workspace.{workspace_id}.keepLast")
 }
 
 fn auto_prune_workspace_runs(store: &Store, workspace_id: &str, bodies_dir: &Path) -> Result<()> {
@@ -287,7 +287,7 @@ fn read_body_bytes(storage_ref: &str) -> std::result::Result<Vec<u8>, String> {
     if let Some(path) = storage_ref.strip_prefix("file:") {
         return std::fs::read(path).map_err(|e| format!("Failed to read body file {path}: {e}"));
     }
-    Err(format!("Unsupported V2 body storage ref '{storage_ref}'"))
+    Err(format!("Unsupported Yaku body storage ref '{storage_ref}'"))
 }
 
 fn decode_hex(input: &str) -> std::result::Result<Vec<u8>, String> {
@@ -1102,7 +1102,7 @@ pub(crate) async fn cmd_yaku_send_request<R: Runtime>(
         send_request_inner(data_dir, run_id, request_id, environment_id)
     })
     .await
-    .map_err(|e| Error::GenericError(format!("V2 send failed to join blocking task: {e}")))?
+    .map_err(|e| Error::GenericError(format!("Yaku send failed to join blocking task: {e}")))?
 }
 
 #[cfg(test)]
@@ -1124,8 +1124,8 @@ mod tests {
 
     #[test]
     fn reads_file_body() {
-        let path = std::env::temp_dir()
-            .join(format!("yakumo-v2-body-{}.bin", Utc::now().timestamp_millis()));
+        let path =
+            std::env::temp_dir().join(format!("yaku-body-{}.bin", Utc::now().timestamp_millis()));
         std::fs::write(&path, b"payload").expect("write body file");
         let body = read_body_bytes(&format!("file:{}", path.display())).expect("file body");
         assert_eq!(body, b"payload");

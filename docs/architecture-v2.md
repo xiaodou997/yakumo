@@ -48,7 +48,8 @@ The runtime architecture must not preserve compatibility layers.
 - `src-tauri/src/yaku_commands.rs`.
 - `src/lib/yaku-client`.
 - `src/features/yaku-workspace`.
-- `src/routes/v2.tsx` remains as a thin compatibility/debug route wrapper.
+- `/debug/yaku` remains as a thin debug route wrapper for the Yaku workspace
+  shell.
 - Shared UI primitives under `src/components/core`, tree components, editor
   infrastructure, dialog/toast helpers, router, and query client.
 
@@ -147,8 +148,8 @@ and body metadata queryable.
 
 Required schema adjustments before main UI cutover:
 
-- Rename store file from `v2.sqlite` to `yaku.sqlite`.
-- Rename body directory from `v2-bodies` to `yaku-bodies`.
+- Store file is now `yaku.sqlite`.
+- Body directory is now `yaku-bodies`.
 - Add explicit destructive schema reset policy during active Yaku development.
 - Add stable request config Rust enums for HTTP, GraphQL, gRPC, WebSocket, and
   SSE instead of exposing `BTreeMap<String, Value>` as the long-term domain API.
@@ -250,7 +251,7 @@ Required changes:
 - `src-tauri/src/yaku_commands.rs`.
 - Tauri commands use `cmd_yaku_*`.
 - Store file and body directory to `yaku.sqlite` / `yaku-bodies`.
-- `/v2` route to `/debug/yaku`, then remove once `/workspaces` is Yaku.
+- `/v2` route moved to `/debug/yaku`.
 
 ### Renamed During Core Cutover
 
@@ -276,7 +277,7 @@ Phase 1: Establish Yaku main path.
   `queries.ts`, `types.ts`, and `events.ts`.
 - Create `src/features/yaku-workspace`.
 - Point `/workspaces` and `/workspaces/$workspaceId` at Yaku components.
-- Move current `/v2` to `/debug/yaku` or delete it after parity.
+- Move current `/v2` to `/debug/yaku` or delete it after parity. Done.
 
 Phase 2: Remove startup dependency on old models.
 

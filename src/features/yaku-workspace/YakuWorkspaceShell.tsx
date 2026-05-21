@@ -156,7 +156,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const [requestEditWebSocketMaxMessages, setRequestEditWebSocketMaxMessages] = useState("1");
 
   const workspacesQuery = useQuery({
-    queryKey: ["v2", "workspaces"],
+    queryKey: ["yaku", "workspaces"],
     queryFn: () => listV2Workspaces(),
     placeholderData: (prev) => prev,
   });
@@ -166,7 +166,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const environmentsQuery = useQuery({
     enabled: selectedWorkspaceId != null,
-    queryKey: ["v2", "environments", selectedWorkspaceId],
+    queryKey: ["yaku", "environments", selectedWorkspaceId],
     queryFn: () => listV2Environments(selectedWorkspaceId!),
     placeholderData: (prev) => prev,
   });
@@ -177,14 +177,14 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const retentionQuery = useQuery({
     enabled: selectedWorkspaceId != null,
-    queryKey: ["v2", "run-retention", selectedWorkspaceId],
+    queryKey: ["yaku", "run-retention", selectedWorkspaceId],
     queryFn: () => getV2RunRetention(selectedWorkspaceId!),
     placeholderData: (prev) => prev,
   });
 
   const requestsQuery = useQuery({
     enabled: selectedWorkspaceId != null,
-    queryKey: ["v2", "requests", selectedWorkspaceId],
+    queryKey: ["yaku", "requests", selectedWorkspaceId],
     queryFn: () => listV2Requests(selectedWorkspaceId!),
     placeholderData: (prev) => prev,
   });
@@ -215,13 +215,13 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const requestQuery = useQuery({
     enabled: selectedRequestId != null,
-    queryKey: ["v2", "request", selectedRequestId],
+    queryKey: ["yaku", "request", selectedRequestId],
     queryFn: () => getV2Request(selectedRequestId!),
   });
 
   const runsQuery = useQuery({
     enabled: selectedRequestId != null,
-    queryKey: ["v2", "runs", "request", selectedRequestId],
+    queryKey: ["yaku", "runs", "request", selectedRequestId],
     queryFn: () => listV2RunsForRequest(selectedRequestId!),
     placeholderData: (prev) => prev,
     refetchInterval: (query) =>
@@ -234,7 +234,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const runEventsQuery = useQuery({
     enabled: selectedRunId != null,
-    queryKey: ["v2", "run-events", selectedRunId, eventKind],
+    queryKey: ["yaku", "run-events", selectedRunId, eventKind],
     queryFn: () => listV2RunEvents(selectedRunId!, eventKind === "all" ? null : eventKind),
     placeholderData: (prev) => prev,
     refetchInterval: selectedRunIsRunning ? 750 : false,
@@ -242,7 +242,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const runBodiesQuery = useQuery({
     enabled: selectedRunId != null,
-    queryKey: ["v2", "run-bodies", selectedRunId],
+    queryKey: ["yaku", "run-bodies", selectedRunId],
     queryFn: () => listV2RunBodies(selectedRunId!),
     placeholderData: (prev) => prev,
     refetchInterval: selectedRunIsRunning ? 1000 : false,
@@ -373,7 +373,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
 
   const runBodyBytesQuery = useQuery({
     enabled: selectedBodyId !== "",
-    queryKey: ["v2", "run-body-bytes", selectedBodyId],
+    queryKey: ["yaku", "run-body-bytes", selectedBodyId],
     queryFn: () => getV2RunBodyBytes(selectedBodyId),
   });
 
@@ -394,9 +394,9 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const invalidateRunData = useCallback(
     async (runId: string, requestId: string) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "runs", "request", requestId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-events", runId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-bodies", runId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "runs", "request", requestId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-events", runId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-bodies", runId] }),
       ]);
     },
     [queryClient],
@@ -409,7 +409,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const startRunMutation = useMutation({
     mutationFn: async () => {
       if (selectedRequestId == null) {
-        throw new Error("No V2 request selected");
+        throw new Error("No Yaku request selected");
       }
       return startV2Run(selectedRequestId, selectedEnvironmentId);
     },
@@ -422,7 +422,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const cancelRunMutation = useMutation({
     mutationFn: async () => {
       if (selectedRunId == null) {
-        throw new Error("No V2 run selected");
+        throw new Error("No Yaku run selected");
       }
       return cancelV2Run(selectedRunId);
     },
@@ -434,7 +434,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const createWorkspaceMutation = useMutation({
     mutationFn: () => createV2Workspace(workspaceName.trim() || "New Workspace"),
     onSuccess: async (workspace) => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "workspaces"] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "workspaces"] });
       setSearch({
         workspaceId: workspace.id,
         folderId: undefined,
@@ -448,7 +448,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const createEnvironmentMutation = useMutation({
     mutationFn: () => {
       if (selectedWorkspaceId == null) {
-        throw new Error("No V2 workspace selected");
+        throw new Error("No Yaku workspace selected");
       }
       return createV2Environment(
         selectedWorkspaceId,
@@ -457,7 +457,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       );
     },
     onSuccess: async (environment) => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "environments", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "environments", selectedWorkspaceId] });
       setSearch({ environmentId: environment.id });
     },
   });
@@ -465,7 +465,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const updateEnvironmentMutation = useMutation({
     mutationFn: () => {
       if (selectedEnvironmentId == null) {
-        throw new Error("No V2 environment selected");
+        throw new Error("No Yaku environment selected");
       }
       return updateV2Environment(selectedEnvironmentId, {
         name: environmentName.trim() || "Environment",
@@ -473,19 +473,19 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "environments", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "environments", selectedWorkspaceId] });
     },
   });
 
   const deleteEnvironmentMutation = useMutation({
     mutationFn: () => {
       if (selectedEnvironmentId == null) {
-        throw new Error("No V2 environment selected");
+        throw new Error("No Yaku environment selected");
       }
       return deleteV2Environment(selectedEnvironmentId);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "environments", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "environments", selectedWorkspaceId] });
       setSearch({ environmentId: undefined });
     },
   });
@@ -493,7 +493,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const createFolderMutation = useMutation({
     mutationFn: () => {
       if (selectedWorkspaceId == null) {
-        throw new Error("No V2 workspace selected");
+        throw new Error("No Yaku workspace selected");
       }
       return createV2Folder({
         workspaceId: selectedWorkspaceId,
@@ -502,7 +502,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       });
     },
     onSuccess: async (folder) => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
       setRequestParentId(folder.id);
       setSearch({ folderId: folder.id, requestId: undefined, runId: undefined });
     },
@@ -511,14 +511,14 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const updateFolderMutation = useMutation({
     mutationFn: () => {
       if (selectedFolderNode == null) {
-        throw new Error("No V2 folder selected");
+        throw new Error("No Yaku folder selected");
       }
       return updateV2Folder(selectedFolderNode.id, {
         name: folderEditName.trim() || "Folder",
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
     },
   });
 
@@ -536,8 +536,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       throw new Error("Workspace root cannot be renamed");
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
-      await queryClient.invalidateQueries({ queryKey: ["v2", "request", selectedRequestId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "request", selectedRequestId] });
     },
   });
 
@@ -545,7 +545,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     mutationFn: (input: { nodeId: string; parentId: string | null }) =>
       moveV2RequestNode(input),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
     },
   });
 
@@ -564,7 +564,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       );
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
     },
   });
 
@@ -631,7 +631,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
         color: "danger",
         onSelect: async () => {
           await deleteV2RequestNode(first.id);
-          await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+          await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
           setSearch({ folderId: undefined, requestId: undefined, runId: undefined });
         },
       },
@@ -651,7 +651,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const createRequestMutation = useMutation({
     mutationFn: () => {
       if (selectedWorkspaceId == null) {
-        throw new Error("No V2 workspace selected");
+        throw new Error("No Yaku workspace selected");
       }
       return createV2Request({
         workspaceId: selectedWorkspaceId,
@@ -678,7 +678,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
       });
     },
     onSuccess: async (request) => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
       setSearch({ requestId: request.id, runId: undefined, folderId: undefined });
     },
   });
@@ -686,10 +686,10 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const updateRequestMutation = useMutation({
     mutationFn: (mode: "structured" | "raw" = "structured") => {
       if (selectedRequestId == null) {
-        throw new Error("No V2 request selected");
+        throw new Error("No Yaku request selected");
       }
       if (requestQuery.data == null) {
-        throw new Error("No V2 request loaded");
+        throw new Error("No Yaku request loaded");
       }
       return updateV2Request(selectedRequestId, {
         name: requestEditName.trim() || "Request",
@@ -718,8 +718,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     },
     onSuccess: async (request) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "request", request.id] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "request", request.id] }),
       ]);
     },
   });
@@ -727,16 +727,16 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const deleteRequestNodeMutation = useMutation({
     mutationFn: () => {
       if (selectedRequestNode == null) {
-        throw new Error("No V2 request node selected");
+        throw new Error("No Yaku request node selected");
       }
       return deleteV2RequestNode(selectedRequestNode.id);
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "runs", "request", selectedRequestId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-events"] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-bodies"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "runs", "request", selectedRequestId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-events"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-bodies"] }),
       ]);
       setSearch({ requestId: undefined, runId: undefined, folderId: undefined });
     },
@@ -745,15 +745,15 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const deleteFolderNodeMutation = useMutation({
     mutationFn: () => {
       if (selectedFolderNode == null) {
-        throw new Error("No V2 folder selected");
+        throw new Error("No Yaku folder selected");
       }
       return deleteV2RequestNode(selectedFolderNode.id);
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "requests", selectedWorkspaceId] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-events"] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-bodies"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-events"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-bodies"] }),
       ]);
       setSearch({ requestId: undefined, runId: undefined, folderId: undefined });
     },
@@ -762,24 +762,24 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   const setRetentionMutation = useMutation({
     mutationFn: (keepLast: number) => {
       if (selectedWorkspaceId == null) {
-        throw new Error("No V2 workspace selected");
+        throw new Error("No Yaku workspace selected");
       }
       return setV2RunRetention(selectedWorkspaceId, keepLast);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "run-retention", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "run-retention", selectedWorkspaceId] });
     },
   });
 
   const clearRetentionMutation = useMutation({
     mutationFn: () => {
       if (selectedWorkspaceId == null) {
-        throw new Error("No V2 workspace selected");
+        throw new Error("No Yaku workspace selected");
       }
       return clearV2RunRetention(selectedWorkspaceId);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["v2", "run-retention", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "run-retention", selectedWorkspaceId] });
     },
   });
 
@@ -787,8 +787,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     mutationFn: () => gcV2Bodies(false),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-bodies"] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-body-bytes"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-bodies"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-body-bytes"] }),
       ]);
     },
   });
@@ -827,10 +827,10 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
         return;
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["v2", "workspaces"] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "requests", response.workspace.id] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "environments", response.workspace.id] }),
-        queryClient.invalidateQueries({ queryKey: ["v2", "run-retention", response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "workspaces"] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "requests", response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "environments", response.workspace.id] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "run-retention", response.workspace.id] }),
       ]);
       setSearch({
         workspaceId: response.workspace.id,
@@ -902,7 +902,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
         ) : (
           <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,380px)_minmax(0,1fr)]">
             <aside className="flex flex-col gap-4">
-              <Panel title="Workspace Context" subtitle="Choose the V2 workspace and environment.">
+              <Panel title="Workspace Context" subtitle="Choose the Yaku workspace and environment.">
                 <VStack space={3}>
                   <form
                     className="rounded-xl border border-border-subtle bg-surface p-3"
@@ -1121,7 +1121,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 </VStack>
               </Panel>
 
-              <Panel title="Request Builder" subtitle="Create folders and seed sendable V2 requests.">
+              <Panel title="Request Builder" subtitle="Create folders and seed sendable Yaku requests.">
                 <VStack space={3}>
                   <Select
                     name="v2-request-parent"
@@ -1391,7 +1391,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 {workspaceTree == null ? (
                   <EmptyCopy>Select a workspace to view its tree.</EmptyCopy>
                 ) : workspaceTree.children == null || workspaceTree.children.length === 0 ? (
-                  <EmptyCopy>No V2 folders or requests found in this workspace.</EmptyCopy>
+                  <EmptyCopy>No Yaku folders or requests found in this workspace.</EmptyCopy>
                 ) : (
                   <Tree
                     ref={treeRef}
@@ -1496,7 +1496,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 )}
               </Panel>
 
-              <Panel title="Request Snapshot" subtitle="Resolved from the V2 request record before execution.">
+              <Panel title="Request Snapshot" subtitle="Resolved from the Yaku request record before execution.">
                 {requestQuery.error ? (
                   <FormattedError>{String(requestQuery.error)}</FormattedError>
                 ) : requestQuery.data == null ? (
@@ -1635,7 +1635,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 {runsQuery.error ? (
                   <FormattedError>{String(runsQuery.error)}</FormattedError>
                 ) : runs.length === 0 ? (
-                  <EmptyCopy>Send the selected request to create the first V2 run.</EmptyCopy>
+                  <EmptyCopy>Send the selected request to create the first Yaku run.</EmptyCopy>
                 ) : (
                   <div className="space-y-2">
                     {runs.map((run) => {
@@ -1671,7 +1671,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
             </section>
 
             <section className="flex flex-col gap-4">
-              <Panel title="Event Timeline" subtitle="Unified run events emitted by the V2 engine.">
+              <Panel title="Event Timeline" subtitle="Unified run events emitted by the Yaku engine.">
                 <VStack space={3}>
                   <Select
                     name="v2-event-kind"
@@ -1708,7 +1708,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 </VStack>
               </Panel>
 
-              <Panel title="Captured Bodies" subtitle="Response/message payloads stored by the V2 body store.">
+              <Panel title="Captured Bodies" subtitle="Response/message payloads stored by the Yaku body store.">
                 <VStack space={3}>
                   <Select
                     name="v2-run-body"

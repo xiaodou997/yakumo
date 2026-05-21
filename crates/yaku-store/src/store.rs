@@ -1365,7 +1365,7 @@ fn workspace_run_retention(store: &Store, workspace_id: &str) -> Result<Option<u
 }
 
 fn workspace_run_retention_key(workspace_id: &str) -> String {
-    format!("v2.runRetention.workspace.{workspace_id}.keepLast")
+    format!("yaku.runRetention.workspace.{workspace_id}.keepLast")
 }
 
 fn validate_request_node_pair(request: &Request, node: &RequestNode) -> Result<()> {
@@ -1776,7 +1776,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -1810,7 +1810,7 @@ mod tests {
         store.upsert_request(&request, &node).expect("request upsert");
 
         let loaded = store.get_workspace(&workspace.id).expect("workspace read").unwrap();
-        assert_eq!(loaded.name, "Yakumo V2");
+        assert_eq!(loaded.name, "Yaku");
 
         let workspaces = store.list_workspaces().expect("workspace list");
         assert_eq!(workspaces.len(), 1);
@@ -1830,7 +1830,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -1869,7 +1869,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -1912,7 +1912,7 @@ mod tests {
         let workspace = service
             .create_workspace(CreateWorkspace {
                 id: "wk_v2".to_string(),
-                name: "Yakumo V2".to_string(),
+                name: "Yaku".to_string(),
                 description: String::new(),
                 now,
             })
@@ -1962,7 +1962,7 @@ mod tests {
         let workspace = service
             .create_workspace(CreateWorkspace {
                 id: "wk_v2".to_string(),
-                name: "Yakumo V2".to_string(),
+                name: "Yaku".to_string(),
                 description: String::new(),
                 now,
             })
@@ -2027,7 +2027,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -2086,7 +2086,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -2215,7 +2215,7 @@ mod tests {
         let now = Utc::now();
         let workspace = Workspace {
             id: "wk_v2".to_string(),
-            name: "Yakumo V2".to_string(),
+            name: "Yaku".to_string(),
             description: String::new(),
             created_at: now,
             updated_at: now,
@@ -2342,7 +2342,7 @@ mod tests {
         let workspace = service
             .create_workspace(CreateWorkspace {
                 id: "wk_v2".to_string(),
-                name: "Yakumo V2".to_string(),
+                name: "Yaku".to_string(),
                 description: String::new(),
                 now,
             })

@@ -5,9 +5,9 @@ import {
   cleanYakuWorkspaceSearch,
   validateYakuWorkspaceSearch,
   type YakuWorkspaceSearch,
-} from "../features/yaku-workspace";
+} from "../../features/yaku-workspace";
 
-export const Route = createFileRoute("/v2")({
+export const Route = createFileRoute("/debug/yaku")({
   component: RouteComponent,
   validateSearch: validateYakuWorkspaceSearch,
 });
@@ -20,7 +20,7 @@ function RouteComponent() {
     (patch: Partial<YakuWorkspaceSearch>) => {
       startTransition(() => {
         navigate({
-          to: "/v2",
+          to: "/debug/yaku",
           replace: true,
           search: (prev) => cleanYakuWorkspaceSearch({ ...prev, ...patch }),
         });

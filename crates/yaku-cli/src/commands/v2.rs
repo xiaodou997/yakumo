@@ -38,7 +38,7 @@ fn run_inner(
     args: V2Args,
     environment_id: Option<String>,
 ) -> Result<(), String> {
-    let bodies_dir = data_dir.join("v2-bodies");
+    let bodies_dir = data_dir.join("yaku-bodies");
     let store = open_store(data_dir)?;
     let service = DomainService::new(store);
 
@@ -1077,7 +1077,7 @@ fn backup_manifest_metadata<const N: usize>(
 fn open_store(data_dir: PathBuf) -> Result<Store, String> {
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir {}: {e}", data_dir.display()))?;
-    Store::open(data_dir.join("v2.sqlite")).map_err(|e| format!("Failed to open V2 store: {e}"))
+    Store::open(data_dir.join("yaku.sqlite")).map_err(|e| format!("Failed to open Yaku store: {e}"))
 }
 
 fn load_environment_variables(
@@ -1125,7 +1125,7 @@ fn workspace_run_retention(store: &Store, workspace_id: &str) -> Result<Option<u
 }
 
 fn workspace_run_retention_key(workspace_id: &str) -> String {
-    format!("v2.runRetention.workspace.{workspace_id}.keepLast")
+    format!("yaku.runRetention.workspace.{workspace_id}.keepLast")
 }
 
 fn prefixed_id(prefix: &str) -> String {
