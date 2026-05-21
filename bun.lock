@@ -15,10 +15,6 @@
         "vitest": "^4.1.5",
       },
     },
-    "crates/yakumo-crypto": {
-      "name": "@yakumo-internal/crypto",
-      "version": "1.0.0",
-    },
     "crates/yakumo-fonts": {
       "name": "@yakumo-internal/fonts",
       "version": "1.0.0",
@@ -27,24 +23,12 @@
       "name": "@yakumo-internal/mac-window",
       "version": "1.0.0",
     },
-    "crates/yakumo-models": {
-      "name": "@yakumo-internal/models",
-      "version": "1.0.0",
-    },
-    "crates/yakumo-sse": {
-      "name": "@yakumo-internal/sse",
-      "version": "1.0.0",
-    },
     "crates/yakumo-templates": {
       "name": "@yakumo-internal/templates",
       "version": "1.0.0",
       "devDependencies": {
         "rimraf": "^6.1.2",
       },
-    },
-    "crates/yakumo-ws": {
-      "name": "@yakumo-internal/ws",
-      "version": "1.0.0",
     },
     "src": {
       "name": "@yakumo/app",
@@ -690,21 +674,13 @@
 
     "@vitest/utils": ["@vitest/utils@4.1.5", "https://registry.npmmirror.com/@vitest/utils/-/utils-4.1.5.tgz", { "dependencies": { "@vitest/pretty-format": "4.1.5", "convert-source-map": "^2.0.0", "tinyrainbow": "^3.1.0" } }, "sha512-76wdkrmfXfqGjueGgnb45ITPyUi1ycZ4IHgC2bhPDUfWHklY/q3MdLOAB+TF1e6xfl8NxNY0ZYaPCFNWSsw3Ug=="],
 
-    "@yakumo-internal/crypto": ["@yakumo-internal/crypto@workspace:crates/yakumo-crypto"],
-
     "@yakumo-internal/fonts": ["@yakumo-internal/fonts@workspace:crates/yakumo-fonts"],
 
     "@yakumo-internal/mac-window": ["@yakumo-internal/mac-window@workspace:crates/yakumo-mac-window"],
 
-    "@yakumo-internal/models": ["@yakumo-internal/models@workspace:crates/yakumo-models"],
-
-    "@yakumo-internal/sse": ["@yakumo-internal/sse@workspace:crates/yakumo-sse"],
-
     "@yakumo-internal/tauri": ["@yakumo-internal/tauri@workspace:src-tauri"],
 
     "@yakumo-internal/templates": ["@yakumo-internal/templates@workspace:crates/yakumo-templates"],
-
-    "@yakumo-internal/ws": ["@yakumo-internal/ws@workspace:crates/yakumo-ws"],
 
     "@yakumo/app": ["@yakumo/app@workspace:src"],
 

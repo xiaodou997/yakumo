@@ -18,9 +18,9 @@ Current macOS release artifacts are temporary unsigned test builds. If macOS rep
 ## Capabilities
 
 - Create and send HTTP, GraphQL, gRPC, WebSocket, and SSE requests.
-- Organize requests with workspaces, folders, environments, cookie jars, and sync metadata.
-- Use built-in auth, template functions, importers, response tooling, and request actions.
-- Encrypt workspace secrets using the operating-system keychain through `yakumo-crypto`.
+- Organize requests with Yaku workspaces, folders, and environments.
+- Configure app-level proxy and client certificate settings.
+- Import and export native Yaku workspace backups.
 - Use `yaku` for schema/list/show/create/update/delete workflows and HTTP send automation.
 
 For the implementation status matrix, see [`docs/feature-status.md`](docs/feature-status.md). For the maintained project documents, see [`docs/README.md`](docs/README.md).
