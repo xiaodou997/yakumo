@@ -53,8 +53,8 @@ import {
 } from "../../lib/yaku-client";
 import { useListenToTauriEvent } from "../../hooks/useListenToTauriEvent";
 import { YakuBodyViewer } from "./BodyViewer";
+import { PairListEditor } from "./RequestFieldPrimitives";
 import {
-  PairListEditor,
   RequestConfigSummary,
   RequestStructuredEditor,
 } from "./RequestEditor";
