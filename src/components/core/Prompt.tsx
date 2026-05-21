@@ -1,4 +1,4 @@
-import type { FormInput, JsonPrimitive } from "@yakumo/features";
+import type { FormInput, JsonPrimitive } from "../../lib/yaku-ui-types";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { generateId } from "../../lib/generateId";

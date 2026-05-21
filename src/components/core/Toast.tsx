@@ -1,4 +1,4 @@
-import type { ShowToastRequest } from "@yakumo/features";
+import type { ShowToastRequest } from "../../lib/yaku-ui-types";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -37,7 +37,10 @@ export function Toast({ children, open, onClose, timeout, action, icon, color }:
     onClose();
   });
 
-  const toastIcon = icon === null ? null : (icon ?? (color && color in ICONS && ICONS[color]));
+  const toastIcon =
+    icon === null
+      ? null
+      : ((icon ?? (color && color in ICONS && ICONS[color])) as IconProps["icon"] | null);
 
   return (
     <div className={classNames("bg-surface m-2 rounded-lg")}>

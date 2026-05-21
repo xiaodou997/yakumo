@@ -1,4 +1,4 @@
-import type { FormInput, PromptTextRequest } from "@yakumo/features";
+import type { FormInput, PromptTextRequest } from "./yaku-ui-types";
 import type { ReactNode } from "react";
 import type { DialogProps } from "../components/core/Dialog";
 import { showPromptForm } from "./prompt-form";

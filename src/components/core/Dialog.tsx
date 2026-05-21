@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Overlay } from "../Overlay";
 import { Heading } from "./Heading";
 import { IconButton } from "./IconButton";
-import type { DialogSize } from "@yakumo/features";
+import type { DialogSize } from "../../lib/yaku-ui-types";
 
 export interface DialogProps {
   children: ReactNode;

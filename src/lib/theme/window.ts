@@ -1,4 +1,4 @@
-import type { Theme, ThemeComponentColors } from "@yakumo/features";
+import type { Theme, ThemeComponentColors } from "../yaku-ui-types";
 import { defaultDarkTheme, defaultLightTheme } from "./themes";
 import { YakumoColor } from "./yakumoColor";
 

@@ -8,7 +8,7 @@ import type {
   FormInputSelect,
   FormInputText,
   JsonPrimitive,
-} from "@yakumo/features";
+} from "../lib/yaku-ui-types";
 import classNames from "classnames";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRandomKey } from "../hooks/useRandomKey";

@@ -1,4 +1,4 @@
-import type { GenericCompletionOption } from "@yakumo/features";
+import type { GenericCompletionOption } from "../yaku-ui-types";
 
 export const headerNames: (GenericCompletionOption | string)[] = [
   {

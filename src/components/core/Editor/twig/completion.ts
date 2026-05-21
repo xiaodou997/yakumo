@@ -1,6 +1,6 @@
 import type { Completion, CompletionContext } from "@codemirror/autocomplete";
 import { startCompletion } from "@codemirror/autocomplete";
-import type { TemplateFunction } from "@yakumo/features";
+import type { TemplateFunction } from "../../../../lib/yaku-ui-types";
 
 const openTag = "${[ ";
 const closeTag = " ]}";

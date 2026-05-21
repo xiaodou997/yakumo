@@ -1,6 +1,6 @@
 import { emit } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { ShowToastRequest } from "@yakumo/features";
+import type { ShowToastRequest } from "./yaku-ui-types";
 import type {
   UpdateInfo,
   UpdateResponse,

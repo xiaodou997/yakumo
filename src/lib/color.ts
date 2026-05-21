@@ -1,4 +1,4 @@
-import type { Color } from "@yakumo/features";
+import type { Color } from "./yaku-ui-types";
 
 const colors: Record<Color, boolean> = {
   primary: true,

@@ -1,4 +1,4 @@
-import type { FormInput, TemplateFunction } from "@yakumo/features";
+import type { FormInput, TemplateFunction } from "../../../../lib/yaku-ui-types";
 import type { Tokens } from "@yakumo-internal/templates";
 
 /**

@@ -1,4 +1,4 @@
-import type { Color } from "@yakumo/features";
+import type { Color } from "../../lib/yaku-ui-types";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { CopyIconButton } from "../CopyIconButton";

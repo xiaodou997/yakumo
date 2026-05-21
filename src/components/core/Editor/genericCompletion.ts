@@ -1,5 +1,5 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
-import type { GenericCompletionOption } from "@yakumo/features";
+import type { GenericCompletionOption } from "../../../lib/yaku-ui-types";
 import { defaultBoost } from "./twig/completion";
 
 export interface GenericCompletionConfig {

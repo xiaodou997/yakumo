@@ -8,7 +8,7 @@ import { emacs } from "@replit/codemirror-emacs";
 import { vim } from "@replit/codemirror-vim";
 
 import { vscodeKeymap } from "@replit/codemirror-vscode-keymap";
-import type { EditorLanguage } from "@yakumo/features";
+import type { EditorLanguage } from "../../../lib/yaku-ui-types";
 import classNames from "classnames";
 import type { GraphQLSchema } from "graphql";
 import { md5 } from "js-md5";
