@@ -57,10 +57,9 @@ The runtime architecture must not preserve compatibility layers.
 - `src/main.tsx` no longer calls `initModelStore(jotaiStore)` or `initSync()`.
 - `src/components/StartupGate.tsx` has been removed; startup no longer calls
   `changeModelStoreWorkspace(null)`.
-- `src/components/Workspace.tsx` is no longer the `/workspaces` route target
-  after the Yaku shell cutover, but it and related hooks are still driven by
-  `@yakumo-internal/models` and should be deleted in the legacy surface removal
-  phase.
+- Legacy workspace surface components have been removed from `src/components`:
+  old `Workspace`, sidebar, request panes, response panes, GraphQL panes,
+  command palette, and header/dropdown surface are no longer compiled.
 - `src-tauri/src/lib.rs` registers both new commands and old `models_ext`,
   request, sync, history, WebSocket, gRPC, import, and template command paths.
 - `src-tauri/src/models_ext.rs` initializes and exposes the old `AnyModel`
@@ -96,11 +95,13 @@ Rewrite:
 
 Delete after replacement:
 
-- Old workspace UI components that import `@yakumo-internal/models`.
+- Remaining old utility/dialog/settings components that still import
+  `@yakumo-internal/models`.
 - `crates/yakumo-models/guest-js` usage from the app.
 - `models_ext` commands from the desktop bridge.
 - Old sync/import/export paths that only serialize `AnyModel`.
-- Old send hooks once Yaku send supports streaming, cancel, and body viewing.
+- Old send hooks once no non-workspace command palette/import path references
+  them.
 
 ## Target Architecture
 
@@ -302,7 +303,9 @@ Phase 4: Rename core crates.
 Phase 5: Delete old app surface.
 
 - Delete old workspace components and hooks that import
-  `@yakumo-internal/models`.
+  `@yakumo-internal/models`. The old routed workspace surface is deleted; some
+  global dialogs/settings/import-export helpers still depend on old models and
+  move to Phase 6 replacement.
 - Delete old model commands from `src-tauri/src/lib.rs`.
 - Delete `src-tauri/src/models_ext.rs` and old request/history command modules
   once no registered command needs them.
