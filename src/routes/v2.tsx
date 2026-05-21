@@ -52,7 +52,7 @@ import {
   type V2RequestNodePageItem,
   type V2RunBody,
   type V2RunEventKind,
-} from "../lib/v2";
+} from "../lib/yaku-client";
 
 type V2SearchSchema = {
   workspaceId?: string;
