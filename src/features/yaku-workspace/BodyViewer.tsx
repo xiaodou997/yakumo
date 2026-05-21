@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, type ReactNode } from "react";
+import { useDeferredValue, useMemo } from "react";
 import { FormattedError } from "../../components/core/FormattedError";
 import { Select } from "../../components/core/Select";
 import { VStack } from "../../components/core/Stacks";
@@ -7,6 +7,7 @@ import {
   formatJsonIfPossible,
   type YakuRunBody,
 } from "../../lib/yaku-client";
+import { EmptyCopy } from "./WorkspacePanels";
 
 export function YakuBodyViewer({
   bodies,
@@ -76,14 +77,6 @@ function BodyMeta({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-border-subtle bg-surface px-3 py-2">
       <div className="text-xs uppercase tracking-[0.18em] text-text-subtlest">{label}</div>
       <div className="mt-1 truncate text-sm text-text">{value}</div>
-    </div>
-  );
-}
-
-function EmptyCopy({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-subtle bg-surface px-3 py-6 text-center text-sm text-text-subtle">
-      {children}
     </div>
   );
 }

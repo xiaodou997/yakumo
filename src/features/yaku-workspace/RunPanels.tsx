@@ -1,7 +1,5 @@
 import classNames from "classnames";
-import { type ReactNode } from "react";
 import { FormattedError } from "../../components/core/FormattedError";
-import { Heading } from "../../components/core/Heading";
 import { Select } from "../../components/core/Select";
 import { HStack, VStack } from "../../components/core/Stacks";
 import {
@@ -10,6 +8,7 @@ import {
   type YakuRunEventKind,
   type YakuRunPageItem,
 } from "../../lib/yaku-client";
+import { EmptyCopy, WorkspacePanel } from "./WorkspacePanels";
 
 export function RunHistoryPanel({
   runs,
@@ -23,7 +22,7 @@ export function RunHistoryPanel({
   onSelectRun: (runId: string) => void;
 }) {
   return (
-    <Panel title="Run History" subtitle="Newest runs for the selected request.">
+    <WorkspacePanel title="Run History" subtitle="Newest runs for the selected request.">
       {error ? (
         <FormattedError>{String(error)}</FormattedError>
       ) : runs.length === 0 ? (
@@ -59,7 +58,7 @@ export function RunHistoryPanel({
           })}
         </div>
       )}
-    </Panel>
+    </WorkspacePanel>
   );
 }
 
@@ -75,7 +74,7 @@ export function RunEventTimelinePanel({
   error: unknown;
 }) {
   return (
-    <Panel title="Event Timeline" subtitle="Unified run events emitted by the Yaku engine.">
+    <WorkspacePanel title="Event Timeline" subtitle="Unified run events emitted by the Yaku engine.">
       <VStack space={3}>
         <Select
           name="yaku-event-kind"
@@ -107,36 +106,6 @@ export function RunEventTimelinePanel({
           </div>
         )}
       </VStack>
-    </Panel>
-  );
-}
-
-function Panel({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-border-subtle bg-surface-highlight/35 p-4">
-      <VStack space={3}>
-        <VStack space={1}>
-          <Heading level={3}>{title}</Heading>
-          <p className="text-sm text-text-subtle">{subtitle}</p>
-        </VStack>
-        {children}
-      </VStack>
-    </section>
-  );
-}
-
-function EmptyCopy({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-subtle bg-surface px-3 py-6 text-center text-sm text-text-subtle">
-      {children}
-    </div>
+    </WorkspacePanel>
   );
 }

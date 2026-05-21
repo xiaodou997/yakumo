@@ -7,16 +7,13 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { Button } from "../../components/core/Button";
 import type { DropdownItem } from "../../components/core/Dropdown";
 import { FormattedError } from "../../components/core/FormattedError";
 import { Heading } from "../../components/core/Heading";
-import { Select } from "../../components/core/Select";
 import { HStack, VStack } from "../../components/core/Stacks";
 import type { TreeHandle, TreeProps } from "../../components/core/tree/Tree";
-import { Tree } from "../../components/core/tree/Tree";
 import {
   cancelYakuRun,
   clearYakuRunRetention,
@@ -53,18 +50,20 @@ import {
 } from "../../lib/yaku-client";
 import { useListenToTauriEvent } from "../../hooks/useListenToTauriEvent";
 import { YakuBodyViewer } from "./BodyViewer";
-import { PairListEditor } from "./RequestFieldPrimitives";
-import {
-  RequestConfigSummary,
-  RequestStructuredEditor,
-} from "./RequestEditor";
+import { FolderSnapshotPanel } from "./FolderSnapshotPanel";
+import { NodeMoveControls } from "./NodeMoveControls";
+import { RequestBuilderPanel } from "./RequestBuilderPanel";
+import { RequestSnapshotPanel } from "./RequestSnapshotPanel";
 import { RunEventTimelinePanel, RunHistoryPanel } from "./RunPanels";
+import { WorkspaceContextPanel } from "./WorkspaceContextPanel";
+import { WorkspacePanel as Panel } from "./WorkspacePanels";
+import { WorkspaceTreePanel } from "./WorkspaceTreePanel";
 import {
   buildRequestConfigDraft,
   draftFromRequestConfig,
 } from "./requestConfig";
 import type { ConfigPair, WorkspaceTreeItem } from "./types";
-import { buildWorkspaceTree, collectFolderDescendantIds } from "./workspaceTree";
+import { buildWorkspaceTree } from "./workspaceTree";
 
 export type YakuWorkspaceSearch = {
   workspaceId?: string;
@@ -878,562 +877,114 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
         ) : (
           <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,380px)_minmax(0,1fr)]">
             <aside className="flex flex-col gap-4">
-              <Panel title="Workspace Context" subtitle="Choose the Yaku workspace and environment.">
-                <VStack space={3}>
-                  <form
-                    className="rounded-xl border border-border-subtle bg-surface p-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      createWorkspaceMutation.mutate();
-                    }}
-                  >
-                    <VStack space={2}>
-                      <FieldLabel htmlFor="yaku-workspace-name">Create Workspace</FieldLabel>
-                      <input
-                        id="yaku-workspace-name"
-                        value={workspaceName}
-                        onChange={(event) => setWorkspaceName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                      <Button size="xs" type="submit" isLoading={createWorkspaceMutation.isPending}>
-                        Create Workspace
-                      </Button>
-                    </VStack>
-                  </form>
-                  <Select
-                    name="yaku-workspace"
-                    label="Workspace"
-                    value={selectedWorkspaceId ?? ""}
-                    options={selectOptions(workspaces, (workspace) => workspace.name)}
-                    onChange={(value) =>
-                      setSearch({
-                        workspaceId: value,
-                        folderId: undefined,
-                        requestId: undefined,
-                        runId: undefined,
-                        environmentId: undefined,
-                      })
-                    }
-                  />
-                  <Select
-                    name="yaku-environment"
-                    label="Environment Override"
-                    value={selectedEnvironmentId ?? "__none__"}
-                    options={[
-                      { label: "No Override", value: "__none__" },
-                      ...selectOptions(environments, (environment) => environment.name),
-                    ]}
-                    onChange={(value) =>
-                      setSearch({ environmentId: value === "__none__" ? undefined : value })
-                    }
-                  />
-                  <form
-                    className="rounded-xl border border-border-subtle bg-surface p-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      updateEnvironmentMutation.mutate();
-                    }}
-                  >
-                    <VStack space={2}>
-                      <FieldLabel htmlFor="yaku-environment-name">Environment Editor</FieldLabel>
-                      <input
-                        id="yaku-environment-name"
-                        value={environmentName}
-                        onChange={(event) => setEnvironmentName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                      <textarea
-                        value={environmentVariablesText}
-                        onChange={(event) => setEnvironmentVariablesText(event.target.value)}
-                        rows={5}
-                        className={textareaClassName}
-                      />
-                      <HStack space={2} wrap>
-                        <Button
-                          size="xs"
-                          type="button"
-                          disabled={selectedWorkspaceId == null}
-                          isLoading={createEnvironmentMutation.isPending}
-                          onClick={() => createEnvironmentMutation.mutate()}
-                        >
-                          Create Env
-                        </Button>
-                        <Button
-                          size="xs"
-                          type="submit"
-                          variant="border"
-                          disabled={selectedEnvironmentId == null}
-                          isLoading={updateEnvironmentMutation.isPending}
-                        >
-                          Save Env
-                        </Button>
-                        <Button
-                          size="xs"
-                          type="button"
-                          variant="border"
-                          color="danger"
-                          disabled={selectedEnvironmentId == null}
-                          isLoading={deleteEnvironmentMutation.isPending}
-                          onClick={() => deleteEnvironmentMutation.mutate()}
-                        >
-                          Delete Env
-                        </Button>
-                      </HStack>
-                    </VStack>
-                  </form>
-                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
-                    <div className="mb-1 text-xs uppercase tracking-[0.2em] text-text-subtlest">
-                      Environment Variables
-                    </div>
-                    <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs text-text-subtle">
-                      {JSON.stringify(
-                        environments.find((environment) => environment.id === selectedEnvironmentId)
-                          ?.variables ?? {},
-                        null,
-                        2,
-                      )}
-                    </pre>
-                  </div>
-                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
-                    <HStack justifyContent="between" alignItems="start" className="gap-3">
-                      <VStack space={1}>
-                        <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">
-                          Run Retention
-                        </div>
-                        <div className="text-sm text-text">
-                          {retentionQuery.data == null
-                            ? "Unlimited"
-                            : `${retentionQuery.data.toLocaleString()} runs`}
-                        </div>
-                      </VStack>
-                      <Button
-                        size="xs"
-                        variant="border"
-                        isLoading={gcBodiesMutation.isPending}
-                        onClick={() => gcBodiesMutation.mutate()}
-                      >
-                        GC Bodies
-                      </Button>
-                    </HStack>
-                    <HStack space={2} wrap className="mt-3">
-                      <Button
-                        size="xs"
-                        variant="border"
-                        disabled={selectedWorkspaceId == null}
-                        isLoading={setRetentionMutation.isPending}
-                        onClick={() => setRetentionMutation.mutate(25)}
-                      >
-                        Keep 25
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="border"
-                        disabled={selectedWorkspaceId == null}
-                        isLoading={setRetentionMutation.isPending}
-                        onClick={() => setRetentionMutation.mutate(100)}
-                      >
-                        Keep 100
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="border"
-                        disabled={selectedWorkspaceId == null}
-                        isLoading={clearRetentionMutation.isPending}
-                        onClick={() => clearRetentionMutation.mutate()}
-                      >
-                        Clear
-                      </Button>
-                    </HStack>
-                    {gcBodiesMutation.data != null ? (
-                      <div className="mt-3 text-xs text-text-subtle">
-                        Deleted {gcBodiesMutation.data.deleted} files · Retained{" "}
-                        {gcBodiesMutation.data.retained}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
-                    <VStack space={2}>
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">
-                          Backup
-                        </div>
-                        <div className="mt-1 text-xs leading-5 text-text-subtle">
-                          Yaku native JSON only. Import replaces an existing workspace with the same
-                          id.
-                        </div>
-                      </div>
-                      <HStack space={2} wrap>
-                        <Button
-                          size="xs"
-                          variant="border"
-                          disabled={selectedWorkspaceId == null}
-                          isLoading={exportBackupMutation.isPending}
-                          onClick={() => exportBackupMutation.mutate()}
-                        >
-                          Export Workspace
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="border"
-                          isLoading={importBackupMutation.isPending}
-                          onClick={() => importBackupMutation.mutate()}
-                        >
-                          Import Backup
-                        </Button>
-                      </HStack>
-                      {exportBackupMutation.data != null ? (
-                        <div className="text-xs text-text-subtle">
-                          Exported hash {exportBackupMutation.data.contentHash.slice(0, 12)}
-                        </div>
-                      ) : null}
-                      {importBackupMutation.data != null ? (
-                        <div className="text-xs text-text-subtle">
-                          Imported {importBackupMutation.data.workspace.name}
-                          {importBackupMutation.data.replacedExisting ? " and replaced existing data" : ""}
-                        </div>
-                      ) : null}
-                    </VStack>
-                  </div>
-                </VStack>
-              </Panel>
+              <WorkspaceContextPanel
+                workspaces={workspaces}
+                environments={environments}
+                selectedWorkspaceId={selectedWorkspaceId}
+                selectedEnvironmentId={selectedEnvironmentId}
+                workspaceName={workspaceName}
+                setWorkspaceName={setWorkspaceName}
+                environmentName={environmentName}
+                setEnvironmentName={setEnvironmentName}
+                environmentVariablesText={environmentVariablesText}
+                setEnvironmentVariablesText={setEnvironmentVariablesText}
+                retention={retentionQuery.data}
+                gcReport={gcBodiesMutation.data}
+                exportResult={exportBackupMutation.data ?? undefined}
+                importResult={importBackupMutation.data ?? undefined}
+                isCreatingWorkspace={createWorkspaceMutation.isPending}
+                isCreatingEnvironment={createEnvironmentMutation.isPending}
+                isUpdatingEnvironment={updateEnvironmentMutation.isPending}
+                isDeletingEnvironment={deleteEnvironmentMutation.isPending}
+                isSettingRetention={setRetentionMutation.isPending}
+                isClearingRetention={clearRetentionMutation.isPending}
+                isGcBodies={gcBodiesMutation.isPending}
+                isExportingBackup={exportBackupMutation.isPending}
+                isImportingBackup={importBackupMutation.isPending}
+                onCreateWorkspace={() => createWorkspaceMutation.mutate()}
+                onSelectWorkspace={(workspaceId) =>
+                  setSearch({
+                    workspaceId,
+                    folderId: undefined,
+                    requestId: undefined,
+                    runId: undefined,
+                    environmentId: undefined,
+                  })
+                }
+                onSelectEnvironment={(environmentId) => setSearch({ environmentId })}
+                onCreateEnvironment={() => createEnvironmentMutation.mutate()}
+                onUpdateEnvironment={() => updateEnvironmentMutation.mutate()}
+                onDeleteEnvironment={() => deleteEnvironmentMutation.mutate()}
+                onSetRetention={(limit) => setRetentionMutation.mutate(limit)}
+                onClearRetention={() => clearRetentionMutation.mutate()}
+                onGcBodies={() => gcBodiesMutation.mutate()}
+                onExportBackup={() => exportBackupMutation.mutate()}
+                onImportBackup={() => importBackupMutation.mutate()}
+              />
 
-              <Panel title="Request Builder" subtitle="Create folders and seed sendable Yaku requests.">
-                <VStack space={3}>
-                  <Select
-                    name="yaku-request-parent"
-                    label="Parent Folder"
-                    value={requestParentId}
-                    options={[
-                      { label: "Root", value: "__root__" },
-                      ...folderNodes.map((folder) => ({ label: folder.name, value: folder.id })),
-                    ]}
-                    onChange={setRequestParentId}
-                  />
-                  <form
-                    className="rounded-xl border border-border-subtle bg-surface p-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      createFolderMutation.mutate();
-                    }}
-                  >
-                    <VStack space={2}>
-                      <FieldLabel htmlFor="yaku-folder-name">New Folder</FieldLabel>
-                      <input
-                        id="yaku-folder-name"
-                        value={folderName}
-                        onChange={(event) => setFolderName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                      <Button
-                        size="xs"
-                        type="submit"
-                        disabled={selectedWorkspaceId == null}
-                        isLoading={createFolderMutation.isPending}
-                      >
-                        Create Folder
-                      </Button>
-                    </VStack>
-                  </form>
-                  <form
-                    className="rounded-xl border border-border-subtle bg-surface p-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      createRequestMutation.mutate();
-                    }}
-                  >
-                    <VStack space={2}>
-                      <FieldLabel htmlFor="yaku-request-name">New Request</FieldLabel>
-                      <input
-                        id="yaku-request-name"
-                        value={requestName}
-                        onChange={(event) => setRequestName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                      <Select
-                        name="yaku-request-protocol"
-                        label="Protocol"
-                        value={requestProtocol}
-                        options={[
-                          { label: "HTTP", value: "http" },
-                          { label: "GraphQL", value: "graphql" },
-                          { label: "SSE", value: "sse" },
-                          { label: "WebSocket", value: "web_socket" },
-                          { label: "gRPC", value: "grpc" },
-                        ]}
-                        onChange={(value) => setRequestProtocol(value as YakuProtocol)}
-                        size="sm"
-                      />
-                      {requestProtocol === "http" || requestProtocol === "graphql" ? (
-                        <VStack space={2}>
-                          <input
-                            value={requestUrl}
-                            onChange={(event) => setRequestUrl(event.target.value)}
-                            placeholder="https://example.com"
-                            className={fieldClassName}
-                          />
-                          {requestProtocol === "http" ? (
-                            <input
-                              value={requestHttpMethod}
-                              onChange={(event) => setRequestHttpMethod(event.target.value)}
-                              placeholder="GET"
-                              className={fieldClassName}
-                            />
-                          ) : null}
-                          <textarea
-                            value={requestHttpBody}
-                            onChange={(event) => setRequestHttpBody(event.target.value)}
-                            rows={4}
-                            placeholder='{"query":"{ __typename }"}'
-                            className={textareaClassName}
-                          />
-                          <PairListEditor
-                            title="Headers"
-                            pairs={requestHeaders}
-                            setPairs={setRequestHeaders}
-                            namePlaceholder="Header"
-                            valuePlaceholder="Value"
-                          />
-                          <PairListEditor
-                            title="Query"
-                            pairs={requestQueryParams}
-                            setPairs={setRequestQueryParams}
-                            includeEnabled
-                            namePlaceholder="Parameter"
-                            valuePlaceholder="Value"
-                          />
-                          <label className="flex items-center gap-2 text-xs text-text-subtle">
-                            <input
-                              type="checkbox"
-                              checked={requestFollowRedirects}
-                              onChange={(event) => setRequestFollowRedirects(event.target.checked)}
-                            />
-                            Follow redirects
-                          </label>
-                          <input
-                            value={requestTimeoutMs}
-                            onChange={(event) => setRequestTimeoutMs(event.target.value)}
-                            placeholder="Timeout ms"
-                            className={fieldClassName}
-                          />
-                        </VStack>
-                      ) : null}
-                      {requestProtocol === "sse" ? (
-                        <VStack space={2}>
-                          <input
-                            value={requestUrl}
-                            onChange={(event) => setRequestUrl(event.target.value)}
-                            placeholder="https://example.com/events"
-                            className={fieldClassName}
-                          />
-                          <PairListEditor
-                            title="Headers"
-                            pairs={requestHeaders}
-                            setPairs={setRequestHeaders}
-                            namePlaceholder="Header"
-                            valuePlaceholder="Value"
-                          />
-                          <PairListEditor
-                            title="Query"
-                            pairs={requestQueryParams}
-                            setPairs={setRequestQueryParams}
-                            includeEnabled
-                            namePlaceholder="Parameter"
-                            valuePlaceholder="Value"
-                          />
-                          <label className="flex items-center gap-2 text-xs text-text-subtle">
-                            <input
-                              type="checkbox"
-                              checked={requestFollowRedirects}
-                              onChange={(event) => setRequestFollowRedirects(event.target.checked)}
-                            />
-                            Follow redirects
-                          </label>
-                          <input
-                            value={requestTimeoutMs}
-                            onChange={(event) => setRequestTimeoutMs(event.target.value)}
-                            placeholder="Timeout ms"
-                            className={fieldClassName}
-                          />
-                        </VStack>
-                      ) : null}
-                      {requestProtocol === "web_socket" ? (
-                        <VStack space={2}>
-                          <input
-                            value={requestUrl}
-                            onChange={(event) => setRequestUrl(event.target.value)}
-                            placeholder="ws://example.com/socket"
-                            className={fieldClassName}
-                          />
-                          <PairListEditor
-                            title="Headers"
-                            pairs={requestHeaders}
-                            setPairs={setRequestHeaders}
-                            namePlaceholder="Header"
-                            valuePlaceholder="Value"
-                          />
-                          <PairListEditor
-                            title="Query"
-                            pairs={requestQueryParams}
-                            setPairs={setRequestQueryParams}
-                            includeEnabled
-                            namePlaceholder="Parameter"
-                            valuePlaceholder="Value"
-                          />
-                          <textarea
-                            value={requestWebSocketMessages}
-                            onChange={(event) => setRequestWebSocketMessages(event.target.value)}
-                            rows={4}
-                            placeholder="hello"
-                            className={textareaClassName}
-                          />
-                          <input
-                            value={requestWebSocketMaxMessages}
-                            onChange={(event) => setRequestWebSocketMaxMessages(event.target.value)}
-                            placeholder="Max messages"
-                            className={fieldClassName}
-                          />
-                          <input
-                            value={requestTimeoutMs}
-                            onChange={(event) => setRequestTimeoutMs(event.target.value)}
-                            placeholder="Timeout ms"
-                            className={fieldClassName}
-                          />
-                        </VStack>
-                      ) : null}
-                      {requestProtocol === "grpc" ? (
-                        <VStack space={2}>
-                          <input
-                            value={requestUrl}
-                            onChange={(event) => setRequestUrl(event.target.value)}
-                            placeholder="http://localhost:50051"
-                            className={fieldClassName}
-                          />
-                          <input
-                            value={requestGrpcService}
-                            onChange={(event) => setRequestGrpcService(event.target.value)}
-                            placeholder="package.Service"
-                            className={fieldClassName}
-                          />
-                          <input
-                            value={requestGrpcMethod}
-                            onChange={(event) => setRequestGrpcMethod(event.target.value)}
-                            placeholder="Method"
-                            className={fieldClassName}
-                          />
-                          <textarea
-                            value={requestGrpcMessage}
-                            onChange={(event) => setRequestGrpcMessage(event.target.value)}
-                            rows={4}
-                            placeholder='{"ping":"pong"}'
-                            className={textareaClassName}
-                          />
-                          <PairListEditor
-                            title="Metadata"
-                            pairs={requestGrpcMetadata}
-                            setPairs={setRequestGrpcMetadata}
-                            namePlaceholder="Metadata"
-                            valuePlaceholder="Value"
-                          />
-                          <label className="flex items-center gap-2 text-xs text-text-subtle">
-                            <input
-                              type="checkbox"
-                              checked={requestGrpcUseReflection}
-                              onChange={(event) => setRequestGrpcUseReflection(event.target.checked)}
-                            />
-                            Use reflection
-                          </label>
-                          <input
-                            value={requestTimeoutMs}
-                            onChange={(event) => setRequestTimeoutMs(event.target.value)}
-                            placeholder="Timeout ms"
-                            className={fieldClassName}
-                          />
-                        </VStack>
-                      ) : null}
-                      <Button
-                        size="xs"
-                        type="submit"
-                        disabled={selectedWorkspaceId == null}
-                        isLoading={createRequestMutation.isPending}
-                      >
-                        Create Request
-                      </Button>
-                    </VStack>
-                  </form>
-                </VStack>
-              </Panel>
+              <RequestBuilderPanel
+                workspaceId={selectedWorkspaceId}
+                folderNodes={folderNodes}
+                parentId={requestParentId}
+                setParentId={setRequestParentId}
+                folderName={folderName}
+                setFolderName={setFolderName}
+                requestName={requestName}
+                setRequestName={setRequestName}
+                requestProtocol={requestProtocol}
+                setRequestProtocol={setRequestProtocol}
+                requestUrl={requestUrl}
+                setRequestUrl={setRequestUrl}
+                requestHttpMethod={requestHttpMethod}
+                setRequestHttpMethod={setRequestHttpMethod}
+                requestHttpBody={requestHttpBody}
+                setRequestHttpBody={setRequestHttpBody}
+                requestHeaders={requestHeaders}
+                setRequestHeaders={setRequestHeaders}
+                requestQueryParams={requestQueryParams}
+                setRequestQueryParams={setRequestQueryParams}
+                requestFollowRedirects={requestFollowRedirects}
+                setRequestFollowRedirects={setRequestFollowRedirects}
+                requestTimeoutMs={requestTimeoutMs}
+                setRequestTimeoutMs={setRequestTimeoutMs}
+                requestGrpcService={requestGrpcService}
+                setRequestGrpcService={setRequestGrpcService}
+                requestGrpcMethod={requestGrpcMethod}
+                setRequestGrpcMethod={setRequestGrpcMethod}
+                requestGrpcMessage={requestGrpcMessage}
+                setRequestGrpcMessage={setRequestGrpcMessage}
+                requestGrpcMetadata={requestGrpcMetadata}
+                setRequestGrpcMetadata={setRequestGrpcMetadata}
+                requestGrpcUseReflection={requestGrpcUseReflection}
+                setRequestGrpcUseReflection={setRequestGrpcUseReflection}
+                requestWebSocketMessages={requestWebSocketMessages}
+                setRequestWebSocketMessages={setRequestWebSocketMessages}
+                requestWebSocketMaxMessages={requestWebSocketMaxMessages}
+                setRequestWebSocketMaxMessages={setRequestWebSocketMaxMessages}
+                isCreatingFolder={createFolderMutation.isPending}
+                isCreatingRequest={createRequestMutation.isPending}
+                onCreateFolder={() => createFolderMutation.mutate()}
+                onCreateRequest={() => createRequestMutation.mutate()}
+              />
 
-              <Panel title="Workspace Tree" subtitle="Nested folders and requests in the selected workspace.">
-                {workspaceTree == null ? (
-                  <EmptyCopy>Select a workspace to view its tree.</EmptyCopy>
-                ) : workspaceTree.children == null || workspaceTree.children.length === 0 ? (
-                  <EmptyCopy>No Yaku folders or requests found in this workspace.</EmptyCopy>
-                ) : (
-                  <Tree
-                    ref={treeRef}
-                    treeId={`yaku-workspace-${selectedWorkspaceId ?? "none"}`}
-                    className="px-1"
-                    root={workspaceTree}
-                    getItemKey={(item) => `${item.id}::${item.kind}::${item.name}::${item.sortKey}`}
-                    getContextMenu={handleWorkspaceTreeGetContextMenu}
-                    getEditOptions={handleWorkspaceTreeGetEditOptions}
-                    ItemInner={WorkspaceTreeItemInner}
-                    ItemRightSlot={WorkspaceTreeItemRightSlot}
-                    onActivate={handleWorkspaceTreeActivate}
-                    onDragEnd={({ parent, children, items, insertAt }) => {
-                      const nextChildren = [...children];
-                      nextChildren.splice(insertAt, 0, ...items);
-                      reorderTreeMutation.mutate({
-                        parentId: parent.kind === "workspace_root" ? null : parent.id,
-                        children: nextChildren as WorkspaceTreeItem[],
-                      });
-                    }}
-                  />
-                )}
-              </Panel>
+              <WorkspaceTreePanel
+                workspaceId={selectedWorkspaceId}
+                workspaceTree={workspaceTree}
+                treeRef={treeRef}
+                getContextMenu={handleWorkspaceTreeGetContextMenu}
+                getEditOptions={handleWorkspaceTreeGetEditOptions}
+                onActivate={handleWorkspaceTreeActivate}
+                onReorder={(parentId, children) => reorderTreeMutation.mutate({ parentId, children })}
+              />
             </aside>
 
             <section className="flex flex-col gap-4">
-              <Panel title="Folder Snapshot" subtitle="Selected folder and node actions.">
-                {selectedFolderNode == null ? (
-                  <EmptyCopy>Select a folder to manage it.</EmptyCopy>
-                ) : (
-                  <VStack space={3}>
-                    <HStack justifyContent="between" alignItems="start" className="gap-3">
-                      <VStack space={1}>
-                        <div className="text-lg font-semibold text-text">{selectedFolderNode.name}</div>
-                        <div className="text-xs uppercase tracking-[0.22em] text-text-subtlest">
-                          Folder
-                        </div>
-                      </VStack>
-                      <div className="rounded-full border border-border-subtle px-2 py-1 text-xs text-text-subtle">
-                        {selectedFolderNode.id}
-                      </div>
-                    </HStack>
-                    <form
-                      className="rounded-xl border border-border-subtle bg-surface p-3"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        updateFolderMutation.mutate();
-                      }}
-                    >
-                      <VStack space={2}>
-                        <FieldLabel htmlFor="yaku-folder-edit-name">Folder Name</FieldLabel>
-                        <input
-                          id="yaku-folder-edit-name"
-                          value={folderEditName}
-                          onChange={(event) => setFolderEditName(event.target.value)}
-                          className={fieldClassName}
-                        />
-                        <Button
-                          size="xs"
-                          type="submit"
-                          isLoading={updateFolderMutation.isPending}
-                        >
-                          Save Folder
-                        </Button>
-                      </VStack>
-                    </form>
+              <FolderSnapshotPanel
+                folderNode={selectedFolderNode}
+                editName={folderEditName}
+                setEditName={setFolderEditName}
+                moveControls={
+                  selectedFolderNode == null ? null : (
                     <NodeMoveControls
                       label="Move Folder"
                       nodeId={selectedFolderNode.id}
@@ -1450,162 +1001,81 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                         })
                       }
                     />
-                    <HStack space={2} wrap>
-                      <Button
-                        size="xs"
-                        variant="border"
-                        onClick={() => setRequestParentId(selectedFolderNode.id)}
-                      >
-                        Use As Parent
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="border"
-                        color="danger"
-                        isLoading={deleteFolderNodeMutation.isPending}
-                        onClick={() => deleteFolderNodeMutation.mutate()}
-                      >
-                        Delete Folder
-                      </Button>
-                    </HStack>
-                  </VStack>
-                )}
-              </Panel>
+                  )
+                }
+                isSaving={updateFolderMutation.isPending}
+                isDeleting={deleteFolderNodeMutation.isPending}
+                onSave={() => updateFolderMutation.mutate()}
+                onUseAsParent={() => {
+                  if (selectedFolderNode != null) {
+                    setRequestParentId(selectedFolderNode.id);
+                  }
+                }}
+                onDelete={() => deleteFolderNodeMutation.mutate()}
+              />
 
-              <Panel title="Request Snapshot" subtitle="Resolved from the Yaku request record before execution.">
-                {requestQuery.error ? (
-                  <FormattedError>{String(requestQuery.error)}</FormattedError>
-                ) : requestQuery.data == null ? (
-                  <EmptyCopy>Select a request to inspect its config.</EmptyCopy>
-                ) : (
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      updateRequestMutation.mutate("structured");
-                    }}
-                  >
-                    <VStack space={3}>
-                      <HStack justifyContent="between" alignItems="start" className="gap-3">
-                        <VStack space={1}>
-                          <div className="text-lg font-semibold text-text">{requestQuery.data.name}</div>
-                          <div className="text-xs uppercase tracking-[0.22em] text-text-subtlest">
-                            {requestQuery.data.protocol}
-                          </div>
-                        </VStack>
-                        <div className="rounded-full border border-border-subtle px-2 py-1 text-xs text-text-subtle">
-                          {requestQuery.data.id}
-                        </div>
-                      </HStack>
-                      <RequestConfigSummary
-                        protocol={requestQuery.data.protocol}
-                        config={requestQuery.data.config}
-                      />
-                      <input
-                        value={requestEditName}
-                        onChange={(event) => setRequestEditName(event.target.value)}
-                        className={fieldClassName}
-                      />
-                      <input
-                        value={requestEditDescription}
-                        onChange={(event) => setRequestEditDescription(event.target.value)}
-                        placeholder="Description"
-                        className={fieldClassName}
-                      />
-                      <RequestStructuredEditor
-                        protocol={requestQuery.data.protocol}
-                        url={requestEditUrl}
-                        setUrl={setRequestEditUrl}
-                        httpMethod={requestEditHttpMethod}
-                        setHttpMethod={setRequestEditHttpMethod}
-                        httpBody={requestEditHttpBody}
-                        setHttpBody={setRequestEditHttpBody}
-                        headers={requestEditHeaders}
-                        setHeaders={setRequestEditHeaders}
-                        query={requestEditQueryParams}
-                        setQuery={setRequestEditQueryParams}
-                        followRedirects={requestEditFollowRedirects}
-                        setFollowRedirects={setRequestEditFollowRedirects}
-                        timeoutMs={requestEditTimeoutMs}
-                        setTimeoutMs={setRequestEditTimeoutMs}
-                        grpcService={requestEditGrpcService}
-                        setGrpcService={setRequestEditGrpcService}
-                        grpcMethod={requestEditGrpcMethod}
-                        setGrpcMethod={setRequestEditGrpcMethod}
-                        grpcMessage={requestEditGrpcMessage}
-                        setGrpcMessage={setRequestEditGrpcMessage}
-                        grpcMetadata={requestEditGrpcMetadata}
-                        setGrpcMetadata={setRequestEditGrpcMetadata}
-                        grpcUseReflection={requestEditGrpcUseReflection}
-                        setGrpcUseReflection={setRequestEditGrpcUseReflection}
-                        webSocketMessages={requestEditWebSocketMessages}
-                        setWebSocketMessages={setRequestEditWebSocketMessages}
-                        webSocketMaxMessages={requestEditWebSocketMaxMessages}
-                        setWebSocketMaxMessages={setRequestEditWebSocketMaxMessages}
-                      />
-                      <NodeMoveControls
-                        label="Move Request"
-                        nodeId={selectedRequestNode?.id ?? ""}
-                        currentParentId={selectedRequestNode?.parentId}
-                        currentFolderId={selectedRequestNode?.id}
-                        folderNodes={folderNodes}
-                        value={requestMoveParentId}
-                        setValue={setRequestMoveParentId}
-                        isLoading={moveNodeMutation.isPending}
-                        onMove={(parentId) =>
-                          moveNodeMutation.mutate({
-                            nodeId: selectedRequestNode!.id,
-                            parentId,
-                          })
-                        }
-                      />
-                      <div className="rounded-xl border border-border-subtle bg-surface p-3">
-                        <div className="mb-2 text-xs uppercase tracking-[0.2em] text-text-subtlest">
-                          Raw JSON Override
-                        </div>
-                        <textarea
-                          value={requestConfigText}
-                          onChange={(event) => setRequestConfigText(event.target.value)}
-                          rows={8}
-                          className={textareaClassName}
-                        />
-                        <div className="mt-2 text-xs leading-5 text-text-subtle">
-                          Use this only for fields not represented above. Saving with the primary
-                          button uses the structured editor.
-                        </div>
-                      </div>
-                      <HStack space={2} wrap>
-                        <Button
-                          size="xs"
-                          type="submit"
-                          isLoading={updateRequestMutation.isPending}
-                        >
-                          Save Request
-                        </Button>
-                        <Button
-                          size="xs"
-                          type="button"
-                          variant="border"
-                          isLoading={updateRequestMutation.isPending}
-                          onClick={() => updateRequestMutation.mutate("raw")}
-                        >
-                          Apply Raw JSON
-                        </Button>
-                        <Button
-                          size="xs"
-                          type="button"
-                          variant="border"
-                          color="danger"
-                          disabled={selectedRequestNode == null}
-                          isLoading={deleteRequestNodeMutation.isPending}
-                          onClick={() => deleteRequestNodeMutation.mutate()}
-                        >
-                          Delete Request
-                        </Button>
-                      </HStack>
-                    </VStack>
-                  </form>
-                )}
-              </Panel>
+              <RequestSnapshotPanel
+                request={requestQuery.data}
+                error={requestQuery.error}
+                editName={requestEditName}
+                setEditName={setRequestEditName}
+                editDescription={requestEditDescription}
+                setEditDescription={setRequestEditDescription}
+                editUrl={requestEditUrl}
+                setEditUrl={setRequestEditUrl}
+                editHttpMethod={requestEditHttpMethod}
+                setEditHttpMethod={setRequestEditHttpMethod}
+                editHttpBody={requestEditHttpBody}
+                setEditHttpBody={setRequestEditHttpBody}
+                editHeaders={requestEditHeaders}
+                setEditHeaders={setRequestEditHeaders}
+                editQueryParams={requestEditQueryParams}
+                setEditQueryParams={setRequestEditQueryParams}
+                editFollowRedirects={requestEditFollowRedirects}
+                setEditFollowRedirects={setRequestEditFollowRedirects}
+                editTimeoutMs={requestEditTimeoutMs}
+                setEditTimeoutMs={setRequestEditTimeoutMs}
+                editGrpcService={requestEditGrpcService}
+                setEditGrpcService={setRequestEditGrpcService}
+                editGrpcMethod={requestEditGrpcMethod}
+                setEditGrpcMethod={setRequestEditGrpcMethod}
+                editGrpcMessage={requestEditGrpcMessage}
+                setEditGrpcMessage={setRequestEditGrpcMessage}
+                editGrpcMetadata={requestEditGrpcMetadata}
+                setEditGrpcMetadata={setRequestEditGrpcMetadata}
+                editGrpcUseReflection={requestEditGrpcUseReflection}
+                setEditGrpcUseReflection={setRequestEditGrpcUseReflection}
+                editWebSocketMessages={requestEditWebSocketMessages}
+                setEditWebSocketMessages={setRequestEditWebSocketMessages}
+                editWebSocketMaxMessages={requestEditWebSocketMaxMessages}
+                setEditWebSocketMaxMessages={setRequestEditWebSocketMaxMessages}
+                configText={requestConfigText}
+                setConfigText={setRequestConfigText}
+                moveControls={
+                  <NodeMoveControls
+                    label="Move Request"
+                    nodeId={selectedRequestNode?.id ?? ""}
+                    currentParentId={selectedRequestNode?.parentId}
+                    currentFolderId={selectedRequestNode?.id}
+                    folderNodes={folderNodes}
+                    value={requestMoveParentId}
+                    setValue={setRequestMoveParentId}
+                    isLoading={moveNodeMutation.isPending}
+                    onMove={(parentId) =>
+                      moveNodeMutation.mutate({
+                        nodeId: selectedRequestNode!.id,
+                        parentId,
+                      })
+                    }
+                  />
+                }
+                isSaving={updateRequestMutation.isPending}
+                isDeleting={deleteRequestNodeMutation.isPending}
+                canDelete={selectedRequestNode != null}
+                onSaveStructured={() => updateRequestMutation.mutate("structured")}
+                onSaveRaw={() => updateRequestMutation.mutate("raw")}
+                onDelete={() => deleteRequestNodeMutation.mutate()}
+              />
 
               <RunHistoryPanel
                 runs={runs}
@@ -1668,28 +1138,6 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
   );
 }
 
-function Panel({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-border-subtle bg-surface-highlight/35 p-4">
-      <VStack space={3}>
-        <VStack space={1}>
-          <Heading level={3}>{title}</Heading>
-          <p className="text-sm text-text-subtle">{subtitle}</p>
-        </VStack>
-        {children}
-      </VStack>
-    </section>
-  );
-}
-
 function StatCard({
   label,
   value,
@@ -1716,38 +1164,9 @@ function StatCard({
   );
 }
 
-function EmptyCopy({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-subtle bg-surface px-3 py-6 text-center text-sm text-text-subtle">
-      {children}
-    </div>
-  );
-}
-
-function FieldLabel({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
-  return (
-    <label htmlFor={htmlFor} className="text-xs uppercase tracking-[0.18em] text-text-subtlest">
-      {children}
-    </label>
-  );
-}
-
 function MutationErrors({ errors }: { errors: unknown[] }) {
   const error = errors.find(Boolean);
   return error ? <FormattedError>{String(error)}</FormattedError> : null;
-}
-
-const fieldClassName =
-  "min-h-sm w-full rounded-md border border-border-subtle bg-surface px-2 text-xs font-mono text-text outline-none focus:border-border-focus placeholder:text-placeholder";
-
-const textareaClassName =
-  "w-full resize-y rounded-md border border-border-subtle bg-surface p-2 text-xs font-mono text-text outline-none focus:border-border-focus";
-
-function selectOptions<T extends { id: string }>(
-  items: T[],
-  label: (item: T) => string,
-) {
-  return items.map((item) => ({ label: label(item), value: item.id }));
 }
 
 function resolveSelectedId<T extends { id: string }>(items: T[], requestedId?: string) {
@@ -1777,108 +1196,6 @@ function parseJsonObject(input: string, label: string): Record<string, unknown> 
     throw new Error(`${label} must be a JSON object`);
   }
   return parsed as Record<string, unknown>;
-}
-
-function NodeMoveControls({
-  label,
-  nodeId,
-  currentParentId,
-  currentFolderId,
-  folderNodes,
-  value,
-  setValue,
-  onMove,
-  isLoading = false,
-}: {
-  label: string;
-  nodeId: string;
-  currentParentId: string | null | undefined;
-  currentFolderId?: string;
-  folderNodes: YakuRequestNodePageItem[];
-  value: string;
-  setValue: (value: string) => void;
-  onMove: (parentId: string | null) => void;
-  isLoading?: boolean;
-}) {
-  const excludedFolderIds = useMemo(() => {
-    if (currentFolderId == null) return new Set<string>();
-    const descendants = collectFolderDescendantIds(folderNodes, currentFolderId);
-    return new Set([currentFolderId, ...descendants]);
-  }, [currentFolderId, folderNodes]);
-
-  const options = useMemo(
-    () => [
-      { label: "Root", value: "__root__" },
-      ...folderNodes
-        .filter((folder) => !excludedFolderIds.has(folder.id))
-        .map((folder) => ({ label: folder.name, value: folder.id })),
-    ],
-    [excludedFolderIds, folderNodes],
-  );
-
-  const currentParentLabel =
-    currentParentId == null
-      ? "Root"
-      : folderNodes.find((folder) => folder.id === currentParentId)?.name ?? currentParentId;
-
-  const hasSelectedTarget = options.some((option) => option.value === value);
-  const selectedValue = hasSelectedTarget ? value : "__root__";
-  const isSameParent = (currentParentId ?? "__root__") === selectedValue;
-
-  return (
-    <div className="rounded-xl border border-border-subtle bg-surface p-3">
-      <div className="mb-2 text-xs uppercase tracking-[0.2em] text-text-subtlest">{label}</div>
-      <div className="mb-3 text-xs text-text-subtle">Current parent: {currentParentLabel}</div>
-      <Select
-        name={`${label}-target-${nodeId}`}
-        label="Target"
-        value={selectedValue}
-        options={options}
-        onChange={setValue}
-        size="sm"
-      />
-      <HStack space={2} wrap className="mt-3">
-        <Button
-          size="xs"
-          variant="border"
-          disabled={isSameParent}
-          isLoading={isLoading}
-          onClick={() => onMove(selectedValue === "__root__" ? null : selectedValue)}
-        >
-          Move
-        </Button>
-      </HStack>
-    </div>
-  );
-}
-
-function WorkspaceTreeItemInner({ item }: { treeId: string; item: WorkspaceTreeItem }) {
-  return (
-    <div className="min-w-0">
-      <div className="truncate text-sm font-medium">{item.name}</div>
-      <div className="truncate text-[10px] uppercase tracking-[0.14em] text-text-subtlest">
-        {item.kind === "request" ? item.requestId : item.id}
-      </div>
-    </div>
-  );
-}
-
-function WorkspaceTreeItemRightSlot({ item }: { treeId: string; item: WorkspaceTreeItem }) {
-  if (item.kind === "folder") {
-    return (
-      <div className="mr-1 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-        {item.directRequestCount ?? 0} reqs
-      </div>
-    );
-  }
-  if (item.kind === "request") {
-    return (
-      <div className="mr-1 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-        Request
-      </div>
-    );
-  }
-  return null;
 }
 
 function asOptionalString(value: unknown) {
