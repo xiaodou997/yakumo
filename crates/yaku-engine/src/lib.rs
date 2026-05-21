@@ -21,6 +21,7 @@ pub use sse::{
     SseSender,
 };
 pub use template::{render_config, render_value};
+pub use tokio_util::sync::CancellationToken;
 pub use websocket::{
     MockWebSocketSender, SendWebSocket, TungsteniteWebSocketSender, WebSocketEngine,
     WebSocketMessage, WebSocketMessageDirection, WebSocketMessageKind, WebSocketRequestConfig,

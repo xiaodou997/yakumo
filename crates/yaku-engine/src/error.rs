@@ -13,9 +13,18 @@ pub enum Error {
     #[error("send failed: {0}")]
     Send(String),
 
+    #[error("send cancelled")]
+    Cancelled,
+
     #[error("body store error: {0}")]
     BodyStore(String),
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+}
+
+impl Error {
+    pub fn is_cancelled(&self) -> bool {
+        matches!(self, Error::Cancelled)
+    }
 }

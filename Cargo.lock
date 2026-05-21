@@ -8972,6 +8972,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",
+ "tokio-util",
  "tonic",
  "tonic-prost",
  "tonic-reflection",

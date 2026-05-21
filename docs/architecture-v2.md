@@ -227,9 +227,10 @@ workspace uses the non-blocking lifecycle:
 Runtime ownership:
 
 - Tauri owns a run task registry keyed by `run_id`.
-- `yaku-engine` can reuse a pre-created running run. Cancellation currently
-  marks the stored run as cancelled and prevents terminal-state overwrite; true
-  transport-level abort remains a follow-up.
+- `yaku-engine` can reuse a pre-created running run. Cancellation now propagates
+  a `CancellationToken` from the Tauri run registry into HTTP, SSE, WebSocket,
+  and gRPC senders. The stored run is marked cancelled and terminal-state
+  overwrite remains blocked.
 - Engines append events to the store before emitting UI events.
 - UI subscribes to Tauri events and invalidates specific run queries.
 
@@ -293,7 +294,9 @@ Phase 2: Remove startup dependency on old models.
 
 Phase 3: Replace send and response panes.
 
-- Implement start/cancel/event-stream run lifecycle.
+- Implement start/cancel/event-stream run lifecycle. Done for start/cancel and
+  lifecycle events; transport-level cancellation is wired through Yaku engine
+  senders.
 - Move HTTP/GraphQL response viewing onto Yaku body/event data.
 - Add binary/download/content-type viewer routing.
 - Port gRPC, WebSocket, and SSE panels onto the same run/event model.

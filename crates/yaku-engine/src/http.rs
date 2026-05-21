@@ -3,6 +3,7 @@ use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
+use tokio_util::sync::CancellationToken;
 use yaku_domain::{
     AppendRunEvent, BodyRole, CreateRun, DomainService, FinishRun, Protocol, RecordRunBody,
     RequestRepository, Run, RunBodyRepository, RunEventKind, RunRepository, RunState,
@@ -58,6 +59,14 @@ pub struct HttpResponse {
 
 pub trait HttpSender {
     fn send(&self, request: &HttpRequestConfig) -> Result<HttpResponse>;
+
+    fn send_with_cancellation(
+        &self,
+        request: &HttpRequestConfig,
+        _cancellation: &CancellationToken,
+    ) -> Result<HttpResponse> {
+        self.send(request)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -71,45 +80,80 @@ impl ReqwestHttpSender {
 
 impl HttpSender for ReqwestHttpSender {
     fn send(&self, request: &HttpRequestConfig) -> Result<HttpResponse> {
-        let method = reqwest::Method::from_bytes(request.method.as_bytes())
-            .map_err(|err| Error::InvalidConfig(format!("invalid method: {err}")))?;
-        let client = reqwest::blocking::Client::builder()
-            .redirect(if request.follow_redirects {
-                reqwest::redirect::Policy::limited(10)
-            } else {
-                reqwest::redirect::Policy::none()
-            })
+        self.send_with_cancellation(request, &CancellationToken::new())
+    }
+
+    fn send_with_cancellation(
+        &self,
+        request: &HttpRequestConfig,
+        cancellation: &CancellationToken,
+    ) -> Result<HttpResponse> {
+        if cancellation.is_cancelled() {
+            return Err(Error::Cancelled);
+        }
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_time()
+            .enable_io()
             .build()
             .map_err(|err| Error::Send(err.to_string()))?;
-        let url = url_with_query(request)?;
-        let mut builder = client.request(method, url);
-
-        if let Some(timeout_ms) = request.timeout_ms {
-            builder = builder.timeout(std::time::Duration::from_millis(timeout_ms));
-        }
-
-        for header in &request.headers {
-            builder = builder.header(&header.name, &header.value);
-        }
-
-        if let Some(body) = &request.body {
-            builder = builder.body(body.clone());
-        }
-
-        let response = builder.send().map_err(|err| Error::Send(err.to_string()))?;
-        let status_code = i32::from(response.status().as_u16());
-        let headers = response
-            .headers()
-            .iter()
-            .map(|(name, value)| Header {
-                name: name.to_string(),
-                value: value.to_str().unwrap_or_default().to_string(),
-            })
-            .collect();
-        let body = response.bytes().map_err(|err| Error::Send(err.to_string()))?.to_vec();
-
-        Ok(HttpResponse { status_code, headers, body })
+        runtime.block_on(send_http(request, cancellation.clone()))
     }
+}
+
+async fn send_http(
+    request: &HttpRequestConfig,
+    cancellation: CancellationToken,
+) -> Result<HttpResponse> {
+    if cancellation.is_cancelled() {
+        return Err(Error::Cancelled);
+    }
+
+    let method = reqwest::Method::from_bytes(request.method.as_bytes())
+        .map_err(|err| Error::InvalidConfig(format!("invalid method: {err}")))?;
+    let client = reqwest::Client::builder()
+        .redirect(if request.follow_redirects {
+            reqwest::redirect::Policy::limited(10)
+        } else {
+            reqwest::redirect::Policy::none()
+        })
+        .build()
+        .map_err(|err| Error::Send(err.to_string()))?;
+    let url = url_with_query(request)?;
+    let mut builder = client.request(method, url);
+
+    if let Some(timeout_ms) = request.timeout_ms {
+        builder = builder.timeout(std::time::Duration::from_millis(timeout_ms));
+    }
+
+    for header in &request.headers {
+        builder = builder.header(&header.name, &header.value);
+    }
+
+    if let Some(body) = &request.body {
+        builder = builder.body(body.clone());
+    }
+
+    let response = tokio::select! {
+        biased;
+        _ = cancellation.cancelled() => return Err(Error::Cancelled),
+        result = builder.send() => result.map_err(|err| Error::Send(err.to_string()))?,
+    };
+    let status_code = i32::from(response.status().as_u16());
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(name, value)| Header {
+            name: name.to_string(),
+            value: value.to_str().unwrap_or_default().to_string(),
+        })
+        .collect();
+    let body = tokio::select! {
+        biased;
+        _ = cancellation.cancelled() => return Err(Error::Cancelled),
+        result = response.bytes() => result.map_err(|err| Error::Send(err.to_string()))?.to_vec(),
+    };
+
+    Ok(HttpResponse { status_code, headers, body })
 }
 
 pub struct HttpEngine<S, B = InlineBodyStore> {
@@ -135,6 +179,18 @@ where
     B: BodyStore,
 {
     pub fn send<R>(&self, service: &DomainService<R>, input: SendHttp) -> Result<Run>
+    where
+        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+    {
+        self.send_with_cancellation(service, input, CancellationToken::new())
+    }
+
+    pub fn send_with_cancellation<R>(
+        &self,
+        service: &DomainService<R>,
+        input: SendHttp,
+        cancellation: CancellationToken,
+    ) -> Result<Run>
     where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
@@ -180,7 +236,18 @@ where
             })?;
         }
 
-        match self.sender.send(&config) {
+        if cancellation.is_cancelled() {
+            return Ok(cancel_run(
+                service,
+                &run.id,
+                &request.id,
+                request.protocol,
+                &request.name,
+                effective_config,
+            )?);
+        }
+
+        match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -232,6 +299,16 @@ where
                 })?)
             }
             Err(err) => {
+                if err.is_cancelled() {
+                    return Ok(cancel_run(
+                        service,
+                        &run.id,
+                        &request.id,
+                        request.protocol,
+                        &request.name,
+                        effective_config,
+                    )?);
+                }
                 let error = err.to_string();
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -262,6 +339,33 @@ where
             }
         }
     }
+}
+
+fn cancel_run<R>(
+    service: &DomainService<R>,
+    run_id: &str,
+    request_id: &str,
+    protocol: Protocol,
+    name: &str,
+    config: BTreeMap<String, serde_json::Value>,
+) -> std::result::Result<Run, yaku_domain::Error>
+where
+    R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+{
+    service.append_run_event(AppendRunEvent {
+        run_id: run_id.to_string(),
+        sequence: 10_000,
+        kind: RunEventKind::RequestSnapshot,
+        data: request_snapshot_data(request_id, protocol, name, config),
+        now: chrono::Utc::now(),
+    })?;
+    service.finish_run(FinishRun {
+        run_id: run_id.to_string(),
+        state: RunState::Cancelled,
+        status_code: None,
+        error: None,
+        now: chrono::Utc::now(),
+    })
 }
 
 fn response_content_type(headers: &[Header]) -> Option<String> {
@@ -370,6 +474,9 @@ mod tests {
     use crate::ThresholdBodyStore;
     use chrono::Utc;
     use std::net::SocketAddr;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::{Duration, Instant};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
     use yaku_domain::{CreateRequest, CreateWorkspace, Page};
@@ -669,6 +776,40 @@ mod tests {
         assert_eq!(bodies[0].event_id, Some(events[3].id));
     }
 
+    #[test]
+    fn reqwest_http_sender_cancels_inflight_request() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let (addr, accepted_rx) = rt.block_on(spawn_hanging_server());
+        let cancellation = CancellationToken::new();
+        let cancellation_for_thread = cancellation.clone();
+
+        let handle = thread::spawn(move || {
+            ReqwestHttpSender::new().expect("sender").send_with_cancellation(
+                &HttpRequestConfig {
+                    method: "GET".to_string(),
+                    url: format!("http://{addr}/hang"),
+                    headers: Vec::new(),
+                    query: Vec::new(),
+                    body: None,
+                    follow_redirects: true,
+                    timeout_ms: Some(60_000),
+                },
+                &cancellation_for_thread,
+            )
+        });
+
+        accepted_rx.recv_timeout(Duration::from_secs(2)).expect("server accepted request");
+        let started = Instant::now();
+        cancellation.cancel();
+        let result = handle.join().expect("sender thread joins");
+
+        assert!(matches!(result, Err(Error::Cancelled)));
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "cancel should abort well before request timeout"
+        );
+    }
+
     async fn spawn_test_server() -> SocketAddr {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind test server");
         let addr = listener.local_addr().expect("local addr");
@@ -689,5 +830,17 @@ mod tests {
             socket.write_all(response.as_bytes()).await.expect("write response");
         });
         addr
+    }
+
+    async fn spawn_hanging_server() -> (SocketAddr, mpsc::Receiver<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind hanging server");
+        let addr = listener.local_addr().expect("local addr");
+        let (accepted_tx, accepted_rx) = mpsc::channel();
+        tokio::spawn(async move {
+            let (_socket, _) = listener.accept().await.expect("accept hanging request");
+            let _ = accepted_tx.send(());
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        });
+        (addr, accepted_rx)
     }
 }

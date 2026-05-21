@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_util::sync::CancellationToken;
 use yaku_domain::{
     AppendRunEvent, CreateRun, DomainService, FinishRun, Protocol, RequestRepository, Run,
     RunBodyRepository, RunEventKind, RunRepository, RunState, WorkspaceRepository,
@@ -69,6 +70,14 @@ pub struct WebSocketResponse {
 
 pub trait WebSocketSender {
     fn send(&self, request: &WebSocketRequestConfig) -> Result<WebSocketResponse>;
+
+    fn send_with_cancellation(
+        &self,
+        request: &WebSocketRequestConfig,
+        _cancellation: &CancellationToken,
+    ) -> Result<WebSocketResponse> {
+        self.send(request)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -82,12 +91,23 @@ impl TungsteniteWebSocketSender {
 
 impl WebSocketSender for TungsteniteWebSocketSender {
     fn send(&self, request: &WebSocketRequestConfig) -> Result<WebSocketResponse> {
+        self.send_with_cancellation(request, &CancellationToken::new())
+    }
+
+    fn send_with_cancellation(
+        &self,
+        request: &WebSocketRequestConfig,
+        cancellation: &CancellationToken,
+    ) -> Result<WebSocketResponse> {
+        if cancellation.is_cancelled() {
+            return Err(Error::Cancelled);
+        }
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_time()
             .enable_io()
             .build()
             .map_err(|err| Error::Send(err.to_string()))?;
-        runtime.block_on(send_websocket(request))
+        runtime.block_on(send_websocket(request, cancellation.clone()))
     }
 }
 
@@ -106,6 +126,18 @@ where
     S: WebSocketSender,
 {
     pub fn send<R>(&self, service: &DomainService<R>, input: SendWebSocket) -> Result<Run>
+    where
+        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+    {
+        self.send_with_cancellation(service, input, CancellationToken::new())
+    }
+
+    pub fn send_with_cancellation<R>(
+        &self,
+        service: &DomainService<R>,
+        input: SendWebSocket,
+        cancellation: CancellationToken,
+    ) -> Result<Run>
     where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
@@ -141,7 +173,18 @@ where
             now,
         })?;
 
-        match self.sender.send(&config) {
+        if cancellation.is_cancelled() {
+            return Ok(cancel_run(
+                service,
+                &run.id,
+                &request.id,
+                request.protocol,
+                &request.name,
+                effective_config,
+            )?);
+        }
+
+        match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -187,6 +230,16 @@ where
                 })?)
             }
             Err(err) => {
+                if err.is_cancelled() {
+                    return Ok(cancel_run(
+                        service,
+                        &run.id,
+                        &request.id,
+                        request.protocol,
+                        &request.name,
+                        effective_config,
+                    )?);
+                }
                 let error = err.to_string();
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -219,6 +272,33 @@ where
     }
 }
 
+fn cancel_run<R>(
+    service: &DomainService<R>,
+    run_id: &str,
+    request_id: &str,
+    protocol: Protocol,
+    name: &str,
+    config: BTreeMap<String, serde_json::Value>,
+) -> std::result::Result<Run, yaku_domain::Error>
+where
+    R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+{
+    service.append_run_event(AppendRunEvent {
+        run_id: run_id.to_string(),
+        sequence: 10_000,
+        kind: RunEventKind::RequestSnapshot,
+        data: request_snapshot_data(request_id, protocol, name, config),
+        now: chrono::Utc::now(),
+    })?;
+    service.finish_run(FinishRun {
+        run_id: run_id.to_string(),
+        state: RunState::Cancelled,
+        status_code: None,
+        error: None,
+        now: chrono::Utc::now(),
+    })
+}
+
 #[derive(Debug, Clone)]
 pub struct MockWebSocketSender {
     response: std::result::Result<WebSocketResponse, String>,
@@ -249,10 +329,19 @@ impl WebSocketSender for MockWebSocketSender {
     }
 }
 
-async fn send_websocket(config: &WebSocketRequestConfig) -> Result<WebSocketResponse> {
+async fn send_websocket(
+    config: &WebSocketRequestConfig,
+    cancellation: CancellationToken,
+) -> Result<WebSocketResponse> {
+    if cancellation.is_cancelled() {
+        return Err(Error::Cancelled);
+    }
     let request = websocket_request(config)?;
-    let (mut stream, response) =
-        connect_async(request).await.map_err(|err| Error::Send(err.to_string()))?;
+    let (mut stream, response) = tokio::select! {
+        biased;
+        _ = cancellation.cancelled() => return Err(Error::Cancelled),
+        result = connect_async(request) => result.map_err(|err| Error::Send(err.to_string()))?,
+    };
     let status_code = i32::from(response.status().as_u16());
     let headers = response
         .headers()
@@ -265,10 +354,13 @@ async fn send_websocket(config: &WebSocketRequestConfig) -> Result<WebSocketResp
     let mut messages = Vec::new();
 
     for text in &config.messages {
-        stream
-            .send(Message::Text(text.clone().into()))
-            .await
-            .map_err(|err| Error::Send(err.to_string()))?;
+        tokio::select! {
+            biased;
+            _ = cancellation.cancelled() => return Err(Error::Cancelled),
+            result = stream.send(Message::Text(text.clone().into())) => {
+                result.map_err(|err| Error::Send(err.to_string()))?;
+            }
+        }
         messages.push(WebSocketMessage {
             direction: WebSocketMessageDirection::Sent,
             kind: WebSocketMessageKind::Text,
@@ -278,12 +370,14 @@ async fn send_websocket(config: &WebSocketRequestConfig) -> Result<WebSocketResp
     }
 
     for _ in 0..config.max_messages {
-        let next = tokio::time::timeout(
-            std::time::Duration::from_millis(config.timeout_ms),
-            stream.next(),
-        )
-        .await
-        .map_err(|_| Error::Send("timed out waiting for WebSocket message".to_string()))?;
+        let next = tokio::select! {
+            biased;
+            _ = cancellation.cancelled() => return Err(Error::Cancelled),
+            result = tokio::time::timeout(
+                std::time::Duration::from_millis(config.timeout_ms),
+                stream.next(),
+            ) => result.map_err(|_| Error::Send("timed out waiting for WebSocket message".to_string()))?,
+        };
         let Some(message) = next else {
             break;
         };

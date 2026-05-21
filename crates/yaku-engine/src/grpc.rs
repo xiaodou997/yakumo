@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use tokio_util::sync::CancellationToken;
 use yaku_domain::{
     AppendRunEvent, CreateRun, DomainService, FinishRun, Protocol, RequestRepository, Run,
     RunBodyRepository, RunEventKind, RunRepository, RunState, WorkspaceRepository,
@@ -42,6 +43,14 @@ pub struct GrpcResponse {
 
 pub trait GrpcSender {
     fn send(&self, request: &GrpcRequestConfig) -> Result<GrpcResponse>;
+
+    fn send_with_cancellation(
+        &self,
+        request: &GrpcRequestConfig,
+        _cancellation: &CancellationToken,
+    ) -> Result<GrpcResponse> {
+        self.send(request)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -66,6 +75,17 @@ impl ReflectionGrpcSender {
 
 impl GrpcSender for ReflectionGrpcSender {
     fn send(&self, request: &GrpcRequestConfig) -> Result<GrpcResponse> {
+        self.send_with_cancellation(request, &CancellationToken::new())
+    }
+
+    fn send_with_cancellation(
+        &self,
+        request: &GrpcRequestConfig,
+        cancellation: &CancellationToken,
+    ) -> Result<GrpcResponse> {
+        if cancellation.is_cancelled() {
+            return Err(Error::Cancelled);
+        }
         if !request.use_reflection && request.proto_files.is_empty() {
             return Err(Error::Send(
                 "v2 gRPC transport requires server reflection or local proto files".to_string(),
@@ -79,9 +99,15 @@ impl GrpcSender for ReflectionGrpcSender {
             .build()
             .map_err(|err| Error::Send(err.to_string()))?;
         if request.message.is_none() {
-            let services = runtime
-                .block_on(yakumo_grpc::list_reflection_services(&request.url, &metadata, true))
-                .map_err(|err| Error::Send(err.to_string()))?;
+            let services = runtime.block_on(async {
+                tokio::select! {
+                    biased;
+                    _ = cancellation.cancelled() => Err(Error::Cancelled),
+                    result = yakumo_grpc::list_reflection_services(&request.url, &metadata, true) => {
+                        result.map_err(|err| Error::Send(err.to_string()))
+                    }
+                }
+            })?;
             return Ok(GrpcResponse {
                 status_code: 0,
                 messages: vec![json!({
@@ -93,23 +119,35 @@ impl GrpcSender for ReflectionGrpcSender {
 
         let proto_files = request.proto_files.iter().map(PathBuf::from).collect::<Vec<_>>();
         let message = request.message.as_deref().unwrap_or("{}");
-        let response = runtime
-            .block_on(async {
-                let mut handle = yakumo_grpc::manager::GrpcHandle::new();
-                let connection = handle
-                    .connect("yakumo-v2", &request.url, &proto_files, &metadata, true, None)
-                    .await?;
-                let response = connection
-                    .unary(&request.service, &request.method, message, &metadata, None)
-                    .await?;
-                yakumo_grpc::serialize_message(response.get_ref())
-                    .map_err(yakumo_grpc::error::Error::GenericError)
-            })
-            .map_err(|err| Error::Send(err.to_string()))?;
+        let response = runtime.block_on(async {
+            let response = tokio::select! {
+                biased;
+                _ = cancellation.cancelled() => return Err(Error::Cancelled),
+                result = send_grpc_unary(request, &proto_files, message, &metadata) => {
+                    result.map_err(|err| Error::Send(err.to_string()))?
+                },
+            };
+            Ok::<_, Error>(response)
+        })?;
         let response_json = serde_json::from_str::<serde_json::Value>(&response)
             .unwrap_or_else(|_| json!({ "text": response }));
         Ok(GrpcResponse { status_code: 0, messages: vec![response_json] })
     }
+}
+
+async fn send_grpc_unary(
+    request: &GrpcRequestConfig,
+    proto_files: &Vec<PathBuf>,
+    message: &str,
+    metadata: &BTreeMap<String, String>,
+) -> yakumo_grpc::error::Result<String> {
+    let mut handle = yakumo_grpc::manager::GrpcHandle::new();
+    let connection =
+        handle.connect("yakumo-v2", &request.url, proto_files, metadata, true, None).await?;
+    let response =
+        connection.unary(&request.service, &request.method, message, metadata, None).await?;
+    yakumo_grpc::serialize_message(response.get_ref())
+        .map_err(yakumo_grpc::error::Error::GenericError)
 }
 
 pub struct GrpcEngine<S> {
@@ -127,6 +165,18 @@ where
     S: GrpcSender,
 {
     pub fn send<R>(&self, service: &DomainService<R>, input: SendGrpc) -> Result<Run>
+    where
+        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+    {
+        self.send_with_cancellation(service, input, CancellationToken::new())
+    }
+
+    pub fn send_with_cancellation<R>(
+        &self,
+        service: &DomainService<R>,
+        input: SendGrpc,
+        cancellation: CancellationToken,
+    ) -> Result<Run>
     where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
@@ -172,7 +222,18 @@ where
             })?;
         }
 
-        match self.sender.send(&config) {
+        if cancellation.is_cancelled() {
+            return Ok(cancel_run(
+                service,
+                &run.id,
+                &request.id,
+                request.protocol,
+                &request.name,
+                effective_config,
+            )?);
+        }
+
+        match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
                 for (index, message) in response.messages.iter().enumerate() {
                     service.append_run_event(AppendRunEvent {
@@ -214,6 +275,16 @@ where
                 })?)
             }
             Err(err) => {
+                if err.is_cancelled() {
+                    return Ok(cancel_run(
+                        service,
+                        &run.id,
+                        &request.id,
+                        request.protocol,
+                        &request.name,
+                        effective_config,
+                    )?);
+                }
                 let error = err.to_string();
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -244,6 +315,33 @@ where
             }
         }
     }
+}
+
+fn cancel_run<R>(
+    service: &DomainService<R>,
+    run_id: &str,
+    request_id: &str,
+    protocol: Protocol,
+    name: &str,
+    config: BTreeMap<String, serde_json::Value>,
+) -> std::result::Result<Run, yaku_domain::Error>
+where
+    R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+{
+    service.append_run_event(AppendRunEvent {
+        run_id: run_id.to_string(),
+        sequence: 10_000,
+        kind: RunEventKind::RequestSnapshot,
+        data: request_snapshot_data(request_id, protocol, name, config),
+        now: chrono::Utc::now(),
+    })?;
+    service.finish_run(FinishRun {
+        run_id: run_id.to_string(),
+        state: RunState::Cancelled,
+        status_code: None,
+        error: None,
+        now: chrono::Utc::now(),
+    })
 }
 
 #[derive(Debug, Clone)]

@@ -6,10 +6,7 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use yaku_domain::{
     BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,
@@ -17,9 +14,9 @@ use yaku_domain::{
     RunState, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
 };
 use yaku_engine::{
-    GrpcEngine, HttpEngine, ReflectionGrpcSender, ReqwestHttpSender, ReqwestSseSender, SendGrpc,
-    SendHttp, SendSse, SendWebSocket, SseEngine, ThresholdBodyStore, TungsteniteWebSocketSender,
-    WebSocketEngine, render_config,
+    CancellationToken, GrpcEngine, HttpEngine, ReflectionGrpcSender, ReqwestHttpSender,
+    ReqwestSseSender, SendGrpc, SendHttp, SendSse, SendWebSocket, SseEngine, ThresholdBodyStore,
+    TungsteniteWebSocketSender, WebSocketEngine, render_config,
 };
 use yaku_store::{
     BackupManifest, RequestNodePageItem, RunPageItem, Store, WorkspaceBackup, WorkspacePageItem,
@@ -33,9 +30,14 @@ pub(crate) struct YakuRunRegistry {
     runs: Arc<Mutex<BTreeMap<String, Arc<YakuRunTask>>>>,
 }
 
-#[derive(Default)]
 struct YakuRunTask {
-    cancelled: AtomicBool,
+    cancellation: CancellationToken,
+}
+
+impl Default for YakuRunTask {
+    fn default() -> Self {
+        Self { cancellation: CancellationToken::new() }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -308,6 +310,7 @@ fn send_request_inner(
     run_id: String,
     request_id: String,
     environment_id: Option<String>,
+    cancellation: Option<CancellationToken>,
 ) -> Result<Run> {
     let store = open_store_from_dir(&data_dir)?;
     let service = yaku_domain::DomainService::new(store);
@@ -330,6 +333,7 @@ fn send_request_inner(
     };
 
     let bodies_dir = bodies_dir(&data_dir);
+    let cancellation = cancellation.unwrap_or_else(CancellationToken::new);
 
     let run = match request.protocol {
         Protocol::Http | Protocol::Graphql => {
@@ -338,7 +342,11 @@ fn send_request_inner(
                 ThresholdBodyStore::new(bodies_dir.clone(), 64 * 1024),
             );
             engine
-                .send(&service, SendHttp { run_id, request_id, config_override })
+                .send_with_cancellation(
+                    &service,
+                    SendHttp { run_id, request_id, config_override },
+                    cancellation,
+                )
                 .map_err(|e| Error::GenericError(e.to_string()))
         }
         Protocol::Sse => {
@@ -346,7 +354,11 @@ fn send_request_inner(
                 ReqwestSseSender::new().map_err(|e| Error::GenericError(e.to_string()))?,
             );
             engine
-                .send(&service, SendSse { run_id, request_id, config_override })
+                .send_with_cancellation(
+                    &service,
+                    SendSse { run_id, request_id, config_override },
+                    cancellation,
+                )
                 .map_err(|e| Error::GenericError(e.to_string()))
         }
         Protocol::WebSocket => {
@@ -355,7 +367,11 @@ fn send_request_inner(
                     .map_err(|e| Error::GenericError(e.to_string()))?,
             );
             engine
-                .send(&service, SendWebSocket { run_id, request_id, config_override })
+                .send_with_cancellation(
+                    &service,
+                    SendWebSocket { run_id, request_id, config_override },
+                    cancellation,
+                )
                 .map_err(|e| Error::GenericError(e.to_string()))
         }
         Protocol::Grpc => {
@@ -363,7 +379,11 @@ fn send_request_inner(
                 ReflectionGrpcSender::new().map_err(|e| Error::GenericError(e.to_string()))?,
             );
             engine
-                .send(&service, SendGrpc { run_id, request_id, config_override })
+                .send_with_cancellation(
+                    &service,
+                    SendGrpc { run_id, request_id, config_override },
+                    cancellation,
+                )
                 .map_err(|e| Error::GenericError(e.to_string()))
         }
     }?;
@@ -1016,9 +1036,10 @@ pub(crate) fn cmd_yaku_run_start<R: Runtime>(
             run_id.clone(),
             request_id.clone(),
             environment_id,
+            Some(task.cancellation.clone()),
         );
         let current_run = get_run_from_dir(&data_dir, &run_id).ok().flatten();
-        let is_cancelled = task.cancelled.load(Ordering::SeqCst)
+        let is_cancelled = task.cancellation.is_cancelled()
             || current_run.as_ref().is_some_and(|run| run.state == RunState::Cancelled);
 
         if is_cancelled {
@@ -1094,7 +1115,7 @@ pub(crate) fn cmd_yaku_run_cancel<R: Runtime>(
     run_id: String,
 ) -> Result<Run> {
     if let Some(task) = registry.get(&run_id)? {
-        task.cancelled.store(true, Ordering::SeqCst);
+        task.cancellation.cancel();
     }
 
     let data_dir = app_data_dir(&app_handle)?;
@@ -1123,7 +1144,7 @@ pub(crate) async fn cmd_yaku_send_request<R: Runtime>(
     let data_dir = app_data_dir(&app_handle)?;
     let run_id = prefixed_id("run");
     tauri::async_runtime::spawn_blocking(move || {
-        send_request_inner(data_dir, run_id, request_id, environment_id)
+        send_request_inner(data_dir, run_id, request_id, environment_id, None)
     })
     .await
     .map_err(|e| Error::GenericError(format!("Yaku send failed to join blocking task: {e}")))?

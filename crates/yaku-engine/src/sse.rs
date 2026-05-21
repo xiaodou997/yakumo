@@ -3,7 +3,7 @@ use crate::http::{Header, QueryParam};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
-use std::io::Read;
+use tokio_util::sync::CancellationToken;
 use yaku_domain::{
     AppendRunEvent, CreateRun, DomainService, FinishRun, Protocol, RequestRepository, Run,
     RunBodyRepository, RunEventKind, RunRepository, RunState, WorkspaceRepository,
@@ -46,6 +46,14 @@ pub struct SseResponse {
 
 pub trait SseSender {
     fn send(&self, request: &SseRequestConfig) -> Result<SseResponse>;
+
+    fn send_with_cancellation(
+        &self,
+        request: &SseRequestConfig,
+        _cancellation: &CancellationToken,
+    ) -> Result<SseResponse> {
+        self.send(request)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -59,41 +67,75 @@ impl ReqwestSseSender {
 
 impl SseSender for ReqwestSseSender {
     fn send(&self, request: &SseRequestConfig) -> Result<SseResponse> {
-        let client = reqwest::blocking::Client::builder()
-            .redirect(if request.follow_redirects {
-                reqwest::redirect::Policy::limited(10)
-            } else {
-                reqwest::redirect::Policy::none()
-            })
+        self.send_with_cancellation(request, &CancellationToken::new())
+    }
+
+    fn send_with_cancellation(
+        &self,
+        request: &SseRequestConfig,
+        cancellation: &CancellationToken,
+    ) -> Result<SseResponse> {
+        if cancellation.is_cancelled() {
+            return Err(Error::Cancelled);
+        }
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_time()
+            .enable_io()
             .build()
             .map_err(|err| Error::Send(err.to_string()))?;
-        let url = url_with_query(request)?;
-        let mut builder = client.get(url).header("accept", "text/event-stream");
-
-        if let Some(timeout_ms) = request.timeout_ms {
-            builder = builder.timeout(std::time::Duration::from_millis(timeout_ms));
-        }
-
-        for header in &request.headers {
-            builder = builder.header(&header.name, &header.value);
-        }
-
-        let mut response = builder.send().map_err(|err| Error::Send(err.to_string()))?;
-        let status_code = i32::from(response.status().as_u16());
-        let headers = response
-            .headers()
-            .iter()
-            .map(|(name, value)| Header {
-                name: name.to_string(),
-                value: value.to_str().unwrap_or_default().to_string(),
-            })
-            .collect();
-        let mut body = String::new();
-        response.read_to_string(&mut body).map_err(|err| Error::Send(err.to_string()))?;
-        let events = parse_sse_events(&body);
-
-        Ok(SseResponse { status_code, headers, events })
+        runtime.block_on(send_sse(request, cancellation.clone()))
     }
+}
+
+async fn send_sse(
+    request: &SseRequestConfig,
+    cancellation: CancellationToken,
+) -> Result<SseResponse> {
+    if cancellation.is_cancelled() {
+        return Err(Error::Cancelled);
+    }
+
+    let client = reqwest::Client::builder()
+        .redirect(if request.follow_redirects {
+            reqwest::redirect::Policy::limited(10)
+        } else {
+            reqwest::redirect::Policy::none()
+        })
+        .build()
+        .map_err(|err| Error::Send(err.to_string()))?;
+    let url = url_with_query(request)?;
+    let mut builder = client.get(url).header("accept", "text/event-stream");
+
+    if let Some(timeout_ms) = request.timeout_ms {
+        builder = builder.timeout(std::time::Duration::from_millis(timeout_ms));
+    }
+
+    for header in &request.headers {
+        builder = builder.header(&header.name, &header.value);
+    }
+
+    let response = tokio::select! {
+        biased;
+        _ = cancellation.cancelled() => return Err(Error::Cancelled),
+        result = builder.send() => result.map_err(|err| Error::Send(err.to_string()))?,
+    };
+    let status_code = i32::from(response.status().as_u16());
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(name, value)| Header {
+            name: name.to_string(),
+            value: value.to_str().unwrap_or_default().to_string(),
+        })
+        .collect();
+    let body = tokio::select! {
+        biased;
+        _ = cancellation.cancelled() => return Err(Error::Cancelled),
+        result = response.text() => result.map_err(|err| Error::Send(err.to_string()))?,
+    };
+    let events = parse_sse_events(&body);
+
+    Ok(SseResponse { status_code, headers, events })
 }
 
 pub struct SseEngine<S> {
@@ -111,6 +153,18 @@ where
     S: SseSender,
 {
     pub fn send<R>(&self, service: &DomainService<R>, input: SendSse) -> Result<Run>
+    where
+        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+    {
+        self.send_with_cancellation(service, input, CancellationToken::new())
+    }
+
+    pub fn send_with_cancellation<R>(
+        &self,
+        service: &DomainService<R>,
+        input: SendSse,
+        cancellation: CancellationToken,
+    ) -> Result<Run>
     where
         R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
     {
@@ -146,7 +200,18 @@ where
             now,
         })?;
 
-        match self.sender.send(&config) {
+        if cancellation.is_cancelled() {
+            return Ok(cancel_run(
+                service,
+                &run.id,
+                &request.id,
+                request.protocol,
+                &request.name,
+                effective_config,
+            )?);
+        }
+
+        match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -192,6 +257,16 @@ where
                 })?)
             }
             Err(err) => {
+                if err.is_cancelled() {
+                    return Ok(cancel_run(
+                        service,
+                        &run.id,
+                        &request.id,
+                        request.protocol,
+                        &request.name,
+                        effective_config,
+                    )?);
+                }
                 let error = err.to_string();
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
@@ -222,6 +297,33 @@ where
             }
         }
     }
+}
+
+fn cancel_run<R>(
+    service: &DomainService<R>,
+    run_id: &str,
+    request_id: &str,
+    protocol: Protocol,
+    name: &str,
+    config: BTreeMap<String, serde_json::Value>,
+) -> std::result::Result<Run, yaku_domain::Error>
+where
+    R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+{
+    service.append_run_event(AppendRunEvent {
+        run_id: run_id.to_string(),
+        sequence: 10_000,
+        kind: RunEventKind::RequestSnapshot,
+        data: request_snapshot_data(request_id, protocol, name, config),
+        now: chrono::Utc::now(),
+    })?;
+    service.finish_run(FinishRun {
+        run_id: run_id.to_string(),
+        state: RunState::Cancelled,
+        status_code: None,
+        error: None,
+        now: chrono::Utc::now(),
+    })
 }
 
 #[derive(Debug, Clone)]
