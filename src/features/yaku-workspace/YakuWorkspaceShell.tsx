@@ -506,6 +506,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                   selectedBodyId={selectedBodyId}
                   setSelectedBodyId={setSelectedBodyId}
                   bodyBytes={runBodyBytesQuery.data}
+                  isLoading={runBodyBytesQuery.isFetching}
                   error={runBodyBytesQuery.error}
                 />
               </Panel>
