@@ -5,6 +5,10 @@ export type RequestConfigDraft = {
   url: string;
   httpMethod: string;
   httpBody: string;
+  httpAuthType: string;
+  httpAuthUsername: string;
+  httpAuthPassword: string;
+  httpAuthToken: string;
   headers: ConfigPair[];
   query: ConfigPair[];
   followRedirects: boolean;
@@ -13,6 +17,7 @@ export type RequestConfigDraft = {
   grpcMethod: string;
   grpcMessage: string;
   grpcMetadata: ConfigPair[];
+  grpcProtoFiles: string;
   grpcUseReflection: boolean;
   webSocketMessages: string;
   webSocketMaxMessages: string;
@@ -22,6 +27,10 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setUrl: (value: string) => void;
   setHttpMethod: (value: string) => void;
   setHttpBody: (value: string) => void;
+  setHttpAuthType: (value: string) => void;
+  setHttpAuthUsername: (value: string) => void;
+  setHttpAuthPassword: (value: string) => void;
+  setHttpAuthToken: (value: string) => void;
   setHeaders: (pairs: ConfigPair[]) => void;
   setQuery: (pairs: ConfigPair[]) => void;
   setFollowRedirects: (value: boolean) => void;
@@ -30,6 +39,7 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setGrpcMethod: (value: string) => void;
   setGrpcMessage: (value: string) => void;
   setGrpcMetadata: (pairs: ConfigPair[]) => void;
+  setGrpcProtoFiles: (value: string) => void;
   setGrpcUseReflection: (value: boolean) => void;
   setWebSocketMessages: (value: string) => void;
   setWebSocketMaxMessages: (value: string) => void;
@@ -47,7 +57,7 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
       method: input.grpcMethod.trim(),
       metadata: pairsToHeaders(input.grpcMetadata),
       message: input.grpcMessage.trim() === "" ? null : input.grpcMessage,
-      protoFiles: [],
+      protoFiles: splitLines(input.grpcProtoFiles),
       useReflection: input.grpcUseReflection,
       timeoutMs: timeout ?? 30_000,
     };
@@ -80,6 +90,7 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
     headers: pairsToHeaders(input.headers),
     query: pairsToQueryParams(input.query),
     body: input.httpBody.trim() === "" ? null : input.httpBody,
+    auth: buildHttpAuth(input),
     followRedirects: input.followRedirects,
     timeoutMs: timeout,
   };
@@ -92,6 +103,7 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
       { label: "URL", value: url || "unset" },
       { label: "Service", value: stringOrEmpty(config.service) || "unset" },
       { label: "Method", value: stringOrEmpty(config.method) || "unset" },
+      { label: "Proto Files", value: arrayLengthString(config.protoFiles) },
       { label: "Reflection", value: booleanString(config.useReflection) },
       { label: "Timeout", value: numberString(config.timeoutMs) },
     ];
@@ -114,6 +126,7 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
   return [
     { label: "Method", value: stringOrEmpty(config.method) || "unset" },
     { label: "URL", value: url || "unset" },
+    { label: "Auth", value: authTypeString(config.auth) },
     { label: "Follow Redirects", value: booleanString(config.followRedirects) },
     { label: "Timeout", value: numberString(config.timeoutMs) },
     { label: "Body", value: config.body == null ? "empty" : "set" },
@@ -128,6 +141,7 @@ export function draftFromRequestConfig(
     url: stringOrEmpty(config.url),
     httpMethod: stringOrEmpty(config.method) || (protocol === "graphql" ? "POST" : "GET"),
     httpBody: typeof config.body === "string" ? config.body : "",
+    ...draftAuthFields(config.auth),
     headers: pairsFromHeaders(config.headers),
     query: pairsFromQuery(config.query),
     followRedirects: config.followRedirects !== false,
@@ -136,11 +150,53 @@ export function draftFromRequestConfig(
     grpcMethod: stringOrEmpty(config.method),
     grpcMessage: typeof config.message === "string" ? config.message : "",
     grpcMetadata: pairsFromHeaders(config.metadata),
+    grpcProtoFiles: Array.isArray(config.protoFiles)
+      ? config.protoFiles.filter((path) => typeof path === "string").join("\n")
+      : "",
     grpcUseReflection: config.useReflection !== false,
     webSocketMessages: Array.isArray(config.messages)
       ? config.messages.filter((message) => typeof message === "string").join("\n")
       : "",
     webSocketMaxMessages: typeof config.maxMessages === "number" ? String(config.maxMessages) : "1",
+  };
+}
+
+function buildHttpAuth(input: RequestConfigDraft) {
+  const authType = input.httpAuthType.trim().toLowerCase();
+  if (authType === "" || authType === "none") {
+    return null;
+  }
+  if (authType === "basic") {
+    return {
+      type: "basic",
+      username: input.httpAuthUsername,
+      password: input.httpAuthPassword,
+    };
+  }
+  if (authType === "bearer") {
+    return {
+      type: "bearer",
+      token: input.httpAuthToken,
+    };
+  }
+  return { type: authType };
+}
+
+function draftAuthFields(value: unknown) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      httpAuthType: "none",
+      httpAuthUsername: "",
+      httpAuthPassword: "",
+      httpAuthToken: "",
+    };
+  }
+  const auth = value as Record<string, unknown>;
+  return {
+    httpAuthType: stringOrEmpty(auth.type) || "none",
+    httpAuthUsername: stringOrEmpty(auth.username),
+    httpAuthPassword: stringOrEmpty(auth.password),
+    httpAuthToken: stringOrEmpty(auth.token),
   };
 }
 
@@ -230,6 +286,13 @@ function stringOrEmpty(value: unknown) {
 
 function booleanString(value: unknown) {
   return value === true ? "true" : value === false ? "false" : "unset";
+}
+
+function authTypeString(value: unknown) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return "none";
+  }
+  return stringOrEmpty((value as Record<string, unknown>).type) || "none";
 }
 
 function numberString(value: unknown) {

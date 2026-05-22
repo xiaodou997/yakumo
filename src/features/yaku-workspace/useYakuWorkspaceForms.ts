@@ -55,6 +55,10 @@ export function useYakuWorkspaceForms({
   const [requestUrl, setRequestUrl] = useState("https://example.com");
   const [requestHttpMethod, setRequestHttpMethod] = useState("GET");
   const [requestHttpBody, setRequestHttpBody] = useState("");
+  const [requestHttpAuthType, setRequestHttpAuthType] = useState("none");
+  const [requestHttpAuthUsername, setRequestHttpAuthUsername] = useState("");
+  const [requestHttpAuthPassword, setRequestHttpAuthPassword] = useState("");
+  const [requestHttpAuthToken, setRequestHttpAuthToken] = useState("");
   const [requestHeaders, setRequestHeaders] = useState<ConfigPair[]>([]);
   const [requestQueryParams, setRequestQueryParams] = useState<ConfigPair[]>([]);
   const [requestFollowRedirects, setRequestFollowRedirects] = useState(true);
@@ -63,6 +67,7 @@ export function useYakuWorkspaceForms({
   const [requestGrpcMethod, setRequestGrpcMethod] = useState("");
   const [requestGrpcMessage, setRequestGrpcMessage] = useState("");
   const [requestGrpcMetadata, setRequestGrpcMetadata] = useState<ConfigPair[]>([]);
+  const [requestGrpcProtoFiles, setRequestGrpcProtoFiles] = useState("");
   const [requestGrpcUseReflection, setRequestGrpcUseReflection] = useState(true);
   const [requestWebSocketMessages, setRequestWebSocketMessages] = useState("hello");
   const [requestWebSocketMaxMessages, setRequestWebSocketMaxMessages] = useState("1");
@@ -74,6 +79,10 @@ export function useYakuWorkspaceForms({
   const [requestEditUrl, setRequestEditUrl] = useState("");
   const [requestEditHttpMethod, setRequestEditHttpMethod] = useState("GET");
   const [requestEditHttpBody, setRequestEditHttpBody] = useState("");
+  const [requestEditHttpAuthType, setRequestEditHttpAuthType] = useState("none");
+  const [requestEditHttpAuthUsername, setRequestEditHttpAuthUsername] = useState("");
+  const [requestEditHttpAuthPassword, setRequestEditHttpAuthPassword] = useState("");
+  const [requestEditHttpAuthToken, setRequestEditHttpAuthToken] = useState("");
   const [requestEditHeaders, setRequestEditHeaders] = useState<ConfigPair[]>([]);
   const [requestEditQueryParams, setRequestEditQueryParams] = useState<ConfigPair[]>([]);
   const [requestEditFollowRedirects, setRequestEditFollowRedirects] = useState(true);
@@ -82,6 +91,7 @@ export function useYakuWorkspaceForms({
   const [requestEditGrpcMethod, setRequestEditGrpcMethod] = useState("");
   const [requestEditGrpcMessage, setRequestEditGrpcMessage] = useState("");
   const [requestEditGrpcMetadata, setRequestEditGrpcMetadata] = useState<ConfigPair[]>([]);
+  const [requestEditGrpcProtoFiles, setRequestEditGrpcProtoFiles] = useState("");
   const [requestEditGrpcUseReflection, setRequestEditGrpcUseReflection] = useState(true);
   const [requestEditWebSocketMessages, setRequestEditWebSocketMessages] = useState("");
   const [requestEditWebSocketMaxMessages, setRequestEditWebSocketMaxMessages] = useState("1");
@@ -107,6 +117,10 @@ export function useYakuWorkspaceForms({
     setRequestUrl("https://example.com");
     setRequestHttpMethod(requestProtocol === "graphql" ? "POST" : "GET");
     setRequestHttpBody(requestProtocol === "graphql" ? '{"query":"{ __typename }"}' : "");
+    setRequestHttpAuthType("none");
+    setRequestHttpAuthUsername("");
+    setRequestHttpAuthPassword("");
+    setRequestHttpAuthToken("");
     setRequestHeaders([]);
     setRequestQueryParams([]);
     setRequestFollowRedirects(true);
@@ -115,6 +129,7 @@ export function useYakuWorkspaceForms({
     setRequestGrpcMethod("");
     setRequestGrpcMessage("");
     setRequestGrpcMetadata([]);
+    setRequestGrpcProtoFiles("");
     setRequestGrpcUseReflection(true);
     setRequestWebSocketMessages("hello");
     setRequestWebSocketMaxMessages("1");
@@ -134,6 +149,10 @@ export function useYakuWorkspaceForms({
     setRequestEditUrl(draft.url);
     setRequestEditHttpMethod(draft.httpMethod);
     setRequestEditHttpBody(draft.httpBody);
+    setRequestEditHttpAuthType(draft.httpAuthType);
+    setRequestEditHttpAuthUsername(draft.httpAuthUsername);
+    setRequestEditHttpAuthPassword(draft.httpAuthPassword);
+    setRequestEditHttpAuthToken(draft.httpAuthToken);
     setRequestEditHeaders(draft.headers);
     setRequestEditQueryParams(draft.query);
     setRequestEditFollowRedirects(draft.followRedirects);
@@ -142,6 +161,7 @@ export function useYakuWorkspaceForms({
     setRequestEditGrpcMethod(draft.grpcMethod);
     setRequestEditGrpcMessage(draft.grpcMessage);
     setRequestEditGrpcMetadata(draft.grpcMetadata);
+    setRequestEditGrpcProtoFiles(draft.grpcProtoFiles);
     setRequestEditGrpcUseReflection(draft.grpcUseReflection);
     setRequestEditWebSocketMessages(draft.webSocketMessages);
     setRequestEditWebSocketMaxMessages(draft.webSocketMaxMessages);
@@ -154,6 +174,14 @@ export function useYakuWorkspaceForms({
     setHttpMethod: setRequestHttpMethod,
     httpBody: requestHttpBody,
     setHttpBody: setRequestHttpBody,
+    httpAuthType: requestHttpAuthType,
+    setHttpAuthType: setRequestHttpAuthType,
+    httpAuthUsername: requestHttpAuthUsername,
+    setHttpAuthUsername: setRequestHttpAuthUsername,
+    httpAuthPassword: requestHttpAuthPassword,
+    setHttpAuthPassword: setRequestHttpAuthPassword,
+    httpAuthToken: requestHttpAuthToken,
+    setHttpAuthToken: setRequestHttpAuthToken,
     headers: requestHeaders,
     setHeaders: setRequestHeaders,
     query: requestQueryParams,
@@ -170,6 +198,8 @@ export function useYakuWorkspaceForms({
     setGrpcMessage: setRequestGrpcMessage,
     grpcMetadata: requestGrpcMetadata,
     setGrpcMetadata: setRequestGrpcMetadata,
+    grpcProtoFiles: requestGrpcProtoFiles,
+    setGrpcProtoFiles: setRequestGrpcProtoFiles,
     grpcUseReflection: requestGrpcUseReflection,
     setGrpcUseReflection: setRequestGrpcUseReflection,
     webSocketMessages: requestWebSocketMessages,
@@ -184,6 +214,14 @@ export function useYakuWorkspaceForms({
     setHttpMethod: setRequestEditHttpMethod,
     httpBody: requestEditHttpBody,
     setHttpBody: setRequestEditHttpBody,
+    httpAuthType: requestEditHttpAuthType,
+    setHttpAuthType: setRequestEditHttpAuthType,
+    httpAuthUsername: requestEditHttpAuthUsername,
+    setHttpAuthUsername: setRequestEditHttpAuthUsername,
+    httpAuthPassword: requestEditHttpAuthPassword,
+    setHttpAuthPassword: setRequestEditHttpAuthPassword,
+    httpAuthToken: requestEditHttpAuthToken,
+    setHttpAuthToken: setRequestEditHttpAuthToken,
     headers: requestEditHeaders,
     setHeaders: setRequestEditHeaders,
     query: requestEditQueryParams,
@@ -200,6 +238,8 @@ export function useYakuWorkspaceForms({
     setGrpcMessage: setRequestEditGrpcMessage,
     grpcMetadata: requestEditGrpcMetadata,
     setGrpcMetadata: setRequestEditGrpcMetadata,
+    grpcProtoFiles: requestEditGrpcProtoFiles,
+    setGrpcProtoFiles: setRequestEditGrpcProtoFiles,
     grpcUseReflection: requestEditGrpcUseReflection,
     setGrpcUseReflection: setRequestEditGrpcUseReflection,
     webSocketMessages: requestEditWebSocketMessages,
@@ -253,6 +293,14 @@ export function useYakuWorkspaceForms({
     setRequestHttpMethod,
     requestHttpBody,
     setRequestHttpBody,
+    requestHttpAuthType,
+    setRequestHttpAuthType,
+    requestHttpAuthUsername,
+    setRequestHttpAuthUsername,
+    requestHttpAuthPassword,
+    setRequestHttpAuthPassword,
+    requestHttpAuthToken,
+    setRequestHttpAuthToken,
     requestHeaders,
     setRequestHeaders,
     requestQueryParams,
@@ -269,6 +317,8 @@ export function useYakuWorkspaceForms({
     setRequestGrpcMessage,
     requestGrpcMetadata,
     setRequestGrpcMetadata,
+    requestGrpcProtoFiles,
+    setRequestGrpcProtoFiles,
     requestGrpcUseReflection,
     setRequestGrpcUseReflection,
     requestWebSocketMessages,
@@ -291,6 +341,14 @@ export function useYakuWorkspaceForms({
     setRequestEditHttpMethod,
     requestEditHttpBody,
     setRequestEditHttpBody,
+    requestEditHttpAuthType,
+    setRequestEditHttpAuthType,
+    requestEditHttpAuthUsername,
+    setRequestEditHttpAuthUsername,
+    requestEditHttpAuthPassword,
+    setRequestEditHttpAuthPassword,
+    requestEditHttpAuthToken,
+    setRequestEditHttpAuthToken,
     requestEditHeaders,
     setRequestEditHeaders,
     requestEditQueryParams,
@@ -307,6 +365,8 @@ export function useYakuWorkspaceForms({
     setRequestEditGrpcMessage,
     requestEditGrpcMetadata,
     setRequestEditGrpcMetadata,
+    requestEditGrpcProtoFiles,
+    setRequestEditGrpcProtoFiles,
     requestEditGrpcUseReflection,
     setRequestEditGrpcUseReflection,
     requestEditWebSocketMessages,

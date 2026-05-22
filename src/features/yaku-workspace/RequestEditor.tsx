@@ -30,6 +30,14 @@ export function RequestStructuredEditor({
             setHttpMethod={draft.setHttpMethod}
             httpBody={draft.httpBody}
             setHttpBody={draft.setHttpBody}
+            httpAuthType={draft.httpAuthType}
+            setHttpAuthType={draft.setHttpAuthType}
+            httpAuthUsername={draft.httpAuthUsername}
+            setHttpAuthUsername={draft.setHttpAuthUsername}
+            httpAuthPassword={draft.httpAuthPassword}
+            setHttpAuthPassword={draft.setHttpAuthPassword}
+            httpAuthToken={draft.httpAuthToken}
+            setHttpAuthToken={draft.setHttpAuthToken}
             headers={draft.headers}
             setHeaders={draft.setHeaders}
             query={draft.query}
@@ -76,6 +84,8 @@ export function RequestStructuredEditor({
             setGrpcMessage={draft.setGrpcMessage}
             grpcMetadata={draft.grpcMetadata}
             setGrpcMetadata={draft.setGrpcMetadata}
+            grpcProtoFiles={draft.grpcProtoFiles}
+            setGrpcProtoFiles={draft.setGrpcProtoFiles}
             grpcUseReflection={draft.grpcUseReflection}
             setGrpcUseReflection={draft.setGrpcUseReflection}
             timeoutMs={draft.timeoutMs}

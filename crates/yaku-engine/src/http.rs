@@ -28,6 +28,19 @@ pub struct QueryParam {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HttpAuthConfig {
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
+    pub token: Option<String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HttpRequestConfig {
     pub method: String,
     pub url: String,
@@ -37,6 +50,8 @@ pub struct HttpRequestConfig {
     pub query: Vec<QueryParam>,
     #[serde(default)]
     pub body: Option<String>,
+    #[serde(default)]
+    pub auth: Option<HttpAuthConfig>,
     #[serde(default = "default_true")]
     pub follow_redirects: bool,
     #[serde(default)]
@@ -128,6 +143,8 @@ async fn send_http(
     for header in &request.headers {
         builder = builder.header(&header.name, &header.value);
     }
+
+    builder = apply_auth(builder, request.auth.as_ref())?;
 
     if let Some(body) = &request.body {
         builder = builder.body(body.clone());
@@ -381,12 +398,27 @@ fn request_snapshot_data(
     name: &str,
     config: BTreeMap<String, serde_json::Value>,
 ) -> BTreeMap<String, serde_json::Value> {
+    let config = redact_snapshot_config(config);
     BTreeMap::from([
         ("requestId".to_string(), json!(request_id)),
         ("protocol".to_string(), json!(protocol)),
         ("name".to_string(), json!(name)),
         ("config".to_string(), json!(config)),
     ])
+}
+
+fn redact_snapshot_config(
+    mut config: BTreeMap<String, serde_json::Value>,
+) -> BTreeMap<String, serde_json::Value> {
+    if let Some(serde_json::Value::Object(auth)) = config.get_mut("auth") {
+        if auth.contains_key("password") {
+            auth.insert("password".to_string(), json!("<redacted>"));
+        }
+        if auth.contains_key("token") {
+            auth.insert("token".to_string(), json!("<redacted>"));
+        }
+    }
+    config
 }
 
 #[derive(Debug, Clone)]
@@ -443,12 +475,45 @@ fn url_with_query(config: &HttpRequestConfig) -> Result<String> {
     Ok(url.to_string())
 }
 
+fn apply_auth(
+    builder: reqwest::RequestBuilder,
+    auth: Option<&HttpAuthConfig>,
+) -> Result<reqwest::RequestBuilder> {
+    let Some(auth) = auth else {
+        return Ok(builder);
+    };
+    match auth.kind.trim().to_ascii_lowercase().as_str() {
+        "" | "none" => Ok(builder),
+        "basic" => {
+            let username = auth.username.as_deref().unwrap_or_default();
+            if username.is_empty() {
+                return Err(Error::InvalidConfig(
+                    "basic auth username cannot be empty".to_string(),
+                ));
+            }
+            Ok(builder.basic_auth(username, auth.password.clone()))
+        }
+        "bearer" => {
+            let token = auth.token.as_deref().unwrap_or_default();
+            if token.is_empty() {
+                return Err(Error::InvalidConfig("bearer auth token cannot be empty".to_string()));
+            }
+            Ok(builder.bearer_auth(token))
+        }
+        other => Err(Error::InvalidConfig(format!("unsupported auth type: {other}"))),
+    }
+}
+
 fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_json::Value> {
     BTreeMap::from([
         ("method".to_string(), json!(config.method)),
         ("url".to_string(), json!(config.url)),
         ("headers".to_string(), json!(config.headers)),
         ("query".to_string(), json!(config.query)),
+        (
+            "auth".to_string(),
+            json!(config.auth.as_ref().map(|auth| auth.kind.as_str()).unwrap_or("none")),
+        ),
         ("followRedirects".to_string(), json!(config.follow_redirects)),
         ("timeoutMs".to_string(), json!(config.timeout_ms)),
     ])
@@ -723,6 +788,10 @@ mod tests {
             "headers".to_string(),
             json!([{ "name": "content-type", "value": "text/plain" }]),
         );
+        config.insert(
+            "auth".to_string(),
+            json!({ "type": "basic", "username": "user", "password": "pass" }),
+        );
         config.insert("body".to_string(), json!("hello"));
         config.insert("followRedirects".to_string(), json!(false));
         config.insert("timeoutMs".to_string(), json!(5_000));
@@ -761,6 +830,7 @@ mod tests {
         assert_eq!(events[0].kind, RunEventKind::RequestHeaders);
         assert_eq!(events[0].data["followRedirects"], json!(false));
         assert_eq!(events[0].data["timeoutMs"], json!(5_000));
+        assert_eq!(events[0].data["auth"], json!("basic"));
         assert_eq!(events[0].data["query"][0]["name"], json!("enabled"));
         assert_eq!(events[1].kind, RunEventKind::RequestBody);
         assert_eq!(events[2].kind, RunEventKind::ResponseHeaders);
@@ -769,6 +839,9 @@ mod tests {
         assert_eq!(events[3].data["byteLength"], json!(11));
         assert_eq!(events[4].kind, RunEventKind::RequestSnapshot);
         assert_eq!(events[4].data["config"]["body"], json!("hello"));
+        assert_eq!(events[4].data["config"]["auth"]["type"], json!("basic"));
+        assert_eq!(events[4].data["config"]["auth"]["username"], json!("user"));
+        assert_eq!(events[4].data["config"]["auth"]["password"], json!("<redacted>"));
         let bodies = store.list_run_bodies(&run.id).expect("bodies");
         assert_eq!(bodies.len(), 1);
         assert_eq!(bodies[0].content_type.as_deref(), Some("application/json"));
@@ -791,6 +864,7 @@ mod tests {
                     headers: Vec::new(),
                     query: Vec::new(),
                     body: None,
+                    auth: None,
                     follow_redirects: true,
                     timeout_ms: Some(60_000),
                 },
@@ -820,6 +894,10 @@ mod tests {
             let request = String::from_utf8_lossy(&buf[..n]);
             assert!(request.starts_with("POST /echo?enabled=yes HTTP/1.1"));
             assert!(!request.contains("disabled=no"));
+            assert!(
+                request.contains("authorization: Basic dXNlcjpwYXNz")
+                    || request.contains("Authorization: Basic dXNlcjpwYXNz")
+            );
             let response = concat!(
                 "HTTP/1.1 201 Created\r\n",
                 "content-type: application/json\r\n",

@@ -7,6 +7,14 @@ export function HttpGraphqlFields({
   setHttpMethod,
   httpBody,
   setHttpBody,
+  httpAuthType,
+  setHttpAuthType,
+  httpAuthUsername,
+  setHttpAuthUsername,
+  httpAuthPassword,
+  setHttpAuthPassword,
+  httpAuthToken,
+  setHttpAuthToken,
   headers,
   setHeaders,
   query,
@@ -21,6 +29,14 @@ export function HttpGraphqlFields({
   setHttpMethod: (value: string) => void;
   httpBody: string;
   setHttpBody: (value: string) => void;
+  httpAuthType: string;
+  setHttpAuthType: (value: string) => void;
+  httpAuthUsername: string;
+  setHttpAuthUsername: (value: string) => void;
+  httpAuthPassword: string;
+  setHttpAuthPassword: (value: string) => void;
+  httpAuthToken: string;
+  setHttpAuthToken: (value: string) => void;
   headers: ConfigPair[];
   setHeaders: (pairs: ConfigPair[]) => void;
   query: ConfigPair[];
@@ -47,6 +63,16 @@ export function HttpGraphqlFields({
         placeholder={protocol === "graphql" ? '{"query":"{ __typename }"}' : "Request body"}
         className={textareaClassName}
       />
+      <HttpAuthFields
+        authType={httpAuthType}
+        setAuthType={setHttpAuthType}
+        username={httpAuthUsername}
+        setUsername={setHttpAuthUsername}
+        password={httpAuthPassword}
+        setPassword={setHttpAuthPassword}
+        token={httpAuthToken}
+        setToken={setHttpAuthToken}
+      />
       <PairListEditor
         title="Headers"
         pairs={headers}
@@ -72,6 +98,67 @@ export function HttpGraphqlFields({
         className={fieldClassName}
       />
     </>
+  );
+}
+
+function HttpAuthFields({
+  authType,
+  setAuthType,
+  username,
+  setUsername,
+  password,
+  setPassword,
+  token,
+  setToken,
+}: {
+  authType: string;
+  setAuthType: (value: string) => void;
+  username: string;
+  setUsername: (value: string) => void;
+  password: string;
+  setPassword: (value: string) => void;
+  token: string;
+  setToken: (value: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface p-3">
+      <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">Auth</div>
+      <select
+        value={authType}
+        onChange={(event) => setAuthType(event.target.value)}
+        className={`${fieldClassName} mt-3`}
+      >
+        <option value="none">None</option>
+        <option value="basic">Basic</option>
+        <option value="bearer">Bearer</option>
+      </select>
+      {authType === "basic" ? (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <input
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="Username"
+            className={fieldClassName}
+          />
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password"
+            type="password"
+            className={fieldClassName}
+          />
+        </div>
+      ) : null}
+      {authType === "bearer" ? (
+        <input
+          value={token}
+          onChange={(event) => setToken(event.target.value)}
+          placeholder="Bearer token"
+          type="password"
+          className={`${fieldClassName} mt-3`}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -196,6 +283,8 @@ export function GrpcFields({
   setGrpcMessage,
   grpcMetadata,
   setGrpcMetadata,
+  grpcProtoFiles,
+  setGrpcProtoFiles,
   grpcUseReflection,
   setGrpcUseReflection,
   timeoutMs,
@@ -209,6 +298,8 @@ export function GrpcFields({
   setGrpcMessage: (value: string) => void;
   grpcMetadata: ConfigPair[];
   setGrpcMetadata: (pairs: ConfigPair[]) => void;
+  grpcProtoFiles: string;
+  setGrpcProtoFiles: (value: string) => void;
   grpcUseReflection: boolean;
   setGrpcUseReflection: (value: boolean) => void;
   timeoutMs: string;
@@ -242,6 +333,19 @@ export function GrpcFields({
         namePlaceholder="Metadata"
         valuePlaceholder="Value"
       />
+      <div className="rounded-xl border border-border-subtle bg-surface p-3">
+        <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">Proto Files</div>
+        <div className="mt-1 text-xs text-text-subtle">
+          Optional when server reflection is enabled. Use one local proto path per line.
+        </div>
+        <textarea
+          value={grpcProtoFiles}
+          onChange={(event) => setGrpcProtoFiles(event.target.value)}
+          rows={4}
+          placeholder={"/absolute/path/to/service.proto\n/absolute/path/to/imports.proto"}
+          className={`${textareaClassName} mt-3`}
+        />
+      </div>
       <CheckboxField checked={grpcUseReflection} onChange={setGrpcUseReflection}>
         Use reflection
       </CheckboxField>
