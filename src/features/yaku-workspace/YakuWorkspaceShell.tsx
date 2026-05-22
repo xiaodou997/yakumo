@@ -94,6 +94,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     selectedBodyId,
   });
   const {
+    requestBuilderDraft,
+    requestEditDraft,
     workspaceName,
     setWorkspaceName,
     environmentName,
@@ -101,81 +103,12 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     environmentVariablesText,
     setEnvironmentVariablesText,
     folderName,
-    setFolderName,
     folderEditName,
     setFolderEditName,
     folderMoveParentId,
     setFolderMoveParentId,
-    requestName,
-    setRequestName,
-    requestProtocol,
-    setRequestProtocol,
-    requestUrl,
-    setRequestUrl,
-    requestHttpMethod,
-    setRequestHttpMethod,
-    requestHttpBody,
-    setRequestHttpBody,
-    requestHeaders,
-    setRequestHeaders,
-    requestQueryParams,
-    setRequestQueryParams,
-    requestFollowRedirects,
-    setRequestFollowRedirects,
-    requestTimeoutMs,
-    setRequestTimeoutMs,
-    requestGrpcService,
-    setRequestGrpcService,
-    requestGrpcMethod,
-    setRequestGrpcMethod,
-    requestGrpcMessage,
-    setRequestGrpcMessage,
-    requestGrpcMetadata,
-    setRequestGrpcMetadata,
-    requestGrpcUseReflection,
-    setRequestGrpcUseReflection,
-    requestWebSocketMessages,
-    setRequestWebSocketMessages,
-    requestWebSocketMaxMessages,
-    setRequestWebSocketMaxMessages,
-    requestParentId,
-    setRequestParentId,
     requestMoveParentId,
     setRequestMoveParentId,
-    requestEditName,
-    setRequestEditName,
-    requestEditDescription,
-    setRequestEditDescription,
-    requestConfigText,
-    setRequestConfigText,
-    requestEditUrl,
-    setRequestEditUrl,
-    requestEditHttpMethod,
-    setRequestEditHttpMethod,
-    requestEditHttpBody,
-    setRequestEditHttpBody,
-    requestEditHeaders,
-    setRequestEditHeaders,
-    requestEditQueryParams,
-    setRequestEditQueryParams,
-    requestEditFollowRedirects,
-    setRequestEditFollowRedirects,
-    requestEditTimeoutMs,
-    setRequestEditTimeoutMs,
-    requestEditGrpcService,
-    setRequestEditGrpcService,
-    requestEditGrpcMethod,
-    setRequestEditGrpcMethod,
-    requestEditGrpcMessage,
-    setRequestEditGrpcMessage,
-    requestEditGrpcMetadata,
-    setRequestEditGrpcMetadata,
-    requestEditGrpcUseReflection,
-    setRequestEditGrpcUseReflection,
-    requestEditWebSocketMessages,
-    setRequestEditWebSocketMessages,
-    requestEditWebSocketMaxMessages,
-    setRequestEditWebSocketMaxMessages,
   } = useYakuWorkspaceForms({
     selectedEnvironment,
     selectedFolderNode,
@@ -282,41 +215,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     environmentVariablesText,
     folderName,
     folderEditName,
-    requestParentId,
-    setRequestParentId,
-    requestName,
-    requestProtocol,
-    requestUrl,
-    requestHttpMethod,
-    requestHttpBody,
-    requestHeaders,
-    requestQueryParams,
-    requestFollowRedirects,
-    requestTimeoutMs,
-    requestGrpcService,
-    requestGrpcMethod,
-    requestGrpcMessage,
-    requestGrpcMetadata,
-    requestGrpcUseReflection,
-    requestWebSocketMessages,
-    requestWebSocketMaxMessages,
-    requestEditName,
-    requestEditDescription,
-    requestConfigText,
-    requestEditUrl,
-    requestEditHttpMethod,
-    requestEditHttpBody,
-    requestEditHeaders,
-    requestEditQueryParams,
-    requestEditFollowRedirects,
-    requestEditTimeoutMs,
-    requestEditGrpcService,
-    requestEditGrpcMethod,
-    requestEditGrpcMessage,
-    requestEditGrpcMetadata,
-    requestEditGrpcUseReflection,
-    requestEditWebSocketMessages,
-    requestEditWebSocketMaxMessages,
+    requestBuilderDraft,
+    requestEditDraft,
     setSearch,
   });
 
@@ -328,15 +228,15 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     (item: WorkspaceTreeItem) => {
       if (item.kind === "folder") {
         setSearch({ folderId: item.id, requestId: undefined, runId: undefined });
-        setRequestParentId(item.id);
+        requestBuilderDraft.setParentId(item.id);
         return;
       }
       if (item.kind === "request" && item.requestId != null) {
         setSearch({ requestId: item.requestId, runId: undefined, folderId: undefined });
-        setRequestParentId(item.parentId ?? "__root__");
+        requestBuilderDraft.setParentId(item.parentId ?? "__root__");
       }
     },
-    [setSearch],
+    [requestBuilderDraft, setSearch],
   );
 
   const handleWorkspaceTreeGetEditOptions = useCallback<
@@ -500,42 +400,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
               <RequestBuilderPanel
                 workspaceId={selectedWorkspaceId}
                 folderNodes={folderNodes}
-                parentId={requestParentId}
-                setParentId={setRequestParentId}
-                folderName={folderName}
-                setFolderName={setFolderName}
-                requestName={requestName}
-                setRequestName={setRequestName}
-                requestProtocol={requestProtocol}
-                setRequestProtocol={setRequestProtocol}
-                requestUrl={requestUrl}
-                setRequestUrl={setRequestUrl}
-                requestHttpMethod={requestHttpMethod}
-                setRequestHttpMethod={setRequestHttpMethod}
-                requestHttpBody={requestHttpBody}
-                setRequestHttpBody={setRequestHttpBody}
-                requestHeaders={requestHeaders}
-                setRequestHeaders={setRequestHeaders}
-                requestQueryParams={requestQueryParams}
-                setRequestQueryParams={setRequestQueryParams}
-                requestFollowRedirects={requestFollowRedirects}
-                setRequestFollowRedirects={setRequestFollowRedirects}
-                requestTimeoutMs={requestTimeoutMs}
-                setRequestTimeoutMs={setRequestTimeoutMs}
-                requestGrpcService={requestGrpcService}
-                setRequestGrpcService={setRequestGrpcService}
-                requestGrpcMethod={requestGrpcMethod}
-                setRequestGrpcMethod={setRequestGrpcMethod}
-                requestGrpcMessage={requestGrpcMessage}
-                setRequestGrpcMessage={setRequestGrpcMessage}
-                requestGrpcMetadata={requestGrpcMetadata}
-                setRequestGrpcMetadata={setRequestGrpcMetadata}
-                requestGrpcUseReflection={requestGrpcUseReflection}
-                setRequestGrpcUseReflection={setRequestGrpcUseReflection}
-                requestWebSocketMessages={requestWebSocketMessages}
-                setRequestWebSocketMessages={setRequestWebSocketMessages}
-                requestWebSocketMaxMessages={requestWebSocketMaxMessages}
-                setRequestWebSocketMaxMessages={setRequestWebSocketMaxMessages}
+                draft={requestBuilderDraft}
                 isCreatingFolder={createFolderMutation.isPending}
                 isCreatingRequest={createRequestMutation.isPending}
                 onCreateFolder={() => createFolderMutation.mutate()}
@@ -583,7 +448,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 onSave={() => updateFolderMutation.mutate()}
                 onUseAsParent={() => {
                   if (selectedFolderNode != null) {
-                    setRequestParentId(selectedFolderNode.id);
+                    requestBuilderDraft.setParentId(selectedFolderNode.id);
                   }
                 }}
                 onDelete={() => deleteFolderNodeMutation.mutate()}
@@ -592,40 +457,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
               <RequestSnapshotPanel
                 request={requestQuery.data}
                 error={requestQuery.error}
-                editName={requestEditName}
-                setEditName={setRequestEditName}
-                editDescription={requestEditDescription}
-                setEditDescription={setRequestEditDescription}
-                editUrl={requestEditUrl}
-                setEditUrl={setRequestEditUrl}
-                editHttpMethod={requestEditHttpMethod}
-                setEditHttpMethod={setRequestEditHttpMethod}
-                editHttpBody={requestEditHttpBody}
-                setEditHttpBody={setRequestEditHttpBody}
-                editHeaders={requestEditHeaders}
-                setEditHeaders={setRequestEditHeaders}
-                editQueryParams={requestEditQueryParams}
-                setEditQueryParams={setRequestEditQueryParams}
-                editFollowRedirects={requestEditFollowRedirects}
-                setEditFollowRedirects={setRequestEditFollowRedirects}
-                editTimeoutMs={requestEditTimeoutMs}
-                setEditTimeoutMs={setRequestEditTimeoutMs}
-                editGrpcService={requestEditGrpcService}
-                setEditGrpcService={setRequestEditGrpcService}
-                editGrpcMethod={requestEditGrpcMethod}
-                setEditGrpcMethod={setRequestEditGrpcMethod}
-                editGrpcMessage={requestEditGrpcMessage}
-                setEditGrpcMessage={setRequestEditGrpcMessage}
-                editGrpcMetadata={requestEditGrpcMetadata}
-                setEditGrpcMetadata={setRequestEditGrpcMetadata}
-                editGrpcUseReflection={requestEditGrpcUseReflection}
-                setEditGrpcUseReflection={setRequestEditGrpcUseReflection}
-                editWebSocketMessages={requestEditWebSocketMessages}
-                setEditWebSocketMessages={setRequestEditWebSocketMessages}
-                editWebSocketMaxMessages={requestEditWebSocketMaxMessages}
-                setEditWebSocketMaxMessages={setRequestEditWebSocketMaxMessages}
-                configText={requestConfigText}
-                setConfigText={setRequestConfigText}
+                draft={requestEditDraft}
                 moveControls={
                   <NodeMoveControls
                     label="Move Request"

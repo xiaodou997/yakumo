@@ -5,46 +5,13 @@ import { HStack, VStack } from "../../components/core/Stacks";
 import type { YakuProtocol, YakuRequest } from "../../lib/yaku-client";
 import { fieldClassName, textareaClassName } from "./RequestFieldPrimitives";
 import { RequestConfigSummary, RequestStructuredEditor } from "./RequestEditor";
-import type { ConfigPair } from "./types";
+import type { RequestEditDraft } from "./useYakuWorkspaceForms";
 import { EmptyCopy, WorkspacePanel } from "./WorkspacePanels";
 
 export function RequestSnapshotPanel({
   request,
   error,
-  editName,
-  setEditName,
-  editDescription,
-  setEditDescription,
-  editUrl,
-  setEditUrl,
-  editHttpMethod,
-  setEditHttpMethod,
-  editHttpBody,
-  setEditHttpBody,
-  editHeaders,
-  setEditHeaders,
-  editQueryParams,
-  setEditQueryParams,
-  editFollowRedirects,
-  setEditFollowRedirects,
-  editTimeoutMs,
-  setEditTimeoutMs,
-  editGrpcService,
-  setEditGrpcService,
-  editGrpcMethod,
-  setEditGrpcMethod,
-  editGrpcMessage,
-  setEditGrpcMessage,
-  editGrpcMetadata,
-  setEditGrpcMetadata,
-  editGrpcUseReflection,
-  setEditGrpcUseReflection,
-  editWebSocketMessages,
-  setEditWebSocketMessages,
-  editWebSocketMaxMessages,
-  setEditWebSocketMaxMessages,
-  configText,
-  setConfigText,
+  draft,
   moveControls,
   isSaving,
   isDeleting,
@@ -55,40 +22,7 @@ export function RequestSnapshotPanel({
 }: {
   request: YakuRequest | null | undefined;
   error: unknown;
-  editName: string;
-  setEditName: (value: string) => void;
-  editDescription: string;
-  setEditDescription: (value: string) => void;
-  editUrl: string;
-  setEditUrl: (value: string) => void;
-  editHttpMethod: string;
-  setEditHttpMethod: (value: string) => void;
-  editHttpBody: string;
-  setEditHttpBody: (value: string) => void;
-  editHeaders: ConfigPair[];
-  setEditHeaders: (pairs: ConfigPair[]) => void;
-  editQueryParams: ConfigPair[];
-  setEditQueryParams: (pairs: ConfigPair[]) => void;
-  editFollowRedirects: boolean;
-  setEditFollowRedirects: (value: boolean) => void;
-  editTimeoutMs: string;
-  setEditTimeoutMs: (value: string) => void;
-  editGrpcService: string;
-  setEditGrpcService: (value: string) => void;
-  editGrpcMethod: string;
-  setEditGrpcMethod: (value: string) => void;
-  editGrpcMessage: string;
-  setEditGrpcMessage: (value: string) => void;
-  editGrpcMetadata: ConfigPair[];
-  setEditGrpcMetadata: (pairs: ConfigPair[]) => void;
-  editGrpcUseReflection: boolean;
-  setEditGrpcUseReflection: (value: boolean) => void;
-  editWebSocketMessages: string;
-  setEditWebSocketMessages: (value: string) => void;
-  editWebSocketMaxMessages: string;
-  setEditWebSocketMaxMessages: (value: string) => void;
-  configText: string;
-  setConfigText: (value: string) => void;
+  draft: RequestEditDraft;
   moveControls: ReactNode;
   isSaving: boolean;
   isDeleting: boolean;
@@ -124,46 +58,19 @@ export function RequestSnapshotPanel({
             </HStack>
             <RequestConfigSummary protocol={request.protocol} config={request.config} />
             <input
-              value={editName}
-              onChange={(event) => setEditName(event.target.value)}
+              value={draft.name}
+              onChange={(event) => draft.setName(event.target.value)}
               className={fieldClassName}
             />
             <input
-              value={editDescription}
-              onChange={(event) => setEditDescription(event.target.value)}
+              value={draft.description}
+              onChange={(event) => draft.setDescription(event.target.value)}
               placeholder="Description"
               className={fieldClassName}
             />
             <RequestStructuredEditor
               protocol={request.protocol as YakuProtocol}
-              url={editUrl}
-              setUrl={setEditUrl}
-              httpMethod={editHttpMethod}
-              setHttpMethod={setEditHttpMethod}
-              httpBody={editHttpBody}
-              setHttpBody={setEditHttpBody}
-              headers={editHeaders}
-              setHeaders={setEditHeaders}
-              query={editQueryParams}
-              setQuery={setEditQueryParams}
-              followRedirects={editFollowRedirects}
-              setFollowRedirects={setEditFollowRedirects}
-              timeoutMs={editTimeoutMs}
-              setTimeoutMs={setEditTimeoutMs}
-              grpcService={editGrpcService}
-              setGrpcService={setEditGrpcService}
-              grpcMethod={editGrpcMethod}
-              setGrpcMethod={setEditGrpcMethod}
-              grpcMessage={editGrpcMessage}
-              setGrpcMessage={setEditGrpcMessage}
-              grpcMetadata={editGrpcMetadata}
-              setGrpcMetadata={setEditGrpcMetadata}
-              grpcUseReflection={editGrpcUseReflection}
-              setGrpcUseReflection={setEditGrpcUseReflection}
-              webSocketMessages={editWebSocketMessages}
-              setWebSocketMessages={setEditWebSocketMessages}
-              webSocketMaxMessages={editWebSocketMaxMessages}
-              setWebSocketMaxMessages={setEditWebSocketMaxMessages}
+              draft={draft.config}
             />
             {moveControls}
             <div className="rounded-xl border border-border-subtle bg-surface p-3">
@@ -171,8 +78,8 @@ export function RequestSnapshotPanel({
                 Raw JSON Override
               </div>
               <textarea
-                value={configText}
-                onChange={(event) => setConfigText(event.target.value)}
+                value={draft.configText}
+                onChange={(event) => draft.setConfigText(event.target.value)}
                 rows={8}
                 className={textareaClassName}
               />

@@ -2,69 +2,14 @@ import { VStack } from "../../components/core/Stacks";
 import type { YakuProtocol } from "../../lib/yaku-client";
 import { fieldClassName } from "./RequestFieldPrimitives";
 import { GrpcFields, HttpGraphqlFields, SseFields, WebSocketFields } from "./RequestProtocolFields";
-import { summarizeRequestConfig } from "./requestConfig";
-import type { ConfigPair } from "./types";
+import { summarizeRequestConfig, type RequestConfigDraftController } from "./requestConfig";
 
 export function RequestStructuredEditor({
   protocol,
-  url,
-  setUrl,
-  httpMethod,
-  setHttpMethod,
-  httpBody,
-  setHttpBody,
-  headers,
-  setHeaders,
-  query,
-  setQuery,
-  followRedirects,
-  setFollowRedirects,
-  timeoutMs,
-  setTimeoutMs,
-  grpcService,
-  setGrpcService,
-  grpcMethod,
-  setGrpcMethod,
-  grpcMessage,
-  setGrpcMessage,
-  grpcMetadata,
-  setGrpcMetadata,
-  grpcUseReflection,
-  setGrpcUseReflection,
-  webSocketMessages,
-  setWebSocketMessages,
-  webSocketMaxMessages,
-  setWebSocketMaxMessages,
+  draft,
 }: {
   protocol: YakuProtocol;
-  url: string;
-  setUrl: (value: string) => void;
-  httpMethod: string;
-  setHttpMethod: (value: string) => void;
-  httpBody: string;
-  setHttpBody: (value: string) => void;
-  headers: ConfigPair[];
-  setHeaders: (pairs: ConfigPair[]) => void;
-  query: ConfigPair[];
-  setQuery: (pairs: ConfigPair[]) => void;
-  followRedirects: boolean;
-  setFollowRedirects: (value: boolean) => void;
-  timeoutMs: string;
-  setTimeoutMs: (value: string) => void;
-  grpcService: string;
-  setGrpcService: (value: string) => void;
-  grpcMethod: string;
-  setGrpcMethod: (value: string) => void;
-  grpcMessage: string;
-  setGrpcMessage: (value: string) => void;
-  grpcMetadata: ConfigPair[];
-  setGrpcMetadata: (pairs: ConfigPair[]) => void;
-  grpcUseReflection: boolean;
-  setGrpcUseReflection: (value: boolean) => void;
-  webSocketMessages: string;
-  setWebSocketMessages: (value: string) => void;
-  webSocketMaxMessages: string;
-  setWebSocketMaxMessages: (value: string) => void;
+  draft: RequestConfigDraftController;
 }) {
   return (
     <div className="rounded-xl border border-border-subtle bg-surface p-3">
@@ -73,68 +18,68 @@ export function RequestStructuredEditor({
       </div>
       <VStack space={2}>
         <input
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
+          value={draft.url}
+          onChange={(event) => draft.setUrl(event.target.value)}
           placeholder={protocol === "web_socket" ? "ws://example.com/socket" : "https://example.com"}
           className={fieldClassName}
         />
         {protocol === "http" || protocol === "graphql" ? (
           <HttpGraphqlFields
             protocol={protocol}
-            httpMethod={httpMethod}
-            setHttpMethod={setHttpMethod}
-            httpBody={httpBody}
-            setHttpBody={setHttpBody}
-            headers={headers}
-            setHeaders={setHeaders}
-            query={query}
-            setQuery={setQuery}
-            followRedirects={followRedirects}
-            setFollowRedirects={setFollowRedirects}
-            timeoutMs={timeoutMs}
-            setTimeoutMs={setTimeoutMs}
+            httpMethod={draft.httpMethod}
+            setHttpMethod={draft.setHttpMethod}
+            httpBody={draft.httpBody}
+            setHttpBody={draft.setHttpBody}
+            headers={draft.headers}
+            setHeaders={draft.setHeaders}
+            query={draft.query}
+            setQuery={draft.setQuery}
+            followRedirects={draft.followRedirects}
+            setFollowRedirects={draft.setFollowRedirects}
+            timeoutMs={draft.timeoutMs}
+            setTimeoutMs={draft.setTimeoutMs}
           />
         ) : null}
         {protocol === "sse" ? (
           <SseFields
-            headers={headers}
-            setHeaders={setHeaders}
-            query={query}
-            setQuery={setQuery}
-            followRedirects={followRedirects}
-            setFollowRedirects={setFollowRedirects}
-            timeoutMs={timeoutMs}
-            setTimeoutMs={setTimeoutMs}
+            headers={draft.headers}
+            setHeaders={draft.setHeaders}
+            query={draft.query}
+            setQuery={draft.setQuery}
+            followRedirects={draft.followRedirects}
+            setFollowRedirects={draft.setFollowRedirects}
+            timeoutMs={draft.timeoutMs}
+            setTimeoutMs={draft.setTimeoutMs}
           />
         ) : null}
         {protocol === "web_socket" ? (
           <WebSocketFields
-            headers={headers}
-            setHeaders={setHeaders}
-            query={query}
-            setQuery={setQuery}
-            webSocketMessages={webSocketMessages}
-            setWebSocketMessages={setWebSocketMessages}
-            webSocketMaxMessages={webSocketMaxMessages}
-            setWebSocketMaxMessages={setWebSocketMaxMessages}
-            timeoutMs={timeoutMs}
-            setTimeoutMs={setTimeoutMs}
+            headers={draft.headers}
+            setHeaders={draft.setHeaders}
+            query={draft.query}
+            setQuery={draft.setQuery}
+            webSocketMessages={draft.webSocketMessages}
+            setWebSocketMessages={draft.setWebSocketMessages}
+            webSocketMaxMessages={draft.webSocketMaxMessages}
+            setWebSocketMaxMessages={draft.setWebSocketMaxMessages}
+            timeoutMs={draft.timeoutMs}
+            setTimeoutMs={draft.setTimeoutMs}
           />
         ) : null}
         {protocol === "grpc" ? (
           <GrpcFields
-            grpcService={grpcService}
-            setGrpcService={setGrpcService}
-            grpcMethod={grpcMethod}
-            setGrpcMethod={setGrpcMethod}
-            grpcMessage={grpcMessage}
-            setGrpcMessage={setGrpcMessage}
-            grpcMetadata={grpcMetadata}
-            setGrpcMetadata={setGrpcMetadata}
-            grpcUseReflection={grpcUseReflection}
-            setGrpcUseReflection={setGrpcUseReflection}
-            timeoutMs={timeoutMs}
-            setTimeoutMs={setTimeoutMs}
+            grpcService={draft.grpcService}
+            setGrpcService={draft.setGrpcService}
+            grpcMethod={draft.grpcMethod}
+            setGrpcMethod={draft.setGrpcMethod}
+            grpcMessage={draft.grpcMessage}
+            setGrpcMessage={draft.setGrpcMessage}
+            grpcMetadata={draft.grpcMetadata}
+            setGrpcMetadata={draft.setGrpcMetadata}
+            grpcUseReflection={draft.grpcUseReflection}
+            setGrpcUseReflection={draft.setGrpcUseReflection}
+            timeoutMs={draft.timeoutMs}
+            setTimeoutMs={draft.setTimeoutMs}
           />
         ) : null}
       </VStack>

@@ -1,8 +1,7 @@
 import type { YakuProtocol } from "../../lib/yaku-client";
 import type { ConfigPair } from "./types";
 
-export function buildRequestConfigDraft(input: {
-  protocol: YakuProtocol;
+export type RequestConfigDraft = {
   url: string;
   httpMethod: string;
   httpBody: string;
@@ -17,6 +16,27 @@ export function buildRequestConfigDraft(input: {
   grpcUseReflection: boolean;
   webSocketMessages: string;
   webSocketMaxMessages: string;
+};
+
+export type RequestConfigDraftController = RequestConfigDraft & {
+  setUrl: (value: string) => void;
+  setHttpMethod: (value: string) => void;
+  setHttpBody: (value: string) => void;
+  setHeaders: (pairs: ConfigPair[]) => void;
+  setQuery: (pairs: ConfigPair[]) => void;
+  setFollowRedirects: (value: boolean) => void;
+  setTimeoutMs: (value: string) => void;
+  setGrpcService: (value: string) => void;
+  setGrpcMethod: (value: string) => void;
+  setGrpcMessage: (value: string) => void;
+  setGrpcMetadata: (pairs: ConfigPair[]) => void;
+  setGrpcUseReflection: (value: boolean) => void;
+  setWebSocketMessages: (value: string) => void;
+  setWebSocketMaxMessages: (value: string) => void;
+};
+
+export function buildRequestConfigDraft(input: RequestConfigDraft & {
+  protocol: YakuProtocol;
 }): Record<string, unknown> {
   const timeout = parseOptionalInteger(input.timeoutMs);
   const trimmedUrl = input.url.trim();
@@ -100,7 +120,10 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
   ];
 }
 
-export function draftFromRequestConfig(protocol: YakuProtocol, config: Record<string, unknown>) {
+export function draftFromRequestConfig(
+  protocol: YakuProtocol,
+  config: Record<string, unknown>,
+): RequestConfigDraft {
   return {
     url: stringOrEmpty(config.url),
     httpMethod: stringOrEmpty(config.method) || (protocol === "graphql" ? "POST" : "GET"),

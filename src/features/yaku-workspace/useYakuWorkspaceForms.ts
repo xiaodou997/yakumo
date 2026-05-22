@@ -5,8 +5,33 @@ import type {
   YakuRequest,
   YakuRequestNodePageItem,
 } from "../../lib/yaku-client";
-import { draftFromRequestConfig } from "./requestConfig";
+import {
+  draftFromRequestConfig,
+  type RequestConfigDraftController,
+} from "./requestConfig";
 import type { ConfigPair } from "./types";
+
+export type RequestBuilderDraft = {
+  parentId: string;
+  setParentId: (value: string) => void;
+  folderName: string;
+  setFolderName: (value: string) => void;
+  requestName: string;
+  setRequestName: (value: string) => void;
+  requestProtocol: YakuProtocol;
+  setRequestProtocol: (value: YakuProtocol) => void;
+  config: RequestConfigDraftController;
+};
+
+export type RequestEditDraft = {
+  name: string;
+  setName: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
+  configText: string;
+  setConfigText: (value: string) => void;
+  config: RequestConfigDraftController;
+};
 
 export function useYakuWorkspaceForms({
   selectedEnvironment,
@@ -122,7 +147,90 @@ export function useYakuWorkspaceForms({
     setRequestEditWebSocketMaxMessages(draft.webSocketMaxMessages);
   }, [loadedRequest]);
 
+  const requestConfigDraft: RequestConfigDraftController = {
+    url: requestUrl,
+    setUrl: setRequestUrl,
+    httpMethod: requestHttpMethod,
+    setHttpMethod: setRequestHttpMethod,
+    httpBody: requestHttpBody,
+    setHttpBody: setRequestHttpBody,
+    headers: requestHeaders,
+    setHeaders: setRequestHeaders,
+    query: requestQueryParams,
+    setQuery: setRequestQueryParams,
+    followRedirects: requestFollowRedirects,
+    setFollowRedirects: setRequestFollowRedirects,
+    timeoutMs: requestTimeoutMs,
+    setTimeoutMs: setRequestTimeoutMs,
+    grpcService: requestGrpcService,
+    setGrpcService: setRequestGrpcService,
+    grpcMethod: requestGrpcMethod,
+    setGrpcMethod: setRequestGrpcMethod,
+    grpcMessage: requestGrpcMessage,
+    setGrpcMessage: setRequestGrpcMessage,
+    grpcMetadata: requestGrpcMetadata,
+    setGrpcMetadata: setRequestGrpcMetadata,
+    grpcUseReflection: requestGrpcUseReflection,
+    setGrpcUseReflection: setRequestGrpcUseReflection,
+    webSocketMessages: requestWebSocketMessages,
+    setWebSocketMessages: setRequestWebSocketMessages,
+    webSocketMaxMessages: requestWebSocketMaxMessages,
+    setWebSocketMaxMessages: setRequestWebSocketMaxMessages,
+  };
+  const requestEditConfigDraft: RequestConfigDraftController = {
+    url: requestEditUrl,
+    setUrl: setRequestEditUrl,
+    httpMethod: requestEditHttpMethod,
+    setHttpMethod: setRequestEditHttpMethod,
+    httpBody: requestEditHttpBody,
+    setHttpBody: setRequestEditHttpBody,
+    headers: requestEditHeaders,
+    setHeaders: setRequestEditHeaders,
+    query: requestEditQueryParams,
+    setQuery: setRequestEditQueryParams,
+    followRedirects: requestEditFollowRedirects,
+    setFollowRedirects: setRequestEditFollowRedirects,
+    timeoutMs: requestEditTimeoutMs,
+    setTimeoutMs: setRequestEditTimeoutMs,
+    grpcService: requestEditGrpcService,
+    setGrpcService: setRequestEditGrpcService,
+    grpcMethod: requestEditGrpcMethod,
+    setGrpcMethod: setRequestEditGrpcMethod,
+    grpcMessage: requestEditGrpcMessage,
+    setGrpcMessage: setRequestEditGrpcMessage,
+    grpcMetadata: requestEditGrpcMetadata,
+    setGrpcMetadata: setRequestEditGrpcMetadata,
+    grpcUseReflection: requestEditGrpcUseReflection,
+    setGrpcUseReflection: setRequestEditGrpcUseReflection,
+    webSocketMessages: requestEditWebSocketMessages,
+    setWebSocketMessages: setRequestEditWebSocketMessages,
+    webSocketMaxMessages: requestEditWebSocketMaxMessages,
+    setWebSocketMaxMessages: setRequestEditWebSocketMaxMessages,
+  };
+  const requestBuilderDraft: RequestBuilderDraft = {
+    parentId: requestParentId,
+    setParentId: setRequestParentId,
+    folderName,
+    setFolderName,
+    requestName,
+    setRequestName,
+    requestProtocol,
+    setRequestProtocol,
+    config: requestConfigDraft,
+  };
+  const requestEditDraft: RequestEditDraft = {
+    name: requestEditName,
+    setName: setRequestEditName,
+    description: requestEditDescription,
+    setDescription: setRequestEditDescription,
+    configText: requestConfigText,
+    setConfigText: setRequestConfigText,
+    config: requestEditConfigDraft,
+  };
+
   return {
+    requestBuilderDraft,
+    requestEditDraft,
     workspaceName,
     setWorkspaceName,
     environmentName,

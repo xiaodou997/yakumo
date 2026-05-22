@@ -19,13 +19,13 @@ import {
   updateYakuEnvironment,
   updateYakuFolder,
   updateYakuRequest,
-  type YakuProtocol,
   type YakuRequest,
   type YakuRequestNodePageItem,
   type YakuWorkspace,
 } from "../../lib/yaku-client";
-import type { ConfigPair, WorkspaceTreeItem, YakuWorkspaceSearch } from "./types";
+import type { WorkspaceTreeItem, YakuWorkspaceSearch } from "./types";
 import { buildRequestConfigDraft } from "./requestConfig";
+import type { RequestBuilderDraft, RequestEditDraft } from "./useYakuWorkspaceForms";
 
 export function useYakuWorkspaceMutations({
   selectedWorkspaceId,
@@ -41,41 +41,8 @@ export function useYakuWorkspaceMutations({
   environmentVariablesText,
   folderName,
   folderEditName,
-  requestParentId,
-  setRequestParentId,
-  requestName,
-  requestProtocol,
-  requestUrl,
-  requestHttpMethod,
-  requestHttpBody,
-  requestHeaders,
-  requestQueryParams,
-  requestFollowRedirects,
-  requestTimeoutMs,
-  requestGrpcService,
-  requestGrpcMethod,
-  requestGrpcMessage,
-  requestGrpcMetadata,
-  requestGrpcUseReflection,
-  requestWebSocketMessages,
-  requestWebSocketMaxMessages,
-  requestEditName,
-  requestEditDescription,
-  requestConfigText,
-  requestEditUrl,
-  requestEditHttpMethod,
-  requestEditHttpBody,
-  requestEditHeaders,
-  requestEditQueryParams,
-  requestEditFollowRedirects,
-  requestEditTimeoutMs,
-  requestEditGrpcService,
-  requestEditGrpcMethod,
-  requestEditGrpcMessage,
-  requestEditGrpcMetadata,
-  requestEditGrpcUseReflection,
-  requestEditWebSocketMessages,
-  requestEditWebSocketMaxMessages,
+  requestBuilderDraft,
+  requestEditDraft,
   setSearch,
 }: {
   selectedWorkspaceId: string | null | undefined;
@@ -91,41 +58,8 @@ export function useYakuWorkspaceMutations({
   environmentVariablesText: string;
   folderName: string;
   folderEditName: string;
-  requestParentId: string;
-  setRequestParentId: (value: string) => void;
-  requestName: string;
-  requestProtocol: YakuProtocol;
-  requestUrl: string;
-  requestHttpMethod: string;
-  requestHttpBody: string;
-  requestHeaders: ConfigPair[];
-  requestQueryParams: ConfigPair[];
-  requestFollowRedirects: boolean;
-  requestTimeoutMs: string;
-  requestGrpcService: string;
-  requestGrpcMethod: string;
-  requestGrpcMessage: string;
-  requestGrpcMetadata: ConfigPair[];
-  requestGrpcUseReflection: boolean;
-  requestWebSocketMessages: string;
-  requestWebSocketMaxMessages: string;
-  requestEditName: string;
-  requestEditDescription: string;
-  requestConfigText: string;
-  requestEditUrl: string;
-  requestEditHttpMethod: string;
-  requestEditHttpBody: string;
-  requestEditHeaders: ConfigPair[];
-  requestEditQueryParams: ConfigPair[];
-  requestEditFollowRedirects: boolean;
-  requestEditTimeoutMs: string;
-  requestEditGrpcService: string;
-  requestEditGrpcMethod: string;
-  requestEditGrpcMessage: string;
-  requestEditGrpcMetadata: ConfigPair[];
-  requestEditGrpcUseReflection: boolean;
-  requestEditWebSocketMessages: string;
-  requestEditWebSocketMaxMessages: string;
+  requestBuilderDraft: RequestBuilderDraft;
+  requestEditDraft: RequestEditDraft;
   setSearch: (patch: Partial<YakuWorkspaceSearch>) => void;
 }) {
   const queryClient = useQueryClient();
@@ -250,12 +184,12 @@ export function useYakuWorkspaceMutations({
       return createYakuFolder({
         workspaceId: selectedWorkspaceId,
         name: folderName.trim() || "New Folder",
-        parentId: requestParentId === "__root__" ? null : requestParentId,
+        parentId: requestBuilderDraft.parentId === "__root__" ? null : requestBuilderDraft.parentId,
       });
     },
     onSuccess: async (folder) => {
       await queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] });
-      setRequestParentId(folder.id);
+      requestBuilderDraft.setParentId(folder.id);
       setSearch({ folderId: folder.id, requestId: undefined, runId: undefined });
     },
   });
@@ -327,25 +261,12 @@ export function useYakuWorkspaceMutations({
       }
       return createYakuRequest({
         workspaceId: selectedWorkspaceId,
-        name: requestName.trim() || "New Request",
-        protocol: requestProtocol,
-        parentId: requestParentId === "__root__" ? null : requestParentId,
+        name: requestBuilderDraft.requestName.trim() || "New Request",
+        protocol: requestBuilderDraft.requestProtocol,
+        parentId: requestBuilderDraft.parentId === "__root__" ? null : requestBuilderDraft.parentId,
         config: buildRequestConfigDraft({
-          protocol: requestProtocol,
-          url: requestUrl,
-          httpMethod: requestHttpMethod,
-          httpBody: requestHttpBody,
-          headers: requestHeaders,
-          query: requestQueryParams,
-          followRedirects: requestFollowRedirects,
-          timeoutMs: requestTimeoutMs,
-          grpcService: requestGrpcService,
-          grpcMethod: requestGrpcMethod,
-          grpcMessage: requestGrpcMessage,
-          grpcMetadata: requestGrpcMetadata,
-          grpcUseReflection: requestGrpcUseReflection,
-          webSocketMessages: requestWebSocketMessages,
-          webSocketMaxMessages: requestWebSocketMaxMessages,
+          protocol: requestBuilderDraft.requestProtocol,
+          ...requestBuilderDraft.config,
         }),
       });
     },
@@ -364,27 +285,14 @@ export function useYakuWorkspaceMutations({
         throw new Error("No Yaku request loaded");
       }
       return updateYakuRequest(selectedRequestId, {
-        name: requestEditName.trim() || "Request",
-        description: requestEditDescription,
+        name: requestEditDraft.name.trim() || "Request",
+        description: requestEditDraft.description,
         config:
           mode === "raw"
-            ? parseJsonObject(requestConfigText, "Request config")
+            ? parseJsonObject(requestEditDraft.configText, "Request config")
             : buildRequestConfigDraft({
                 protocol: loadedRequest.protocol,
-                url: requestEditUrl,
-                httpMethod: requestEditHttpMethod,
-                httpBody: requestEditHttpBody,
-                headers: requestEditHeaders,
-                query: requestEditQueryParams,
-                followRedirects: requestEditFollowRedirects,
-                timeoutMs: requestEditTimeoutMs,
-                grpcService: requestEditGrpcService,
-                grpcMethod: requestEditGrpcMethod,
-                grpcMessage: requestEditGrpcMessage,
-                grpcMetadata: requestEditGrpcMetadata,
-                grpcUseReflection: requestEditGrpcUseReflection,
-                webSocketMessages: requestEditWebSocketMessages,
-                webSocketMaxMessages: requestEditWebSocketMaxMessages,
+                ...requestEditDraft.config,
               }),
       });
     },
