@@ -4,6 +4,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import {
   cancelYakuRun,
   clearYakuRunRetention,
+  createYakuCookieJar,
   createYakuEnvironment,
   createYakuFolder,
   createYakuRequest,
@@ -39,6 +40,7 @@ export function useYakuWorkspaceMutations({
   workspaceName,
   environmentName,
   environmentVariablesText,
+  cookieJarName,
   folderName,
   folderEditName,
   requestBuilderDraft,
@@ -56,6 +58,7 @@ export function useYakuWorkspaceMutations({
   workspaceName: string;
   environmentName: string;
   environmentVariablesText: string;
+  cookieJarName: string;
   folderName: string;
   folderEditName: string;
   requestBuilderDraft: RequestBuilderDraft;
@@ -173,6 +176,18 @@ export function useYakuWorkspaceMutations({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["yaku", "environments", selectedWorkspaceId] });
       setSearch({ environmentId: undefined });
+    },
+  });
+
+  const createCookieJarMutation = useMutation({
+    mutationFn: () => {
+      if (selectedWorkspaceId == null) {
+        throw new Error("No Yaku workspace selected");
+      }
+      return createYakuCookieJar(selectedWorkspaceId, cookieJarName.trim() || "Default");
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "cookie-jars", selectedWorkspaceId] });
     },
   });
 
@@ -444,6 +459,7 @@ export function useYakuWorkspaceMutations({
     createEnvironmentMutation,
     updateEnvironmentMutation,
     deleteEnvironmentMutation,
+    createCookieJarMutation,
     createFolderMutation,
     updateFolderMutation,
     renameTreeNodeMutation,

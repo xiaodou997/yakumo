@@ -72,6 +72,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     environments,
     selectedEnvironmentId,
     selectedEnvironment,
+    cookieJars,
     retentionQuery,
     requestsQuery,
     requestNodes,
@@ -102,6 +103,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     setEnvironmentName,
     environmentVariablesText,
     setEnvironmentVariablesText,
+    cookieJarName,
+    setCookieJarName,
     folderName,
     folderEditName,
     setFolderEditName,
@@ -186,6 +189,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     createEnvironmentMutation,
     updateEnvironmentMutation,
     deleteEnvironmentMutation,
+    createCookieJarMutation,
     createFolderMutation,
     updateFolderMutation,
     renameTreeNodeMutation,
@@ -213,6 +217,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     workspaceName,
     environmentName,
     environmentVariablesText,
+    cookieJarName,
     folderName,
     folderEditName,
     requestBuilderDraft,
@@ -355,6 +360,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
               <WorkspaceContextPanel
                 workspaces={workspaces}
                 environments={environments}
+                cookieJars={cookieJars}
                 selectedWorkspaceId={selectedWorkspaceId}
                 selectedEnvironmentId={selectedEnvironmentId}
                 workspaceName={workspaceName}
@@ -363,6 +369,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 setEnvironmentName={setEnvironmentName}
                 environmentVariablesText={environmentVariablesText}
                 setEnvironmentVariablesText={setEnvironmentVariablesText}
+                cookieJarName={cookieJarName}
+                setCookieJarName={setCookieJarName}
                 retention={retentionQuery.data}
                 gcReport={gcBodiesMutation.data}
                 exportResult={exportBackupMutation.data ?? undefined}
@@ -371,6 +379,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 isCreatingEnvironment={createEnvironmentMutation.isPending}
                 isUpdatingEnvironment={updateEnvironmentMutation.isPending}
                 isDeletingEnvironment={deleteEnvironmentMutation.isPending}
+                isCreatingCookieJar={createCookieJarMutation.isPending}
                 isSettingRetention={setRetentionMutation.isPending}
                 isClearingRetention={clearRetentionMutation.isPending}
                 isGcBodies={gcBodiesMutation.isPending}
@@ -390,6 +399,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 onCreateEnvironment={() => createEnvironmentMutation.mutate()}
                 onUpdateEnvironment={() => updateEnvironmentMutation.mutate()}
                 onDeleteEnvironment={() => deleteEnvironmentMutation.mutate()}
+                onCreateCookieJar={() => createCookieJarMutation.mutate()}
                 onSetRetention={(limit) => setRetentionMutation.mutate(limit)}
                 onClearRetention={() => clearRetentionMutation.mutate()}
                 onGcBodies={() => gcBodiesMutation.mutate()}
@@ -400,6 +410,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
               <RequestBuilderPanel
                 workspaceId={selectedWorkspaceId}
                 folderNodes={folderNodes}
+                cookieJars={cookieJars}
                 draft={requestBuilderDraft}
                 isCreatingFolder={createFolderMutation.isPending}
                 isCreatingRequest={createRequestMutation.isPending}
@@ -458,6 +469,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 request={requestQuery.data}
                 error={requestQuery.error}
                 draft={requestEditDraft}
+                cookieJars={cookieJars}
                 moveControls={
                   <NodeMoveControls
                     label="Move Request"
@@ -526,6 +538,7 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
             createEnvironmentMutation.error,
             updateEnvironmentMutation.error,
             deleteEnvironmentMutation.error,
+            createCookieJarMutation.error,
             createFolderMutation.error,
             updateFolderMutation.error,
             createRequestMutation.error,

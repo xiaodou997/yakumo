@@ -9,9 +9,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use yaku_domain::{
-    BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,
-    FinishRun, MoveRequestNode, Page, Protocol, Request, Run, RunBody, RunEvent, RunEventKind,
-    RunState, SecretMetadata, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
+    BodyStorageKind, CookieJar, CookieRecord, CreateEnvironment, CreateFolder, CreateRequest,
+    CreateRun, CreateWorkspace, FinishRun, MoveRequestNode, Page, Protocol, Request, Run, RunBody,
+    RunEvent, RunEventKind, RunState, SecretMetadata, Setting, UpdateEnvironment, UpdateFolder,
+    UpdateRequest, Workspace,
 };
 use yaku_engine::{
     CancellationToken, GrpcEngine, HttpEngine, ReflectionGrpcSender, ReqwestHttpSender,
@@ -908,6 +909,73 @@ pub(crate) fn cmd_yaku_environment_delete<R: Runtime>(
     let service = yaku_domain::DomainService::new(store);
     service.delete_environment(&environment_id).map_err(|e| Error::GenericError(e.to_string()))?;
     Ok(DeleteResponse { deleted: true, body_gc: None })
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_cookie_jar_list<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: String,
+) -> Result<Vec<CookieJar>> {
+    let store = open_store(&app_handle)?;
+    store.list_cookie_jars(&workspace_id).map_err(|e| Error::GenericError(e.to_string()))
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_cookie_jar_create<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: String,
+    name: String,
+) -> Result<CookieJar> {
+    let store = open_store(&app_handle)?;
+    if store.get_workspace(&workspace_id).map_err(|e| Error::GenericError(e.to_string()))?.is_none()
+    {
+        return Err(Error::GenericError(format!("Workspace '{workspace_id}' not found")));
+    }
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(Error::GenericError("Cookie jar name cannot be empty".to_string()));
+    }
+    let now = Utc::now();
+    let jar = CookieJar {
+        id: prefixed_id("jar"),
+        workspace_id,
+        name: name.to_string(),
+        created_at: now,
+        updated_at: now,
+    };
+    store.upsert_cookie_jar(&jar).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(jar)
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_cookie_jar_delete<R: Runtime>(
+    app_handle: AppHandle<R>,
+    jar_id: String,
+) -> Result<DeleteResponse> {
+    let store = open_store(&app_handle)?;
+    let deleted =
+        store.delete_cookie_jar(&jar_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(DeleteResponse { deleted, body_gc: None })
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_cookie_list<R: Runtime>(
+    app_handle: AppHandle<R>,
+    jar_id: String,
+) -> Result<Vec<CookieRecord>> {
+    let store = open_store(&app_handle)?;
+    store.list_cookies(&jar_id).map_err(|e| Error::GenericError(e.to_string()))
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_cookie_jar_clear<R: Runtime>(
+    app_handle: AppHandle<R>,
+    jar_id: String,
+) -> Result<DeleteResponse> {
+    let store = open_store(&app_handle)?;
+    let deleted =
+        store.clear_cookies_for_jar(&jar_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(DeleteResponse { deleted: deleted > 0, body_gc: None })
 }
 
 #[tauri::command]

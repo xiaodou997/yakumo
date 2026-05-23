@@ -1,7 +1,7 @@
 import { Button } from "../../components/core/Button";
 import { Select } from "../../components/core/Select";
 import { VStack } from "../../components/core/Stacks";
-import type { YakuProtocol, YakuRequestNodePageItem } from "../../lib/yaku-client";
+import type { YakuCookieJar, YakuProtocol, YakuRequestNodePageItem } from "../../lib/yaku-client";
 import { fieldClassName } from "./RequestFieldPrimitives";
 import { RequestStructuredEditor } from "./RequestEditor";
 import type { RequestBuilderDraft } from "./useYakuWorkspaceForms";
@@ -10,6 +10,7 @@ import { FieldLabel, WorkspacePanel } from "./WorkspacePanels";
 export function RequestBuilderPanel({
   workspaceId,
   folderNodes,
+  cookieJars,
   draft,
   isCreatingFolder,
   isCreatingRequest,
@@ -18,6 +19,7 @@ export function RequestBuilderPanel({
 }: {
   workspaceId: string | null | undefined;
   folderNodes: YakuRequestNodePageItem[];
+  cookieJars: YakuCookieJar[];
   draft: RequestBuilderDraft;
   isCreatingFolder: boolean;
   isCreatingRequest: boolean;
@@ -89,6 +91,7 @@ export function RequestBuilderPanel({
             <RequestStructuredEditor
               protocol={draft.requestProtocol}
               draft={draft.config}
+              cookieJars={cookieJars}
             />
             <Button size="xs" type="submit" disabled={workspaceId == null} isLoading={isCreatingRequest}>
               Create Request

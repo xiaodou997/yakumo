@@ -1,3 +1,4 @@
+import type { YakuCookieJar } from "../../lib/yaku-client";
 import type { ConfigPair } from "./types";
 import { CheckboxField, PairListEditor, fieldClassName, textareaClassName } from "./RequestFieldPrimitives";
 import {
@@ -18,6 +19,9 @@ export function HttpGraphqlFields({
   setHttpBodyFilePath,
   httpMultipartParts,
   setHttpMultipartParts,
+  httpCookieJarId,
+  setHttpCookieJarId,
+  cookieJars,
   httpAuthType,
   setHttpAuthType,
   httpAuthUsername,
@@ -48,6 +52,9 @@ export function HttpGraphqlFields({
   setHttpBodyFilePath: (value: string) => void;
   httpMultipartParts: MultipartPart[];
   setHttpMultipartParts: (parts: MultipartPart[]) => void;
+  httpCookieJarId: string;
+  setHttpCookieJarId: (value: string) => void;
+  cookieJars: YakuCookieJar[];
   httpAuthType: string;
   setHttpAuthType: (value: string) => void;
   httpAuthUsername: string;
@@ -99,6 +106,11 @@ export function HttpGraphqlFields({
         setToken={setHttpAuthToken}
         passwordSecretId={httpAuthPasswordSecretId}
         tokenSecretId={httpAuthTokenSecretId}
+      />
+      <HttpCookieFields
+        cookieJarId={httpCookieJarId}
+        setCookieJarId={setHttpCookieJarId}
+        cookieJars={cookieJars}
       />
       <PairListEditor
         title="Headers"
@@ -311,6 +323,41 @@ function MultipartPartsEditor({
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+function HttpCookieFields({
+  cookieJarId,
+  setCookieJarId,
+  cookieJars,
+}: {
+  cookieJarId: string;
+  setCookieJarId: (value: string) => void;
+  cookieJars: YakuCookieJar[];
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface p-3">
+      <div className="mb-2 text-xs uppercase tracking-[0.2em] text-text-subtlest">
+        Cookie Jar
+      </div>
+      <select
+        value={cookieJarId || "__none__"}
+        onChange={(event) =>
+          setCookieJarId(event.target.value === "__none__" ? "" : event.target.value)
+        }
+        className={fieldClassName}
+      >
+        <option value="__none__">No cookie jar</option>
+        {cookieJars.map((jar) => (
+          <option key={jar.id} value={jar.id}>
+            {jar.name}
+          </option>
+        ))}
+      </select>
+      <div className="mt-2 text-[11px] text-text-subtle">
+        Selected jars send matching cookies and persist Set-Cookie response headers.
+      </div>
     </div>
   );
 }

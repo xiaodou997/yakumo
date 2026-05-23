@@ -18,6 +18,8 @@ import type {
   YakuWorkspacePageItem,
   YakuBackupImportResponse,
   YakuBackupManifest,
+  YakuCookieJar,
+  YakuCookieRecord,
 } from "./types";
 
 export async function listYakuWorkspaces(limit = 500) {
@@ -65,6 +67,26 @@ export async function updateYakuEnvironment(
 
 export async function deleteYakuEnvironment(environmentId: string) {
   return invokeCmd<YakuDeleteResponse>("cmd_yaku_environment_delete", { environmentId });
+}
+
+export async function listYakuCookieJars(workspaceId: string) {
+  return invokeCmd<YakuCookieJar[]>("cmd_yaku_cookie_jar_list", { workspaceId });
+}
+
+export async function createYakuCookieJar(workspaceId: string, name: string) {
+  return invokeCmd<YakuCookieJar>("cmd_yaku_cookie_jar_create", { workspaceId, name });
+}
+
+export async function deleteYakuCookieJar(jarId: string) {
+  return invokeCmd<YakuDeleteResponse>("cmd_yaku_cookie_jar_delete", { jarId });
+}
+
+export async function listYakuCookies(jarId: string) {
+  return invokeCmd<YakuCookieRecord[]>("cmd_yaku_cookie_list", { jarId });
+}
+
+export async function clearYakuCookieJar(jarId: string) {
+  return invokeCmd<YakuDeleteResponse>("cmd_yaku_cookie_jar_clear", { jarId });
 }
 
 export async function listYakuRequests(workspaceId: string, limit = 500) {

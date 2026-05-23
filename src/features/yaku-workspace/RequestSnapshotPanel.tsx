@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "../../components/core/Button";
 import { FormattedError } from "../../components/core/FormattedError";
 import { HStack, VStack } from "../../components/core/Stacks";
-import type { YakuProtocol, YakuRequest } from "../../lib/yaku-client";
+import type { YakuCookieJar, YakuProtocol, YakuRequest } from "../../lib/yaku-client";
 import { fieldClassName, textareaClassName } from "./RequestFieldPrimitives";
 import { RequestConfigSummary, RequestStructuredEditor } from "./RequestEditor";
 import type { RequestEditDraft } from "./useYakuWorkspaceForms";
@@ -12,6 +12,7 @@ export function RequestSnapshotPanel({
   request,
   error,
   draft,
+  cookieJars,
   moveControls,
   isSaving,
   isDeleting,
@@ -23,6 +24,7 @@ export function RequestSnapshotPanel({
   request: YakuRequest | null | undefined;
   error: unknown;
   draft: RequestEditDraft;
+  cookieJars: YakuCookieJar[];
   moveControls: ReactNode;
   isSaving: boolean;
   isDeleting: boolean;
@@ -71,6 +73,7 @@ export function RequestSnapshotPanel({
             <RequestStructuredEditor
               protocol={request.protocol as YakuProtocol}
               draft={draft.config}
+              cookieJars={cookieJars}
             />
             {moveControls}
             <div className="rounded-xl border border-border-subtle bg-surface p-3">

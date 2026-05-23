@@ -1,6 +1,8 @@
 import type {
   BodyRole as DomainBodyRole,
   BodyStorageKind as DomainBodyStorageKind,
+  CookieJar as DomainCookieJar,
+  CookieRecord as DomainCookieRecord,
   Environment as DomainEnvironment,
   Page as DomainPage,
   Protocol as DomainProtocol,
@@ -41,6 +43,8 @@ export interface YakuDeleteResponse {
 }
 
 export type YakuWorkspace = DomainWorkspace;
+export type YakuCookieJar = DomainCookieJar;
+export type YakuCookieRecord = DomainCookieRecord;
 export type YakuEnvironment = DomainEnvironment;
 export type YakuRequestNode = DomainRequestNode;
 export type YakuRequest = DomainRequest;

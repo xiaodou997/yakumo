@@ -4,6 +4,7 @@ import {
   getYakuRequest,
   getYakuRunBodyBytes,
   getYakuRunRetention,
+  listYakuCookieJars,
   listYakuEnvironments,
   listYakuRequests,
   listYakuRunBodies,
@@ -44,6 +45,14 @@ export function useYakuWorkspaceQueries({
   const selectedEnvironmentId = resolveSelectedId(environments, search.environmentId);
   const selectedEnvironment =
     environments.find((environment) => environment.id === selectedEnvironmentId) ?? null;
+
+  const cookieJarsQuery = useQuery({
+    enabled: selectedWorkspaceId != null,
+    queryKey: ["yaku", "cookie-jars", selectedWorkspaceId],
+    queryFn: () => listYakuCookieJars(selectedWorkspaceId!),
+    placeholderData: (prev) => prev,
+  });
+  const cookieJars = cookieJarsQuery.data ?? [];
 
   const retentionQuery = useQuery({
     enabled: selectedWorkspaceId != null,
@@ -133,6 +142,8 @@ export function useYakuWorkspaceQueries({
     environments,
     selectedEnvironmentId,
     selectedEnvironment,
+    cookieJarsQuery,
+    cookieJars,
     retentionQuery,
     requestsQuery,
     requestTreeNodes,

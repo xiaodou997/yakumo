@@ -4,6 +4,10 @@ export type BodyRole = "request" | "response" | "message";
 
 export type BodyStorageKind = "inline" | "blob" | "file";
 
+export type CookieJar = { id: string, workspaceId: string, name: string, createdAt: string, updatedAt: string, };
+
+export type CookieRecord = { id: string, workspaceId: string, jarId: string, name: string, value: string, domain: string, path: string, expiresAt: string | null, secure: boolean, httpOnly: boolean, sameSite: string | null, createdAt: string, updatedAt: string, };
+
 export type Environment = { id: string, workspaceId: string, name: string, variables: Record<string, any>, createdAt: string, updatedAt: string, };
 
 export type Page = { cursor: bigint | null, limit: number, };

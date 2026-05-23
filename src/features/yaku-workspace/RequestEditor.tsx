@@ -1,5 +1,5 @@
 import { VStack } from "../../components/core/Stacks";
-import type { YakuProtocol } from "../../lib/yaku-client";
+import type { YakuCookieJar, YakuProtocol } from "../../lib/yaku-client";
 import { fieldClassName } from "./RequestFieldPrimitives";
 import { GrpcFields, HttpGraphqlFields, SseFields, WebSocketFields } from "./RequestProtocolFields";
 import { summarizeRequestConfig, type RequestConfigDraftController } from "./requestConfig";
@@ -7,9 +7,11 @@ import { summarizeRequestConfig, type RequestConfigDraftController } from "./req
 export function RequestStructuredEditor({
   protocol,
   draft,
+  cookieJars = [],
 }: {
   protocol: YakuProtocol;
   draft: RequestConfigDraftController;
+  cookieJars?: YakuCookieJar[];
 }) {
   return (
     <div className="rounded-xl border border-border-subtle bg-surface p-3">
@@ -36,6 +38,9 @@ export function RequestStructuredEditor({
             setHttpBodyFilePath={draft.setHttpBodyFilePath}
             httpMultipartParts={draft.httpMultipartParts}
             setHttpMultipartParts={draft.setHttpMultipartParts}
+            httpCookieJarId={draft.httpCookieJarId}
+            setHttpCookieJarId={draft.setHttpCookieJarId}
+            cookieJars={cookieJars}
             httpAuthType={draft.httpAuthType}
             setHttpAuthType={draft.setHttpAuthType}
             httpAuthUsername={draft.httpAuthUsername}

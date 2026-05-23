@@ -19,6 +19,7 @@ export type RequestConfigDraft = {
   httpBodyMode: string;
   httpBodyFilePath: string;
   httpMultipartParts: MultipartPart[];
+  httpCookieJarId: string;
   httpAuthType: string;
   httpAuthUsername: string;
   httpAuthPassword: string;
@@ -46,6 +47,7 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setHttpBodyMode: (value: string) => void;
   setHttpBodyFilePath: (value: string) => void;
   setHttpMultipartParts: (parts: MultipartPart[]) => void;
+  setHttpCookieJarId: (value: string) => void;
   setHttpAuthType: (value: string) => void;
   setHttpAuthUsername: (value: string) => void;
   setHttpAuthPassword: (value: string) => void;
@@ -120,6 +122,7 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
       ? input.httpBodyFilePath.trim() || null
       : null,
     multipartParts: bodyMode === "multipart" ? multipartPartsToConfig(input.httpMultipartParts) : [],
+    cookieJarId: input.httpCookieJarId.trim() || null,
     auth: buildHttpAuth(input),
     followRedirects: input.followRedirects,
     timeoutMs: timeout,
@@ -160,6 +163,7 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
     { label: "Follow Redirects", value: booleanString(config.followRedirects) },
     { label: "Timeout", value: numberString(config.timeoutMs) },
     { label: "Body", value: bodySummary(config) },
+    { label: "Cookie Jar", value: stringOrEmpty(config.cookieJarId) || "none" },
   ];
 }
 
@@ -174,6 +178,7 @@ export function draftFromRequestConfig(
     httpBodyMode: stringOrEmpty(config.bodyMode) || inferredHttpBodyMode(config),
     httpBodyFilePath: stringOrEmpty(config.bodyFilePath),
     httpMultipartParts: multipartPartsFromConfig(config.multipartParts),
+    httpCookieJarId: stringOrEmpty(config.cookieJarId),
     ...draftAuthFields(config.auth),
     headers: pairsFromHeaders(config.headers),
     query: pairsFromQuery(config.query),

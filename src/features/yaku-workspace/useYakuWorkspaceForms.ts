@@ -48,6 +48,7 @@ export function useYakuWorkspaceForms({
   const [workspaceName, setWorkspaceName] = useState("New Workspace");
   const [environmentName, setEnvironmentName] = useState("");
   const [environmentVariablesText, setEnvironmentVariablesText] = useState("{}");
+  const [cookieJarName, setCookieJarName] = useState("Default");
   const [folderName, setFolderName] = useState("New Folder");
   const [folderEditName, setFolderEditName] = useState("");
   const [folderMoveParentId, setFolderMoveParentId] = useState("__root__");
@@ -59,6 +60,7 @@ export function useYakuWorkspaceForms({
   const [requestHttpBodyMode, setRequestHttpBodyMode] = useState("text");
   const [requestHttpBodyFilePath, setRequestHttpBodyFilePath] = useState("");
   const [requestHttpMultipartParts, setRequestHttpMultipartParts] = useState<MultipartPart[]>([]);
+  const [requestHttpCookieJarId, setRequestHttpCookieJarId] = useState("");
   const [requestHttpAuthType, setRequestHttpAuthType] = useState("none");
   const [requestHttpAuthUsername, setRequestHttpAuthUsername] = useState("");
   const [requestHttpAuthPassword, setRequestHttpAuthPassword] = useState("");
@@ -90,6 +92,7 @@ export function useYakuWorkspaceForms({
   const [requestEditHttpMultipartParts, setRequestEditHttpMultipartParts] = useState<
     MultipartPart[]
   >([]);
+  const [requestEditHttpCookieJarId, setRequestEditHttpCookieJarId] = useState("");
   const [requestEditHttpAuthType, setRequestEditHttpAuthType] = useState("none");
   const [requestEditHttpAuthUsername, setRequestEditHttpAuthUsername] = useState("");
   const [requestEditHttpAuthPassword, setRequestEditHttpAuthPassword] = useState("");
@@ -134,6 +137,7 @@ export function useYakuWorkspaceForms({
     setRequestHttpBodyMode(requestProtocol === "graphql" ? "json" : "text");
     setRequestHttpBodyFilePath("");
     setRequestHttpMultipartParts([]);
+    setRequestHttpCookieJarId("");
     setRequestHttpAuthType("none");
     setRequestHttpAuthUsername("");
     setRequestHttpAuthPassword("");
@@ -171,6 +175,7 @@ export function useYakuWorkspaceForms({
     setRequestEditHttpBodyMode(draft.httpBodyMode);
     setRequestEditHttpBodyFilePath(draft.httpBodyFilePath);
     setRequestEditHttpMultipartParts(draft.httpMultipartParts);
+    setRequestEditHttpCookieJarId(draft.httpCookieJarId);
     setRequestEditHttpAuthType(draft.httpAuthType);
     setRequestEditHttpAuthUsername(draft.httpAuthUsername);
     setRequestEditHttpAuthPassword(draft.httpAuthPassword);
@@ -204,6 +209,8 @@ export function useYakuWorkspaceForms({
     setHttpBodyFilePath: setRequestHttpBodyFilePath,
     httpMultipartParts: requestHttpMultipartParts,
     setHttpMultipartParts: setRequestHttpMultipartParts,
+    httpCookieJarId: requestHttpCookieJarId,
+    setHttpCookieJarId: setRequestHttpCookieJarId,
     httpAuthType: requestHttpAuthType,
     setHttpAuthType: setRequestHttpAuthType,
     httpAuthUsername: requestHttpAuthUsername,
@@ -254,6 +261,8 @@ export function useYakuWorkspaceForms({
     setHttpBodyFilePath: setRequestEditHttpBodyFilePath,
     httpMultipartParts: requestEditHttpMultipartParts,
     setHttpMultipartParts: setRequestEditHttpMultipartParts,
+    httpCookieJarId: requestEditHttpCookieJarId,
+    setHttpCookieJarId: setRequestEditHttpCookieJarId,
     httpAuthType: requestEditHttpAuthType,
     setHttpAuthType: setRequestEditHttpAuthType,
     httpAuthUsername: requestEditHttpAuthUsername,
@@ -321,6 +330,8 @@ export function useYakuWorkspaceForms({
     setEnvironmentName,
     environmentVariablesText,
     setEnvironmentVariablesText,
+    cookieJarName,
+    setCookieJarName,
     folderName,
     setFolderName,
     folderEditName,

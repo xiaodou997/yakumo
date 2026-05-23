@@ -4,6 +4,7 @@ import { HStack, VStack } from "../../components/core/Stacks";
 import type {
   YakuBackupImportResponse,
   YakuBackupManifest,
+  YakuCookieJar,
   YakuEnvironment,
   YakuGcReport,
   YakuWorkspace,
@@ -14,6 +15,7 @@ import { FieldLabel, WorkspacePanel } from "./WorkspacePanels";
 export function WorkspaceContextPanel({
   workspaces,
   environments,
+  cookieJars,
   selectedWorkspaceId,
   selectedEnvironmentId,
   workspaceName,
@@ -22,6 +24,8 @@ export function WorkspaceContextPanel({
   setEnvironmentName,
   environmentVariablesText,
   setEnvironmentVariablesText,
+  cookieJarName,
+  setCookieJarName,
   retention,
   gcReport,
   exportResult,
@@ -30,6 +34,7 @@ export function WorkspaceContextPanel({
   isCreatingEnvironment,
   isUpdatingEnvironment,
   isDeletingEnvironment,
+  isCreatingCookieJar,
   isSettingRetention,
   isClearingRetention,
   isGcBodies,
@@ -41,6 +46,7 @@ export function WorkspaceContextPanel({
   onCreateEnvironment,
   onUpdateEnvironment,
   onDeleteEnvironment,
+  onCreateCookieJar,
   onSetRetention,
   onClearRetention,
   onGcBodies,
@@ -49,6 +55,7 @@ export function WorkspaceContextPanel({
 }: {
   workspaces: YakuWorkspace[];
   environments: YakuEnvironment[];
+  cookieJars: YakuCookieJar[];
   selectedWorkspaceId: string | null | undefined;
   selectedEnvironmentId: string | null | undefined;
   workspaceName: string;
@@ -57,6 +64,8 @@ export function WorkspaceContextPanel({
   setEnvironmentName: (value: string) => void;
   environmentVariablesText: string;
   setEnvironmentVariablesText: (value: string) => void;
+  cookieJarName: string;
+  setCookieJarName: (value: string) => void;
   retention: number | null | undefined;
   gcReport?: YakuGcReport;
   exportResult?: YakuBackupManifest;
@@ -65,6 +74,7 @@ export function WorkspaceContextPanel({
   isCreatingEnvironment: boolean;
   isUpdatingEnvironment: boolean;
   isDeletingEnvironment: boolean;
+  isCreatingCookieJar: boolean;
   isSettingRetention: boolean;
   isClearingRetention: boolean;
   isGcBodies: boolean;
@@ -76,6 +86,7 @@ export function WorkspaceContextPanel({
   onCreateEnvironment: () => void;
   onUpdateEnvironment: () => void;
   onDeleteEnvironment: () => void;
+  onCreateCookieJar: () => void;
   onSetRetention: (limit: number) => void;
   onClearRetention: () => void;
   onGcBodies: () => void;
@@ -186,6 +197,36 @@ export function WorkspaceContextPanel({
             {JSON.stringify(selectedEnvironment?.variables ?? {}, null, 2)}
           </pre>
         </div>
+        <form
+          className="rounded-xl border border-border-subtle bg-surface p-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreateCookieJar();
+          }}
+        >
+          <VStack space={2}>
+            <FieldLabel htmlFor="yaku-cookie-jar-name">Cookie Jars</FieldLabel>
+            <input
+              id="yaku-cookie-jar-name"
+              value={cookieJarName}
+              onChange={(event) => setCookieJarName(event.target.value)}
+              className={fieldClassName}
+            />
+            <Button
+              size="xs"
+              type="submit"
+              disabled={selectedWorkspaceId == null}
+              isLoading={isCreatingCookieJar}
+            >
+              Create Cookie Jar
+            </Button>
+            <div className="text-xs leading-5 text-text-subtle">
+              {cookieJars.length === 0
+                ? "No cookie jars in this workspace."
+                : cookieJars.map((jar) => jar.name).join(", ")}
+            </div>
+          </VStack>
+        </form>
         <div className="rounded-xl border border-border-subtle bg-surface p-3">
           <HStack justifyContent="between" alignItems="start" className="gap-3">
             <VStack space={1}>
