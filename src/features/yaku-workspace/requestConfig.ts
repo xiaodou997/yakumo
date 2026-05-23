@@ -9,6 +9,8 @@ export type RequestConfigDraft = {
   httpAuthUsername: string;
   httpAuthPassword: string;
   httpAuthToken: string;
+  httpAuthPasswordSecretId: string;
+  httpAuthTokenSecretId: string;
   headers: ConfigPair[];
   query: ConfigPair[];
   followRedirects: boolean;
@@ -31,6 +33,8 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setHttpAuthUsername: (value: string) => void;
   setHttpAuthPassword: (value: string) => void;
   setHttpAuthToken: (value: string) => void;
+  setHttpAuthPasswordSecretId: (value: string) => void;
+  setHttpAuthTokenSecretId: (value: string) => void;
   setHeaders: (pairs: ConfigPair[]) => void;
   setQuery: (pairs: ConfigPair[]) => void;
   setFollowRedirects: (value: boolean) => void;
@@ -170,13 +174,17 @@ function buildHttpAuth(input: RequestConfigDraft) {
     return {
       type: "basic",
       username: input.httpAuthUsername,
-      password: input.httpAuthPassword,
+      password: input.httpAuthPassword.trim() === "" ? undefined : input.httpAuthPassword,
+      passwordSecretId:
+        input.httpAuthPassword.trim() === "" ? input.httpAuthPasswordSecretId || undefined : undefined,
     };
   }
   if (authType === "bearer") {
     return {
       type: "bearer",
-      token: input.httpAuthToken,
+      token: input.httpAuthToken.trim() === "" ? undefined : input.httpAuthToken,
+      tokenSecretId:
+        input.httpAuthToken.trim() === "" ? input.httpAuthTokenSecretId || undefined : undefined,
     };
   }
   return { type: authType };
@@ -189,6 +197,8 @@ function draftAuthFields(value: unknown) {
       httpAuthUsername: "",
       httpAuthPassword: "",
       httpAuthToken: "",
+      httpAuthPasswordSecretId: "",
+      httpAuthTokenSecretId: "",
     };
   }
   const auth = value as Record<string, unknown>;
@@ -197,6 +207,8 @@ function draftAuthFields(value: unknown) {
     httpAuthUsername: stringOrEmpty(auth.username),
     httpAuthPassword: stringOrEmpty(auth.password),
     httpAuthToken: stringOrEmpty(auth.token),
+    httpAuthPasswordSecretId: stringOrEmpty(auth.passwordSecretId),
+    httpAuthTokenSecretId: stringOrEmpty(auth.tokenSecretId),
   };
 }
 

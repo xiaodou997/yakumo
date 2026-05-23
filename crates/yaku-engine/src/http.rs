@@ -36,7 +36,11 @@ pub struct HttpAuthConfig {
     #[serde(default)]
     pub password: Option<String>,
     #[serde(default)]
+    pub password_secret_id: Option<String>,
+    #[serde(default)]
     pub token: Option<String>,
+    #[serde(default)]
+    pub token_secret_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

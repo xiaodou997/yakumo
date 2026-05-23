@@ -11,7 +11,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use yaku_domain::{
     BodyStorageKind, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,
     FinishRun, MoveRequestNode, Page, Protocol, Request, Run, RunBody, RunEvent, RunEventKind,
-    RunState, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
+    RunState, SecretMetadata, Setting, UpdateEnvironment, UpdateFolder, UpdateRequest, Workspace,
 };
 use yaku_engine::{
     CancellationToken, GrpcEngine, HttpEngine, ReflectionGrpcSender, ReqwestHttpSender,
@@ -24,6 +24,12 @@ use yaku_store::{
 
 const DEFAULT_PAGE_LIMIT: u32 = 100;
 const YAKU_RUN_LIFECYCLE_EVENT: &str = "yaku_run_lifecycle";
+#[cfg(not(test))]
+const YAKU_KEYRING_SERVICE: &str = "yaku.secrets";
+const SECRET_STORAGE_KEYCHAIN: &str = "os_keychain";
+const SECRET_STORAGE_BACKUP_PLAINTEXT: &str = "backup_plaintext";
+#[cfg(test)]
+const SECRET_STORAGE_LOCAL_PLAINTEXT: &str = "local_plaintext";
 
 #[derive(Clone, Default)]
 pub(crate) struct YakuRunRegistry {
@@ -196,6 +202,287 @@ fn load_environment_variables(
     Ok(environment.variables)
 }
 
+fn protect_request_config_secrets(
+    store: &Store,
+    workspace_id: &str,
+    request_name: &str,
+    mut config: BTreeMap<String, Value>,
+) -> Result<BTreeMap<String, Value>> {
+    let Some(Value::Object(auth)) = config.get_mut("auth") else {
+        return Ok(config);
+    };
+    let auth_type =
+        auth.get("type").and_then(Value::as_str).unwrap_or("none").trim().to_ascii_lowercase();
+    match auth_type.as_str() {
+        "" | "none" => {}
+        "basic" => {
+            if let Some(password) = auth.get("password").and_then(Value::as_str) {
+                if !password.is_empty() && password != "<redacted>" {
+                    let secret = upsert_request_secret(
+                        store,
+                        workspace_id,
+                        request_name,
+                        "http_basic_password",
+                        "HTTP basic password",
+                        password,
+                    )?;
+                    auth.insert("passwordSecretId".to_string(), json!(secret.id));
+                }
+                auth.remove("password");
+            }
+        }
+        "bearer" => {
+            if let Some(token) = auth.get("token").and_then(Value::as_str) {
+                if !token.is_empty() && token != "<redacted>" {
+                    let secret = upsert_request_secret(
+                        store,
+                        workspace_id,
+                        request_name,
+                        "http_bearer_token",
+                        "HTTP bearer token",
+                        token,
+                    )?;
+                    auth.insert("tokenSecretId".to_string(), json!(secret.id));
+                }
+                auth.remove("token");
+            }
+        }
+        _ => {}
+    }
+    Ok(config)
+}
+
+fn upsert_request_secret(
+    store: &Store,
+    workspace_id: &str,
+    request_name: &str,
+    kind: &str,
+    label: &str,
+    value: &str,
+) -> Result<SecretMetadata> {
+    let now = Utc::now();
+    let id = prefixed_id("sec");
+    let (ciphertext, storage) = store_secret_value(&id, value)?;
+    let secret = SecretMetadata {
+        id,
+        workspace_id: workspace_id.to_string(),
+        name: format!("{request_name} {label}"),
+        ciphertext,
+        metadata: BTreeMap::from([
+            ("kind".to_string(), json!(kind)),
+            ("storage".to_string(), json!(storage)),
+        ]),
+        created_at: now,
+        updated_at: now,
+    };
+    store.upsert_secret_metadata(&secret).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(secret)
+}
+
+#[cfg(not(test))]
+fn store_secret_value(secret_id: &str, value: &str) -> Result<(String, &'static str)> {
+    let entry = keyring::Entry::new(YAKU_KEYRING_SERVICE, secret_id)
+        .map_err(|e| Error::GenericError(format!("Failed to open OS keychain entry: {e}")))?;
+    entry
+        .set_password(value)
+        .map_err(|e| Error::GenericError(format!("Failed to write OS keychain secret: {e}")))?;
+    Ok((format!("keyring:{YAKU_KEYRING_SERVICE}:{secret_id}"), SECRET_STORAGE_KEYCHAIN))
+}
+
+#[cfg(test)]
+fn store_secret_value(_secret_id: &str, value: &str) -> Result<(String, &'static str)> {
+    Ok((value.to_string(), SECRET_STORAGE_LOCAL_PLAINTEXT))
+}
+
+fn read_secret_value(secret: &SecretMetadata) -> Result<String> {
+    let storage = secret.metadata.get("storage").and_then(Value::as_str).unwrap_or("");
+    if storage == SECRET_STORAGE_KEYCHAIN || secret.ciphertext.starts_with("keyring:") {
+        return read_keyring_secret(&secret.id);
+    }
+    Ok(secret.ciphertext.clone())
+}
+
+#[cfg(not(test))]
+fn read_keyring_secret(secret_id: &str) -> Result<String> {
+    let entry = keyring::Entry::new(YAKU_KEYRING_SERVICE, secret_id)
+        .map_err(|e| Error::GenericError(format!("Failed to open OS keychain entry: {e}")))?;
+    entry
+        .get_password()
+        .map_err(|e| Error::GenericError(format!("Failed to read OS keychain secret: {e}")))
+}
+
+#[cfg(test)]
+fn read_keyring_secret(secret_id: &str) -> Result<String> {
+    Err(Error::GenericError(format!(
+        "Test keyring secret '{secret_id}' should not be read from OS keychain"
+    )))
+}
+
+fn delete_secret_value(secret: &SecretMetadata) -> Result<()> {
+    let storage = secret.metadata.get("storage").and_then(Value::as_str).unwrap_or("");
+    if storage == SECRET_STORAGE_KEYCHAIN || secret.ciphertext.starts_with("keyring:") {
+        delete_keyring_secret(&secret.id)?;
+    }
+    Ok(())
+}
+
+fn hydrate_backup_secrets_for_export(backup: &mut WorkspaceBackup) -> Result<()> {
+    for secret in &mut backup.secrets {
+        let value = read_secret_value(secret)?;
+        secret.ciphertext = value;
+        secret.metadata.insert("storage".to_string(), json!(SECRET_STORAGE_BACKUP_PLAINTEXT));
+    }
+    backup.content_hash = String::new();
+    backup.content_hash = yaku_store::compute_workspace_backup_content_hash(backup)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(())
+}
+
+fn protect_backup_secrets_for_import(backup: &mut WorkspaceBackup) -> Result<()> {
+    for secret in &mut backup.secrets {
+        let value = backup_plaintext_secret_value(secret)?;
+        let (ciphertext, storage) = store_secret_value(&secret.id, &value)?;
+        secret.ciphertext = ciphertext;
+        secret.metadata.insert("storage".to_string(), json!(storage));
+    }
+    backup.content_hash = String::new();
+    backup.content_hash = yaku_store::compute_workspace_backup_content_hash(backup)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(())
+}
+
+fn backup_plaintext_secret_value(secret: &SecretMetadata) -> Result<String> {
+    let storage = secret.metadata.get("storage").and_then(Value::as_str).unwrap_or("");
+    if storage == SECRET_STORAGE_KEYCHAIN || secret.ciphertext.starts_with("keyring:") {
+        return Err(Error::GenericError(format!(
+            "Yaku backup secret '{}' does not contain portable plaintext secret data",
+            secret.id
+        )));
+    }
+    Ok(secret.ciphertext.clone())
+}
+
+#[cfg(not(test))]
+fn delete_keyring_secret(secret_id: &str) -> Result<()> {
+    let entry = keyring::Entry::new(YAKU_KEYRING_SERVICE, secret_id)
+        .map_err(|e| Error::GenericError(format!("Failed to open OS keychain entry: {e}")))?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(err) => Err(Error::GenericError(format!("Failed to delete OS keychain secret: {err}"))),
+    }
+}
+
+#[cfg(test)]
+fn delete_keyring_secret(_secret_id: &str) -> Result<()> {
+    Ok(())
+}
+
+fn resolve_request_config_secrets(
+    store: &Store,
+    mut config: BTreeMap<String, Value>,
+) -> Result<BTreeMap<String, Value>> {
+    let Some(Value::Object(auth)) = config.get_mut("auth") else {
+        return Ok(config);
+    };
+    if auth.get("password").is_none() {
+        if let Some(secret_id) = auth.get("passwordSecretId").and_then(Value::as_str) {
+            let secret = store
+                .get_secret_metadata(secret_id)
+                .map_err(|e| Error::GenericError(e.to_string()))?
+                .ok_or_else(|| Error::GenericError(format!("Secret '{secret_id}' not found")))?;
+            auth.insert("password".to_string(), json!(read_secret_value(&secret)?));
+        }
+    }
+    if auth.get("token").is_none() {
+        if let Some(secret_id) = auth.get("tokenSecretId").and_then(Value::as_str) {
+            let secret = store
+                .get_secret_metadata(secret_id)
+                .map_err(|e| Error::GenericError(e.to_string()))?
+                .ok_or_else(|| Error::GenericError(format!("Secret '{secret_id}' not found")))?;
+            auth.insert("token".to_string(), json!(read_secret_value(&secret)?));
+        }
+    }
+    Ok(config)
+}
+
+fn collect_auth_secret_ids(config: &BTreeMap<String, Value>) -> Vec<String> {
+    let Some(Value::Object(auth)) = config.get("auth") else {
+        return Vec::new();
+    };
+    let mut ids = Vec::new();
+    if let Some(secret_id) = auth.get("passwordSecretId").and_then(Value::as_str) {
+        ids.push(secret_id.to_string());
+    }
+    if let Some(secret_id) = auth.get("tokenSecretId").and_then(Value::as_str) {
+        ids.push(secret_id.to_string());
+    }
+    ids
+}
+
+fn cleanup_secret_ids(store: &Store, secret_ids: impl IntoIterator<Item = String>) -> Result<()> {
+    for secret_id in secret_ids {
+        cleanup_request_secret_ref(store, &secret_id)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+fn cleanup_request_secret_refs(store: &Store, config: &BTreeMap<String, Value>) -> Result<()> {
+    cleanup_secret_ids(store, collect_auth_secret_ids(config))
+}
+
+fn cleanup_request_secret_ref(store: &Store, secret_id: &str) -> Result<()> {
+    if let Some(secret) =
+        store.get_secret_metadata(secret_id).map_err(|e| Error::GenericError(e.to_string()))?
+    {
+        delete_secret_value(&secret)?;
+    }
+    store.delete_secret_metadata(secret_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(())
+}
+
+fn collect_request_node_subtree_secret_ids(store: &Store, node_id: &str) -> Result<Vec<String>> {
+    let Some(root) =
+        store.get_request_node(node_id).map_err(|e| Error::GenericError(e.to_string()))?
+    else {
+        return Ok(Vec::new());
+    };
+    let tree = store
+        .list_request_tree(&root.workspace_id)
+        .map_err(|e| Error::GenericError(e.to_string()))?;
+    let mut subtree_node_ids = BTreeSet::from([node_id.to_string()]);
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for node in &tree {
+            if let Some(parent_id) = &node.parent_id {
+                if subtree_node_ids.contains(parent_id) && subtree_node_ids.insert(node.id.clone())
+                {
+                    changed = true;
+                }
+            }
+        }
+    }
+    let mut secret_ids = BTreeSet::new();
+    for node in tree {
+        if !subtree_node_ids.contains(&node.id) {
+            continue;
+        }
+        let Some(request_id) = node.request_id else {
+            continue;
+        };
+        if let Some(request) =
+            store.get_request(&request_id).map_err(|e| Error::GenericError(e.to_string()))?
+        {
+            for secret_id in collect_auth_secret_ids(&request.config) {
+                secret_ids.insert(secret_id);
+            }
+        }
+    }
+    Ok(secret_ids.into_iter().collect())
+}
+
 fn workspace_run_retention(store: &Store, workspace_id: &str) -> Result<Option<u32>> {
     let Some(setting) = store
         .get_setting(&workspace_run_retention_key(workspace_id))
@@ -320,17 +607,17 @@ fn send_request_inner(
         .map_err(|e| Error::GenericError(e.to_string()))?
         .ok_or_else(|| Error::GenericError(format!("Request '{request_id}' not found")))?;
 
-    let config_override = match environment_id.as_deref() {
-        Some(environment_id) => Some(
-            render_config(
-                request.config.clone(),
-                &load_environment_variables(service.repository(), environment_id)
-                    .map_err(Error::GenericError)?,
-            )
-            .map_err(|e| Error::GenericError(e.to_string()))?,
-        ),
-        None => None,
+    let rendered_config = match environment_id.as_deref() {
+        Some(environment_id) => render_config(
+            request.config.clone(),
+            &load_environment_variables(service.repository(), environment_id)
+                .map_err(Error::GenericError)?,
+        )
+        .map_err(|e| Error::GenericError(e.to_string()))?,
+        None => request.config.clone(),
     };
+    let config_override =
+        Some(resolve_request_config_secrets(service.repository(), rendered_config)?);
 
     let bodies_dir = bodies_dir(&data_dir);
     let cancellation = cancellation.unwrap_or_else(CancellationToken::new);
@@ -667,20 +954,27 @@ pub(crate) fn cmd_yaku_request_create<R: Runtime>(
 ) -> Result<Request> {
     let store = open_store(&app_handle)?;
     let service = yaku_domain::DomainService::new(store);
-    service
-        .create_request(CreateRequest {
-            id: prefixed_id("rq"),
-            node_id: prefixed_id("node"),
-            workspace_id,
-            parent_id,
-            protocol,
-            name,
-            description: description.unwrap_or_default(),
-            config,
-            sort_key: sort_key.unwrap_or_else(default_sort_key),
-            now: Utc::now(),
-        })
-        .map_err(|e| Error::GenericError(e.to_string()))
+    let config =
+        protect_request_config_secrets(service.repository(), &workspace_id, &name, config)?;
+    let new_secret_ids = collect_auth_secret_ids(&config);
+    match service.create_request(CreateRequest {
+        id: prefixed_id("rq"),
+        node_id: prefixed_id("node"),
+        workspace_id,
+        parent_id,
+        protocol,
+        name,
+        description: description.unwrap_or_default(),
+        config,
+        sort_key: sort_key.unwrap_or_else(default_sort_key),
+        now: Utc::now(),
+    }) {
+        Ok(request) => Ok(request),
+        Err(err) => {
+            cleanup_secret_ids(service.repository(), new_secret_ids)?;
+            Err(Error::GenericError(err.to_string()))
+        }
+    }
 }
 
 #[tauri::command]
@@ -693,15 +987,70 @@ pub(crate) fn cmd_yaku_request_update<R: Runtime>(
 ) -> Result<Request> {
     let store = open_store(&app_handle)?;
     let service = yaku_domain::DomainService::new(store);
-    service
-        .update_request(UpdateRequest {
-            id: request_id,
-            name,
-            description,
-            config,
-            now: Utc::now(),
-        })
-        .map_err(|e| Error::GenericError(e.to_string()))
+    let mut stale_new_secret_ids = Vec::new();
+    let config = match config {
+        Some(config) => {
+            let request = service
+                .repository()
+                .get_request(&request_id)
+                .map_err(|e| Error::GenericError(e.to_string()))?
+                .ok_or_else(|| Error::GenericError(format!("Request '{request_id}' not found")))?;
+            let secret_name = name.as_deref().unwrap_or(&request.name);
+            let protected = protect_request_config_secrets(
+                service.repository(),
+                &request.workspace_id,
+                secret_name,
+                config,
+            )?;
+            stale_new_secret_ids = collect_auth_secret_ids(&protected);
+            for old_id in collect_auth_secret_ids(&request.config) {
+                stale_new_secret_ids.retain(|new_id| new_id != &old_id);
+            }
+            Some(protected)
+        }
+        None => None,
+    };
+    let previous_config = match config.as_ref() {
+        Some(_) => service
+            .repository()
+            .get_request(&request_id)
+            .map_err(|e| Error::GenericError(e.to_string()))?
+            .map(|request| request.config),
+        None => None,
+    };
+    let updated = match service.update_request(UpdateRequest {
+        id: request_id,
+        name,
+        description,
+        config,
+        now: Utc::now(),
+    }) {
+        Ok(request) => request,
+        Err(err) => {
+            cleanup_secret_ids(service.repository(), stale_new_secret_ids)?;
+            return Err(Error::GenericError(err.to_string()));
+        }
+    };
+    if let Some(previous_config) = previous_config {
+        let old_ids = collect_auth_secret_ids(&previous_config);
+        let new_ids = collect_auth_secret_ids(&updated.config);
+        for secret_id in old_ids {
+            if !new_ids.contains(&secret_id) {
+                if let Some(secret) = service
+                    .repository()
+                    .get_secret_metadata(&secret_id)
+                    .map_err(|e| Error::GenericError(e.to_string()))?
+                {
+                    delete_secret_value(&secret)?;
+                }
+                service
+                    .repository()
+                    .delete_secret_metadata(&secret_id)
+                    .map_err(|e| Error::GenericError(e.to_string()))?;
+            }
+        }
+    }
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -731,7 +1080,9 @@ pub(crate) fn cmd_yaku_request_node_delete<R: Runtime>(
     let data_dir = app_data_dir(&app_handle)?;
     let store = open_store_from_dir(&data_dir)?;
     let service = yaku_domain::DomainService::new(store);
+    let secret_ids = collect_request_node_subtree_secret_ids(service.repository(), &node_id)?;
     service.delete_request_node(&node_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    cleanup_secret_ids(service.repository(), secret_ids)?;
     let body_gc = gc_body_files(service.repository(), &bodies_dir(&data_dir), false)?;
     Ok(DeleteResponse { deleted: true, body_gc: Some(body_gc) })
 }
@@ -919,9 +1270,10 @@ pub(crate) fn cmd_yaku_backup_export<R: Runtime>(
 ) -> Result<BackupManifest> {
     path_guard::writable_parent(&PathBuf::from(&export_path), "Yaku backup export path")?;
     let store = open_store(&app_handle)?;
-    let backup = store
+    let mut backup = store
         .export_workspace_backup(&workspace_id)
         .map_err(|e| Error::GenericError(e.to_string()))?;
+    hydrate_backup_secrets_for_export(&mut backup)?;
     let f = File::options()
         .create(true)
         .truncate(true)
@@ -956,8 +1308,10 @@ pub(crate) fn cmd_yaku_backup_import<R: Runtime>(
     let store = open_store(&app_handle)?;
     let f = File::open(&file_path)
         .map_err(|e| Error::GenericError(format!("Unable to open Yaku backup: {e}")))?;
-    let backup: WorkspaceBackup = serde_json::from_reader(f)
+    let mut backup: WorkspaceBackup = serde_json::from_reader(f)
         .map_err(|e| Error::GenericError(format!("Unable to parse Yaku backup: {e}")))?;
+    store.verify_workspace_backup(&backup).map_err(|e| Error::GenericError(e.to_string()))?;
+    protect_backup_secrets_for_import(&mut backup)?;
     store.verify_workspace_backup(&backup).map_err(|e| Error::GenericError(e.to_string()))?;
     let workspace = backup.workspace.clone();
     let content_hash = backup.content_hash.clone();
@@ -1210,5 +1564,61 @@ mod tests {
 
         assert_eq!(response.next_cursor, Some(2));
         assert_eq!(response.items.len(), 2);
+    }
+
+    #[test]
+    fn request_auth_secret_is_extracted_resolved_and_cleaned_up() {
+        let store = Store::open_in_memory().expect("store opens");
+        let service = yaku_domain::DomainService::new(store);
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_secret".to_string(),
+                name: "Secrets".to_string(),
+                description: String::new(),
+                now: Utc::now(),
+            })
+            .expect("workspace created");
+        let config = BTreeMap::from([
+            ("method".to_string(), json!("GET")),
+            ("url".to_string(), json!("https://example.test")),
+            (
+                "auth".to_string(),
+                json!({
+                    "type": "basic",
+                    "username": "alice",
+                    "password": "open-sesame",
+                }),
+            ),
+        ]);
+
+        let protected = protect_request_config_secrets(
+            service.repository(),
+            &workspace.id,
+            "Private Request",
+            config,
+        )
+        .expect("config protected");
+        let auth = protected["auth"].as_object().expect("auth object");
+        assert!(auth.get("password").is_none());
+        let secret_id = auth["passwordSecretId"].as_str().expect("secret id");
+        let secret = service
+            .repository()
+            .get_secret_metadata(secret_id)
+            .expect("secret get")
+            .expect("secret exists");
+        assert_eq!(secret.ciphertext, "open-sesame");
+
+        let resolved = resolve_request_config_secrets(service.repository(), protected.clone())
+            .expect("resolved");
+        assert_eq!(resolved["auth"]["password"], json!("open-sesame"));
+
+        cleanup_request_secret_refs(service.repository(), &protected).expect("cleanup");
+        assert!(
+            service
+                .repository()
+                .get_secret_metadata(secret_id)
+                .expect("secret get after cleanup")
+                .is_none()
+        );
     }
 }

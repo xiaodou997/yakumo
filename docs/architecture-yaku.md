@@ -159,6 +159,13 @@ Required schema adjustments before main UI cutover:
   SSE instead of exposing `BTreeMap<String, Value>` as the long-term domain API.
 - Add app-level settings records that replace old `Settings`. Baseline Yaku app
   settings now use the `settings` table under the `app.settings` key.
+- HTTP auth secrets are extracted from request config into the `secrets` table.
+  Request config stores `passwordSecretId` / `tokenSecretId` references, and
+  Tauri resolves those references only when sending a request. The current
+  storage is local plaintext in the `ciphertext` column; replacing this with
+  OS keychain-backed encryption remains follow-up work.
+- Workspace backups are format v2 and include `secrets`, so request auth secret
+  references survive export/import.
 - Add workspace UI state records for active environment, recent requests, and
   layout state.
 
@@ -342,11 +349,14 @@ Phase 6: Rebuild optional capabilities.
 - One-way legacy importer, if wanted.
 - Yaku backup/export/import. Baseline native workspace backup import/export is
   implemented through `cmd_yaku_backup_export` and `cmd_yaku_backup_import`.
+  Backup format v2 includes workspace secrets.
   Legacy AnyModel import/export dialogs, commands, and the old importer module
   are removed from the desktop surface. `import-data` deep-link handling is also
   removed; Yaku backup import/export is the only supported desktop backup path.
 - Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
-  implemented through `app.settings`; secrets remain follow-up work.
+  implemented through `app.settings`. Auth values now use the Yaku secrets table,
+  but a dedicated secrets management UI and OS keychain-backed encryption remain
+  follow-up work.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
   the Yaku-native command path. Top-level `workspace`, `request`, `folder`,
   `environment`, `run`, `backup`, and `send` commands now use Yaku-native

@@ -59,6 +59,8 @@ export function useYakuWorkspaceForms({
   const [requestHttpAuthUsername, setRequestHttpAuthUsername] = useState("");
   const [requestHttpAuthPassword, setRequestHttpAuthPassword] = useState("");
   const [requestHttpAuthToken, setRequestHttpAuthToken] = useState("");
+  const [requestHttpAuthPasswordSecretId, setRequestHttpAuthPasswordSecretId] = useState("");
+  const [requestHttpAuthTokenSecretId, setRequestHttpAuthTokenSecretId] = useState("");
   const [requestHeaders, setRequestHeaders] = useState<ConfigPair[]>([]);
   const [requestQueryParams, setRequestQueryParams] = useState<ConfigPair[]>([]);
   const [requestFollowRedirects, setRequestFollowRedirects] = useState(true);
@@ -83,6 +85,9 @@ export function useYakuWorkspaceForms({
   const [requestEditHttpAuthUsername, setRequestEditHttpAuthUsername] = useState("");
   const [requestEditHttpAuthPassword, setRequestEditHttpAuthPassword] = useState("");
   const [requestEditHttpAuthToken, setRequestEditHttpAuthToken] = useState("");
+  const [requestEditHttpAuthPasswordSecretId, setRequestEditHttpAuthPasswordSecretId] =
+    useState("");
+  const [requestEditHttpAuthTokenSecretId, setRequestEditHttpAuthTokenSecretId] = useState("");
   const [requestEditHeaders, setRequestEditHeaders] = useState<ConfigPair[]>([]);
   const [requestEditQueryParams, setRequestEditQueryParams] = useState<ConfigPair[]>([]);
   const [requestEditFollowRedirects, setRequestEditFollowRedirects] = useState(true);
@@ -121,6 +126,8 @@ export function useYakuWorkspaceForms({
     setRequestHttpAuthUsername("");
     setRequestHttpAuthPassword("");
     setRequestHttpAuthToken("");
+    setRequestHttpAuthPasswordSecretId("");
+    setRequestHttpAuthTokenSecretId("");
     setRequestHeaders([]);
     setRequestQueryParams([]);
     setRequestFollowRedirects(true);
@@ -153,6 +160,8 @@ export function useYakuWorkspaceForms({
     setRequestEditHttpAuthUsername(draft.httpAuthUsername);
     setRequestEditHttpAuthPassword(draft.httpAuthPassword);
     setRequestEditHttpAuthToken(draft.httpAuthToken);
+    setRequestEditHttpAuthPasswordSecretId(draft.httpAuthPasswordSecretId);
+    setRequestEditHttpAuthTokenSecretId(draft.httpAuthTokenSecretId);
     setRequestEditHeaders(draft.headers);
     setRequestEditQueryParams(draft.query);
     setRequestEditFollowRedirects(draft.followRedirects);
@@ -182,6 +191,10 @@ export function useYakuWorkspaceForms({
     setHttpAuthPassword: setRequestHttpAuthPassword,
     httpAuthToken: requestHttpAuthToken,
     setHttpAuthToken: setRequestHttpAuthToken,
+    httpAuthPasswordSecretId: requestHttpAuthPasswordSecretId,
+    setHttpAuthPasswordSecretId: setRequestHttpAuthPasswordSecretId,
+    httpAuthTokenSecretId: requestHttpAuthTokenSecretId,
+    setHttpAuthTokenSecretId: setRequestHttpAuthTokenSecretId,
     headers: requestHeaders,
     setHeaders: setRequestHeaders,
     query: requestQueryParams,
@@ -222,6 +235,10 @@ export function useYakuWorkspaceForms({
     setHttpAuthPassword: setRequestEditHttpAuthPassword,
     httpAuthToken: requestEditHttpAuthToken,
     setHttpAuthToken: setRequestEditHttpAuthToken,
+    httpAuthPasswordSecretId: requestEditHttpAuthPasswordSecretId,
+    setHttpAuthPasswordSecretId: setRequestEditHttpAuthPasswordSecretId,
+    httpAuthTokenSecretId: requestEditHttpAuthTokenSecretId,
+    setHttpAuthTokenSecretId: setRequestEditHttpAuthTokenSecretId,
     headers: requestEditHeaders,
     setHeaders: setRequestEditHeaders,
     query: requestEditQueryParams,
@@ -301,6 +318,10 @@ export function useYakuWorkspaceForms({
     setRequestHttpAuthPassword,
     requestHttpAuthToken,
     setRequestHttpAuthToken,
+    requestHttpAuthPasswordSecretId,
+    setRequestHttpAuthPasswordSecretId,
+    requestHttpAuthTokenSecretId,
+    setRequestHttpAuthTokenSecretId,
     requestHeaders,
     setRequestHeaders,
     requestQueryParams,
@@ -349,6 +370,10 @@ export function useYakuWorkspaceForms({
     setRequestEditHttpAuthPassword,
     requestEditHttpAuthToken,
     setRequestEditHttpAuthToken,
+    requestEditHttpAuthPasswordSecretId,
+    setRequestEditHttpAuthPasswordSecretId,
+    requestEditHttpAuthTokenSecretId,
+    setRequestEditHttpAuthTokenSecretId,
     requestEditHeaders,
     setRequestEditHeaders,
     requestEditQueryParams,

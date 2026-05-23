@@ -29,6 +29,7 @@ chrono = { workspace = true, features = ["serde"] }
 cookie = "0.18.1"
 eventsource-client = { git = "https://github.com/yaakapp/rust-eventsource-client", version = "0.14.0" }
 http = { version = "1.4.0", default-features = false }
+keyring = { workspace = true }
 log = { workspace = true }
 md5 = "0.8.0"
 pretty_graphql = "0.2"

@@ -38,6 +38,8 @@ export function RequestStructuredEditor({
             setHttpAuthPassword={draft.setHttpAuthPassword}
             httpAuthToken={draft.httpAuthToken}
             setHttpAuthToken={draft.setHttpAuthToken}
+            httpAuthPasswordSecretId={draft.httpAuthPasswordSecretId}
+            httpAuthTokenSecretId={draft.httpAuthTokenSecretId}
             headers={draft.headers}
             setHeaders={draft.setHeaders}
             query={draft.query}

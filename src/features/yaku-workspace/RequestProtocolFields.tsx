@@ -15,6 +15,8 @@ export function HttpGraphqlFields({
   setHttpAuthPassword,
   httpAuthToken,
   setHttpAuthToken,
+  httpAuthPasswordSecretId,
+  httpAuthTokenSecretId,
   headers,
   setHeaders,
   query,
@@ -37,6 +39,8 @@ export function HttpGraphqlFields({
   setHttpAuthPassword: (value: string) => void;
   httpAuthToken: string;
   setHttpAuthToken: (value: string) => void;
+  httpAuthPasswordSecretId: string;
+  httpAuthTokenSecretId: string;
   headers: ConfigPair[];
   setHeaders: (pairs: ConfigPair[]) => void;
   query: ConfigPair[];
@@ -72,6 +76,8 @@ export function HttpGraphqlFields({
         setPassword={setHttpAuthPassword}
         token={httpAuthToken}
         setToken={setHttpAuthToken}
+        passwordSecretId={httpAuthPasswordSecretId}
+        tokenSecretId={httpAuthTokenSecretId}
       />
       <PairListEditor
         title="Headers"
@@ -110,6 +116,8 @@ function HttpAuthFields({
   setPassword,
   token,
   setToken,
+  passwordSecretId,
+  tokenSecretId,
 }: {
   authType: string;
   setAuthType: (value: string) => void;
@@ -119,6 +127,8 @@ function HttpAuthFields({
   setPassword: (value: string) => void;
   token: string;
   setToken: (value: string) => void;
+  passwordSecretId: string;
+  tokenSecretId: string;
 }) {
   return (
     <div className="rounded-xl border border-border-subtle bg-surface p-3">
@@ -149,6 +159,9 @@ function HttpAuthFields({
           />
         </div>
       ) : null}
+      {authType === "basic" && password === "" && passwordSecretId !== "" ? (
+        <div className="mt-2 text-[11px] text-text-subtle">Password stored as secret.</div>
+      ) : null}
       {authType === "bearer" ? (
         <input
           value={token}
@@ -157,6 +170,9 @@ function HttpAuthFields({
           type="password"
           className={`${fieldClassName} mt-3`}
         />
+      ) : null}
+      {authType === "bearer" && token === "" && tokenSecretId !== "" ? (
+        <div className="mt-2 text-[11px] text-text-subtle">Token stored as secret.</div>
       ) : null}
     </div>
   );

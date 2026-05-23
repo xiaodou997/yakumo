@@ -36,6 +36,8 @@ pub struct Store {
     conn: Connection,
 }
 
+const WORKSPACE_BACKUP_FORMAT_VERSION: u32 = 2;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceBackup {
@@ -46,6 +48,7 @@ pub struct WorkspaceBackup {
     pub environments: Vec<Environment>,
     pub request_tree: Vec<RequestNode>,
     pub requests: Vec<Request>,
+    pub secrets: Vec<SecretMetadata>,
     pub run_retention: Option<u32>,
 }
 
@@ -67,6 +70,7 @@ struct WorkspaceBackupContent<'a> {
     environments: &'a [Environment],
     request_tree: &'a [RequestNode],
     requests: &'a [Request],
+    secrets: &'a [SecretMetadata],
     run_retention: Option<u32>,
 }
 
@@ -138,15 +142,18 @@ impl Store {
             })
             .collect::<Result<Vec<_>>>()?;
         requests.sort_by(|left, right| left.id.cmp(&right.id));
+        let mut secrets = self.list_secret_metadata(workspace_id)?;
+        secrets.sort_by(|left, right| left.id.cmp(&right.id));
 
         let mut backup = WorkspaceBackup {
-            format_version: 1,
+            format_version: WORKSPACE_BACKUP_FORMAT_VERSION,
             exported_at: Utc::now(),
             content_hash: String::new(),
             workspace,
             environments,
             request_tree,
             requests,
+            secrets,
             run_retention: workspace_run_retention(self, workspace_id)?,
         };
         backup.content_hash = compute_workspace_backup_content_hash(&backup)?;
@@ -333,6 +340,10 @@ impl Store {
 
         for environment in &backup.environments {
             upsert_environment_tx(&tx, environment)?;
+        }
+
+        for secret in &backup.secrets {
+            upsert_secret_metadata_tx(&tx, secret)?;
         }
 
         let mut inserted_node_ids = BTreeSet::new();
@@ -1028,6 +1039,26 @@ impl Store {
         rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
     }
 
+    pub fn get_secret_metadata(&self, id: &str) -> Result<Option<SecretMetadata>> {
+        self.conn
+            .query_row(
+                r#"
+                    SELECT id, workspace_id, name, ciphertext, metadata, created_at, updated_at
+                    FROM secrets
+                    WHERE id = ?1
+                "#,
+                [id],
+                row_to_secret_metadata,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    pub fn delete_secret_metadata(&self, id: &str) -> Result<bool> {
+        let deleted = self.conn.execute("DELETE FROM secrets WHERE id = ?1", [id])?;
+        Ok(deleted > 0)
+    }
+
     pub fn upsert_run_body(&self, body: &RunBody) -> Result<()> {
         self.conn.execute(
             r#"
@@ -1238,7 +1269,7 @@ fn domain_error(err: Error) -> yaku_domain::Error {
 }
 
 fn validate_workspace_backup(backup: &WorkspaceBackup) -> Result<String> {
-    if backup.format_version != 1 {
+    if backup.format_version != WORKSPACE_BACKUP_FORMAT_VERSION {
         return Err(Error::InvalidBackup(format!(
             "unsupported workspace backup format version {}",
             backup.format_version
@@ -1338,6 +1369,22 @@ fn validate_workspace_backup(backup: &WorkspaceBackup) -> Result<String> {
         )));
     }
 
+    let mut secret_ids = BTreeSet::new();
+    for secret in &backup.secrets {
+        if secret.workspace_id != workspace_id {
+            return Err(Error::InvalidBackup(format!(
+                "secret '{}' belongs to workspace '{}', expected '{}'",
+                secret.id, secret.workspace_id, workspace_id
+            )));
+        }
+        if !secret_ids.insert(secret.id.clone()) {
+            return Err(Error::InvalidBackup(format!(
+                "duplicate secret id '{}' in workspace backup",
+                secret.id
+            )));
+        }
+    }
+
     let computed_hash = compute_workspace_backup_content_hash(backup)?;
     if backup.content_hash != computed_hash {
         return Err(Error::InvalidBackup(format!(
@@ -1349,13 +1396,14 @@ fn validate_workspace_backup(backup: &WorkspaceBackup) -> Result<String> {
     Ok(computed_hash)
 }
 
-fn compute_workspace_backup_content_hash(backup: &WorkspaceBackup) -> Result<String> {
+pub fn compute_workspace_backup_content_hash(backup: &WorkspaceBackup) -> Result<String> {
     let content = WorkspaceBackupContent {
         format_version: backup.format_version,
         workspace: &backup.workspace,
         environments: &backup.environments,
         request_tree: &backup.request_tree,
         requests: &backup.requests,
+        secrets: &backup.secrets,
         run_retention: backup.run_retention,
     };
     let json = serde_json::to_vec(&content)?;
@@ -1571,6 +1619,35 @@ fn upsert_setting_tx(tx: &rusqlite::Transaction<'_>, setting: &Setting) -> Resul
             setting.key,
             serde_json::to_string(&setting.value)?,
             setting.updated_at.to_rfc3339()
+        ],
+    )?;
+    Ok(())
+}
+
+fn upsert_secret_metadata_tx(
+    tx: &rusqlite::Transaction<'_>,
+    secret: &SecretMetadata,
+) -> Result<()> {
+    tx.execute(
+        r#"
+            INSERT INTO secrets
+                (id, workspace_id, name, ciphertext, metadata, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            ON CONFLICT(id) DO UPDATE SET
+                workspace_id = excluded.workspace_id,
+                name = excluded.name,
+                ciphertext = excluded.ciphertext,
+                metadata = excluded.metadata,
+                updated_at = excluded.updated_at
+        "#,
+        params![
+            secret.id,
+            secret.workspace_id,
+            secret.name,
+            secret.ciphertext,
+            serde_json::to_string(&secret.metadata)?,
+            secret.created_at.to_rfc3339(),
+            secret.updated_at.to_rfc3339(),
         ],
     )?;
     Ok(())
@@ -2158,6 +2235,11 @@ mod tests {
         let secrets = store.list_secret_metadata(&workspace.id).expect("secret list");
         assert_eq!(secrets.len(), 1);
         assert_eq!(secrets[0].name, "API token");
+        let loaded_secret =
+            store.get_secret_metadata(&secret.id).expect("secret get").expect("secret exists");
+        assert_eq!(loaded_secret.ciphertext, "encrypted");
+        assert!(store.delete_secret_metadata(&secret.id).expect("secret delete"));
+        assert!(store.get_secret_metadata(&secret.id).expect("secret get after delete").is_none());
 
         let request = Request {
             id: "rq_v2".to_string(),
@@ -2346,6 +2428,81 @@ mod tests {
         assert!(store.delete_run("run_v2").expect("run delete"));
         assert!(store.get_run("run_v2").expect("run read").is_none());
         assert!(store.list_run_events("run_v2", Page::first(10)).expect("events").is_empty());
+    }
+
+    #[test]
+    fn workspace_backup_exports_and_imports_secrets() {
+        let store = Store::open_in_memory().expect("store opens");
+        let now = Utc::now();
+        let workspace = Workspace {
+            id: "wk_secret_backup".to_string(),
+            name: "Secrets".to_string(),
+            description: String::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_workspace(&workspace).expect("workspace upsert");
+
+        let request = Request {
+            id: "rq_secret_backup".to_string(),
+            workspace_id: workspace.id.clone(),
+            protocol: Protocol::Http,
+            name: "Private".to_string(),
+            description: String::new(),
+            config: BTreeMap::from([
+                ("method".to_string(), json!("GET")),
+                ("url".to_string(), json!("https://example.test")),
+                (
+                    "auth".to_string(),
+                    json!({
+                        "type": "bearer",
+                        "tokenSecretId": "sec_secret_backup",
+                    }),
+                ),
+            ]),
+            created_at: now,
+            updated_at: now,
+        };
+        let node = RequestNode {
+            id: "node_secret_backup".to_string(),
+            workspace_id: workspace.id.clone(),
+            parent_id: None,
+            request_id: Some(request.id.clone()),
+            kind: RequestNodeKind::Request,
+            name: request.name.clone(),
+            sort_key: "a".to_string(),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_request(&request, &node).expect("request upsert");
+        store
+            .upsert_secret_metadata(&SecretMetadata {
+                id: "sec_secret_backup".to_string(),
+                workspace_id: workspace.id.clone(),
+                name: "Private HTTP bearer token".to_string(),
+                ciphertext: "secret-token".to_string(),
+                metadata: BTreeMap::from([("kind".to_string(), json!("http_bearer_token"))]),
+                created_at: now,
+                updated_at: now,
+            })
+            .expect("secret upsert");
+
+        let backup = store.export_workspace_backup(&workspace.id).expect("backup export");
+        assert_eq!(backup.format_version, WORKSPACE_BACKUP_FORMAT_VERSION);
+        assert_eq!(backup.secrets.len(), 1);
+        assert_eq!(backup.secrets[0].ciphertext, "secret-token");
+        store.verify_workspace_backup(&backup).expect("backup verifies");
+
+        let imported = Store::open_in_memory().expect("import store opens");
+        imported.import_workspace_backup(&backup, false).expect("backup import");
+        let imported_secret = imported
+            .get_secret_metadata("sec_secret_backup")
+            .expect("secret get")
+            .expect("secret exists");
+        assert_eq!(imported_secret.ciphertext, "secret-token");
+        let imported_request =
+            imported.get_request(&request.id).expect("request get").expect("request exists");
+        assert_eq!(imported_request.config["auth"]["tokenSecretId"], json!("sec_secret_backup"));
     }
 
     #[test]
