@@ -412,8 +412,10 @@ fn yaku_backup_exports_workspace_core_data() {
         .args(["backup", "export-workspace", &workspace_id])
         .assert()
         .success()
-        .stdout(contains("\"formatVersion\": 2"))
+        .stdout(contains("\"formatVersion\": 3"))
         .stdout(contains("\"runRetention\": 7"))
+        .stdout(contains("\"cookieJars\": []"))
+        .stdout(contains("\"cookies\": []"))
         .stdout(contains("\"Backup Workspace\""))
         .stdout(contains("\"Local\""))
         .stdout(contains("${[ base_url ]}/health"));

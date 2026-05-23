@@ -7,9 +7,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use tokio_util::sync::CancellationToken;
 use yaku_domain::{
-    AppendRunEvent, BodyRole, CreateRun, DomainService, FinishRun, Protocol, RecordRunBody,
-    RequestRepository, Run, RunBodyRepository, RunEventKind, RunRepository, RunState,
-    WorkspaceRepository,
+    AppendRunEvent, BodyRole, CookieRecord, CookieRepository, CreateRun, DomainService, FinishRun,
+    Protocol, RecordRunBody, RequestRepository, Run, RunBodyRepository, RunEventKind,
+    RunRepository, RunState, WorkspaceRepository,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -82,6 +82,8 @@ pub struct HttpRequestConfig {
     pub multipart_parts: Vec<HttpMultipartPart>,
     #[serde(default)]
     pub auth: Option<HttpAuthConfig>,
+    #[serde(default)]
+    pub cookie_jar_id: Option<String>,
     #[serde(default = "default_true")]
     pub follow_redirects: bool,
     #[serde(default)]
@@ -225,7 +227,11 @@ where
 {
     pub fn send<R>(&self, service: &DomainService<R>, input: SendHttp) -> Result<Run>
     where
-        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+        R: WorkspaceRepository
+            + RequestRepository
+            + RunRepository
+            + RunBodyRepository
+            + CookieRepository,
     {
         self.send_with_cancellation(service, input, CancellationToken::new())
     }
@@ -237,7 +243,11 @@ where
         cancellation: CancellationToken,
     ) -> Result<Run>
     where
-        R: WorkspaceRepository + RequestRepository + RunRepository + RunBodyRepository,
+        R: WorkspaceRepository
+            + RequestRepository
+            + RunRepository
+            + RunBodyRepository
+            + CookieRepository,
     {
         let now = chrono::Utc::now();
         let request = service
@@ -253,7 +263,9 @@ where
         }
 
         let effective_config = input.config_override.unwrap_or_else(|| request.config.clone());
-        let config = parse_config(effective_config.clone())?;
+        let mut config = parse_config(effective_config.clone())?;
+        let cookie_context = load_cookie_context(service.repository(), &config)?;
+        apply_cookie_header(&mut config, &cookie_context);
         let run = match service.repository().get_run(&input.run_id)? {
             Some(run) => run,
             None => service.create_run(CreateRun {
@@ -294,6 +306,12 @@ where
 
         match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
+                persist_response_cookies(
+                    service.repository(),
+                    &config,
+                    &cookie_context,
+                    &response.headers,
+                )?;
                 service.append_run_event(AppendRunEvent {
                     run_id: run.id.clone(),
                     sequence: 2,
@@ -654,6 +672,197 @@ fn request_body_event_data(
     }
 }
 
+struct CookieContext {
+    jar_id: String,
+    workspace_id: String,
+    cookies: Vec<CookieRecord>,
+}
+
+fn load_cookie_context<R>(
+    repository: &R,
+    config: &HttpRequestConfig,
+) -> Result<Option<CookieContext>>
+where
+    R: CookieRepository,
+{
+    let Some(jar_id) =
+        config.cookie_jar_id.as_deref().map(str::trim).filter(|value| !value.is_empty())
+    else {
+        return Ok(None);
+    };
+    let jar = repository
+        .get_cookie_jar(jar_id)
+        .map_err(|err| Error::Send(format!("failed to load cookie jar: {err}")))?
+        .ok_or_else(|| Error::InvalidConfig(format!("cookie jar '{jar_id}' not found")))?;
+    let cookies = repository
+        .list_cookies(&jar.id)
+        .map_err(|err| Error::Send(format!("failed to list cookies: {err}")))?;
+    Ok(Some(CookieContext { jar_id: jar.id, workspace_id: jar.workspace_id, cookies }))
+}
+
+fn apply_cookie_header(config: &mut HttpRequestConfig, context: &Option<CookieContext>) {
+    let Some(context) = context else {
+        return;
+    };
+    if config.headers.iter().any(|header| header.name.eq_ignore_ascii_case("cookie")) {
+        return;
+    }
+    let Ok(url) = reqwest::Url::parse(&config.url) else {
+        return;
+    };
+    let cookie_header = matching_cookie_header(&context.cookies, &url);
+    if cookie_header.is_empty() {
+        return;
+    }
+    config.headers.push(Header { name: "Cookie".to_string(), value: cookie_header });
+}
+
+fn matching_cookie_header(cookies: &[CookieRecord], url: &reqwest::Url) -> String {
+    let Some(host) = url.host_str().map(|host| host.to_ascii_lowercase()) else {
+        return String::new();
+    };
+    let path = url.path();
+    let is_secure = url.scheme().eq_ignore_ascii_case("https");
+    let now = chrono::Utc::now();
+    cookies
+        .iter()
+        .filter(|cookie| cookie.expires_at.is_none_or(|expires_at| expires_at > now))
+        .filter(|cookie| !cookie.secure || is_secure)
+        .filter(|cookie| cookie_domain_matches(&host, &cookie.domain))
+        .filter(|cookie| cookie_path_matches(path, &cookie.path))
+        .map(|cookie| format!("{}={}", cookie.name, cookie.value))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn persist_response_cookies<R>(
+    repository: &R,
+    config: &HttpRequestConfig,
+    context: &Option<CookieContext>,
+    headers: &[Header],
+) -> Result<()>
+where
+    R: CookieRepository,
+{
+    let Some(context) = context else {
+        return Ok(());
+    };
+    let url = reqwest::Url::parse(&config.url)
+        .map_err(|err| Error::InvalidConfig(format!("invalid url: {err}")))?;
+    let Some(host) = url.host_str().map(|host| host.to_ascii_lowercase()) else {
+        return Ok(());
+    };
+    for header in headers.iter().filter(|header| header.name.eq_ignore_ascii_case("set-cookie")) {
+        let Some(cookie) = parse_set_cookie(
+            &header.value,
+            &context.jar_id,
+            &context.workspace_id,
+            &host,
+            default_cookie_path(url.path()),
+        ) else {
+            continue;
+        };
+        repository
+            .upsert_cookie(&cookie)
+            .map_err(|err| Error::Send(format!("failed to store response cookie: {err}")))?;
+    }
+    Ok(())
+}
+
+fn parse_set_cookie(
+    value: &str,
+    jar_id: &str,
+    workspace_id: &str,
+    host: &str,
+    default_path: String,
+) -> Option<CookieRecord> {
+    let mut segments = value.split(';').map(str::trim);
+    let first = segments.next()?;
+    let (name, cookie_value) = first.split_once('=')?;
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let now = chrono::Utc::now();
+    let mut domain = host.to_string();
+    let mut path = default_path;
+    let mut expires_at = None;
+    let mut secure = false;
+    let mut http_only = false;
+    let mut same_site = None;
+
+    for segment in segments {
+        if segment.eq_ignore_ascii_case("secure") {
+            secure = true;
+            continue;
+        }
+        if segment.eq_ignore_ascii_case("httponly") {
+            http_only = true;
+            continue;
+        }
+        let Some((attr, attr_value)) = segment.split_once('=') else {
+            continue;
+        };
+        match attr.trim().to_ascii_lowercase().as_str() {
+            "domain" => domain = attr_value.trim().trim_start_matches('.').to_ascii_lowercase(),
+            "path" => path = attr_value.trim().to_string(),
+            "max-age" => {
+                if let Ok(seconds) = attr_value.trim().parse::<i64>() {
+                    expires_at = Some(now + chrono::Duration::seconds(seconds));
+                }
+            }
+            "samesite" => same_site = Some(attr_value.trim().to_string()),
+            _ => {}
+        }
+    }
+
+    Some(CookieRecord {
+        id: cookie_id(jar_id, &domain, &path, name),
+        workspace_id: workspace_id.to_string(),
+        jar_id: jar_id.to_string(),
+        name: name.to_string(),
+        value: cookie_value.to_string(),
+        domain,
+        path,
+        expires_at,
+        secure,
+        http_only,
+        same_site,
+        created_at: now,
+        updated_at: now,
+    })
+}
+
+fn cookie_domain_matches(host: &str, domain: &str) -> bool {
+    let domain = domain.trim().trim_start_matches('.').to_ascii_lowercase();
+    host == domain || host.ends_with(&format!(".{domain}"))
+}
+
+fn cookie_path_matches(request_path: &str, cookie_path: &str) -> bool {
+    let cookie_path = if cookie_path.trim().is_empty() { "/" } else { cookie_path.trim() };
+    if cookie_path == "/" || request_path == cookie_path {
+        return true;
+    }
+    request_path.strip_prefix(cookie_path).is_some_and(|remaining| remaining.starts_with('/'))
+}
+
+fn default_cookie_path(request_path: &str) -> String {
+    if request_path.is_empty() || request_path == "/" {
+        return "/".to_string();
+    }
+    let Some((prefix, _)) = request_path.rsplit_once('/') else {
+        return "/".to_string();
+    };
+    if prefix.is_empty() { "/".to_string() } else { prefix.to_string() }
+}
+
+fn cookie_id(jar_id: &str, domain: &str, path: &str, name: &str) -> String {
+    let key = format!("{jar_id}_{domain}_{path}_{name}");
+    let sanitized =
+        key.chars().map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' }).collect::<String>();
+    format!("cookie_{sanitized}")
+}
+
 fn multipart_part_event_data(
     part: &HttpMultipartPart,
 ) -> Result<BTreeMap<String, serde_json::Value>> {
@@ -738,7 +947,7 @@ fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_j
     BTreeMap::from([
         ("method".to_string(), json!(config.method)),
         ("url".to_string(), json!(config.url)),
-        ("headers".to_string(), json!(config.headers)),
+        ("headers".to_string(), json!(redacted_headers(&config.headers))),
         ("query".to_string(), json!(config.query)),
         (
             "auth".to_string(),
@@ -750,13 +959,28 @@ fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_j
     ])
 }
 
+fn redacted_headers(headers: &[Header]) -> Vec<Header> {
+    headers
+        .iter()
+        .map(|header| {
+            if header.name.eq_ignore_ascii_case("cookie")
+                || header.name.eq_ignore_ascii_case("set-cookie")
+            {
+                Header { name: header.name.clone(), value: "<redacted>".to_string() }
+            } else {
+                header.clone()
+            }
+        })
+        .collect()
+}
+
 fn response_headers_data(
     status_code: i32,
     headers: &[Header],
 ) -> BTreeMap<String, serde_json::Value> {
     BTreeMap::from([
         ("statusCode".to_string(), json!(status_code)),
-        ("headers".to_string(), json!(headers)),
+        ("headers".to_string(), json!(redacted_headers(headers))),
     ])
 }
 
@@ -1226,6 +1450,92 @@ mod tests {
     }
 
     #[test]
+    fn reqwest_http_sender_persists_and_sends_cookie_jar() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let addr = rt.block_on(spawn_cookie_server());
+
+        let store = Store::open_in_memory().expect("store opens");
+        let service = DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_cookie".to_string(),
+                name: "Yaku".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        service
+            .repository()
+            .upsert_cookie_jar(&yaku_domain::CookieJar {
+                id: "jar_cookie".to_string(),
+                workspace_id: workspace.id.clone(),
+                name: "Default".to_string(),
+                created_at: now,
+                updated_at: now,
+            })
+            .expect("cookie jar upsert");
+        let request = service
+            .create_request(CreateRequest {
+                id: "rq_cookie".to_string(),
+                node_id: "node_cookie".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                protocol: Protocol::Http,
+                name: "Cookie".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("GET")),
+                    ("url".to_string(), json!(format!("http://{addr}/cookie"))),
+                    ("cookieJarId".to_string(), json!("jar_cookie")),
+                ]),
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let engine = HttpEngine::new(ReqwestHttpSender::new().expect("sender"));
+        let first_run = engine
+            .send(
+                &service,
+                SendHttp {
+                    run_id: "run_cookie_1".to_string(),
+                    request_id: request.id.clone(),
+                    config_override: None,
+                },
+            )
+            .expect("first send succeeds");
+        assert_eq!(first_run.state, RunState::Completed);
+        let cookies = service.repository().list_cookies("jar_cookie").expect("cookies");
+        assert_eq!(cookies.len(), 1);
+        assert_eq!(cookies[0].name, "session");
+        assert_eq!(cookies[0].value, "abc123");
+
+        let second_run = engine
+            .send(
+                &service,
+                SendHttp {
+                    run_id: "run_cookie_2".to_string(),
+                    request_id: request.id,
+                    config_override: None,
+                },
+            )
+            .expect("second send succeeds");
+        assert_eq!(second_run.state, RunState::Completed);
+
+        let store = service.into_inner();
+        let events = store.list_run_events(&second_run.id, Page::first(10)).expect("events");
+        assert_eq!(events[0].data["headers"][0]["name"], json!("Cookie"));
+        assert_eq!(events[0].data["headers"][0]["value"], json!("<redacted>"));
+        let first_run_events =
+            store.list_run_events(&first_run.id, Page::first(10)).expect("events");
+        assert_eq!(first_run_events[1].data["headers"][0]["name"], json!("set-cookie"));
+        assert_eq!(first_run_events[1].data["headers"][0]["value"], json!("<redacted>"));
+        assert!(cookie_path_matches("/api/users", "/api"));
+        assert!(!cookie_path_matches("/apiv2/users", "/api"));
+    }
+
+    #[test]
     fn reqwest_http_sender_cancels_inflight_request() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let (addr, accepted_rx) = rt.block_on(spawn_hanging_server());
@@ -1244,6 +1554,7 @@ mod tests {
                     body_file_path: None,
                     multipart_parts: Vec::new(),
                     auth: None,
+                    cookie_jar_id: None,
                     follow_redirects: true,
                     timeout_ms: Some(60_000),
                 },
@@ -1302,6 +1613,36 @@ mod tests {
             assert!(request.contains(expected_body));
             let response = concat!("HTTP/1.1 204 No Content\r\n", "content-length: 0\r\n", "\r\n");
             socket.write_all(response.as_bytes()).await.expect("write response");
+        });
+        addr
+    }
+
+    async fn spawn_cookie_server() -> SocketAddr {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind cookie server");
+        let addr = listener.local_addr().expect("local addr");
+        tokio::spawn(async move {
+            for index in 0..2 {
+                let (mut socket, _) = listener.accept().await.expect("accept cookie request");
+                let mut buf = vec![0; 4096];
+                let n = socket.read(&mut buf).await.expect("read request");
+                let request = String::from_utf8_lossy(&buf[..n]);
+                assert!(request.starts_with("GET /cookie HTTP/1.1"));
+                if index == 0 {
+                    assert!(!request.contains("session=abc123"));
+                    let response = concat!(
+                        "HTTP/1.1 204 No Content\r\n",
+                        "set-cookie: session=abc123; Path=/; HttpOnly; SameSite=Lax\r\n",
+                        "content-length: 0\r\n",
+                        "\r\n"
+                    );
+                    socket.write_all(response.as_bytes()).await.expect("write response");
+                } else {
+                    assert!(request.contains("cookie: session=abc123"));
+                    let response =
+                        concat!("HTTP/1.1 204 No Content\r\n", "content-length: 0\r\n", "\r\n");
+                    socket.write_all(response.as_bytes()).await.expect("write response");
+                }
+            }
         });
         addr
     }

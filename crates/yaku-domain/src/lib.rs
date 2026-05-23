@@ -6,7 +6,8 @@ mod service;
 pub use error::{Error, Result};
 pub use models::*;
 pub use repository::{
-    EnvironmentRepository, RequestRepository, RunBodyRepository, RunRepository, WorkspaceRepository,
+    CookieRepository, EnvironmentRepository, RequestRepository, RunBodyRepository, RunRepository,
+    WorkspaceRepository,
 };
 pub use service::{
     AppendRunEvent, CreateEnvironment, CreateFolder, CreateRequest, CreateRun, CreateWorkspace,

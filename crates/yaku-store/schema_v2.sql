@@ -130,6 +130,39 @@ CREATE TABLE IF NOT EXISTS secrets
     updated_at   TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS cookie_jars
+(
+    id           TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cookie_jars_workspace
+    ON cookie_jars (workspace_id, name);
+
+CREATE TABLE IF NOT EXISTS cookies
+(
+    id           TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    jar_id       TEXT NOT NULL REFERENCES cookie_jars(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    value        TEXT NOT NULL,
+    domain       TEXT NOT NULL,
+    path         TEXT NOT NULL,
+    expires_at   TEXT,
+    secure       INTEGER NOT NULL,
+    http_only    INTEGER NOT NULL,
+    same_site    TEXT,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL,
+    UNIQUE (jar_id, domain, path, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cookies_jar_domain_path
+    ON cookies (jar_id, domain, path);
+
 CREATE TABLE IF NOT EXISTS backup_manifests
 (
     id           TEXT PRIMARY KEY,

@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::models::{
-    Environment, Page, Request, RequestNode, Run, RunBody, RunEvent, RunEventKind, Workspace,
+    CookieJar, CookieRecord, Environment, Page, Request, RequestNode, Run, RunBody, RunEvent,
+    RunEventKind, Workspace,
 };
 
 pub trait WorkspaceRepository {
@@ -24,6 +25,17 @@ pub trait EnvironmentRepository {
     fn get_environment(&self, id: &str) -> Result<Option<Environment>>;
     fn list_environments(&self, workspace_id: &str) -> Result<Vec<Environment>>;
     fn delete_environment(&self, id: &str) -> Result<bool>;
+}
+
+pub trait CookieRepository {
+    fn upsert_cookie_jar(&self, jar: &CookieJar) -> Result<()>;
+    fn get_cookie_jar(&self, id: &str) -> Result<Option<CookieJar>>;
+    fn list_cookie_jars(&self, workspace_id: &str) -> Result<Vec<CookieJar>>;
+    fn delete_cookie_jar(&self, id: &str) -> Result<bool>;
+    fn upsert_cookie(&self, cookie: &CookieRecord) -> Result<()>;
+    fn list_cookies(&self, jar_id: &str) -> Result<Vec<CookieRecord>>;
+    fn delete_cookie(&self, id: &str) -> Result<bool>;
+    fn clear_cookies_for_jar(&self, jar_id: &str) -> Result<u64>;
 }
 
 pub trait RunRepository {

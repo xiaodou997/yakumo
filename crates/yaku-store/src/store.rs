@@ -7,9 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use thiserror::Error;
 use yaku_domain::{
-    BodyRole, BodyStorageKind, Environment, EnvironmentRepository, Page, Protocol, Request,
-    RequestNode, RequestNodeKind, RequestRepository, Run, RunBody, RunBodyRepository, RunEvent,
-    RunEventKind, RunRepository, RunState, SecretMetadata, Setting, Workspace, WorkspaceRepository,
+    BodyRole, BodyStorageKind, CookieJar, CookieRecord, CookieRepository, Environment,
+    EnvironmentRepository, Page, Protocol, Request, RequestNode, RequestNodeKind,
+    RequestRepository, Run, RunBody, RunBodyRepository, RunEvent, RunEventKind, RunRepository,
+    RunState, SecretMetadata, Setting, Workspace, WorkspaceRepository,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -36,7 +37,7 @@ pub struct Store {
     conn: Connection,
 }
 
-const WORKSPACE_BACKUP_FORMAT_VERSION: u32 = 2;
+const WORKSPACE_BACKUP_FORMAT_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +50,10 @@ pub struct WorkspaceBackup {
     pub request_tree: Vec<RequestNode>,
     pub requests: Vec<Request>,
     pub secrets: Vec<SecretMetadata>,
+    #[serde(default)]
+    pub cookie_jars: Vec<CookieJar>,
+    #[serde(default)]
+    pub cookies: Vec<CookieRecord>,
     pub run_retention: Option<u32>,
 }
 
@@ -71,6 +76,8 @@ struct WorkspaceBackupContent<'a> {
     request_tree: &'a [RequestNode],
     requests: &'a [Request],
     secrets: &'a [SecretMetadata],
+    cookie_jars: &'a [CookieJar],
+    cookies: &'a [CookieRecord],
     run_retention: Option<u32>,
 }
 
@@ -144,6 +151,13 @@ impl Store {
         requests.sort_by(|left, right| left.id.cmp(&right.id));
         let mut secrets = self.list_secret_metadata(workspace_id)?;
         secrets.sort_by(|left, right| left.id.cmp(&right.id));
+        let mut cookie_jars = self.list_cookie_jars(workspace_id)?;
+        cookie_jars.sort_by(|left, right| left.id.cmp(&right.id));
+        let mut cookies = Vec::new();
+        for jar in &cookie_jars {
+            cookies.extend(self.list_cookies(&jar.id)?);
+        }
+        cookies.sort_by(|left, right| left.id.cmp(&right.id));
 
         let mut backup = WorkspaceBackup {
             format_version: WORKSPACE_BACKUP_FORMAT_VERSION,
@@ -154,6 +168,8 @@ impl Store {
             request_tree,
             requests,
             secrets,
+            cookie_jars,
+            cookies,
             run_retention: workspace_run_retention(self, workspace_id)?,
         };
         backup.content_hash = compute_workspace_backup_content_hash(&backup)?;
@@ -344,6 +360,12 @@ impl Store {
 
         for secret in &backup.secrets {
             upsert_secret_metadata_tx(&tx, secret)?;
+        }
+        for jar in &backup.cookie_jars {
+            upsert_cookie_jar_tx(&tx, jar)?;
+        }
+        for cookie in &backup.cookies {
+            upsert_cookie_tx(&tx, cookie)?;
         }
 
         let mut inserted_node_ids = BTreeSet::new();
@@ -1059,6 +1081,119 @@ impl Store {
         Ok(deleted > 0)
     }
 
+    pub fn upsert_cookie_jar(&self, jar: &CookieJar) -> Result<()> {
+        self.conn.execute(
+            r#"
+                INSERT INTO cookie_jars (id, workspace_id, name, created_at, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    updated_at = excluded.updated_at
+            "#,
+            params![
+                jar.id,
+                jar.workspace_id,
+                jar.name,
+                jar.created_at.to_rfc3339(),
+                jar.updated_at.to_rfc3339(),
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_cookie_jar(&self, id: &str) -> Result<Option<CookieJar>> {
+        self.conn
+            .query_row(
+                r#"
+                    SELECT id, workspace_id, name, created_at, updated_at
+                    FROM cookie_jars
+                    WHERE id = ?1
+                "#,
+                [id],
+                row_to_cookie_jar,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    pub fn list_cookie_jars(&self, workspace_id: &str) -> Result<Vec<CookieJar>> {
+        let mut stmt = self.conn.prepare(
+            r#"
+                SELECT id, workspace_id, name, created_at, updated_at
+                FROM cookie_jars
+                WHERE workspace_id = ?1
+                ORDER BY name ASC, id ASC
+            "#,
+        )?;
+        let rows = stmt.query_map([workspace_id], row_to_cookie_jar)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn delete_cookie_jar(&self, id: &str) -> Result<bool> {
+        let deleted = self.conn.execute("DELETE FROM cookie_jars WHERE id = ?1", [id])?;
+        Ok(deleted > 0)
+    }
+
+    pub fn upsert_cookie(&self, cookie: &CookieRecord) -> Result<()> {
+        self.conn.execute(
+            r#"
+                INSERT INTO cookies
+                    (id, workspace_id, jar_id, name, value, domain, path, expires_at, secure,
+                     http_only, same_site, created_at, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                ON CONFLICT(jar_id, domain, path, name) DO UPDATE SET
+                    id = excluded.id,
+                    workspace_id = excluded.workspace_id,
+                    value = excluded.value,
+                    expires_at = excluded.expires_at,
+                    secure = excluded.secure,
+                    http_only = excluded.http_only,
+                    same_site = excluded.same_site,
+                    updated_at = excluded.updated_at
+            "#,
+            params![
+                cookie.id,
+                cookie.workspace_id,
+                cookie.jar_id,
+                cookie.name,
+                cookie.value,
+                cookie.domain,
+                cookie.path,
+                cookie.expires_at.map(|value| value.to_rfc3339()),
+                cookie.secure,
+                cookie.http_only,
+                cookie.same_site,
+                cookie.created_at.to_rfc3339(),
+                cookie.updated_at.to_rfc3339(),
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_cookies(&self, jar_id: &str) -> Result<Vec<CookieRecord>> {
+        let mut stmt = self.conn.prepare(
+            r#"
+                SELECT id, workspace_id, jar_id, name, value, domain, path, expires_at, secure,
+                       http_only, same_site, created_at, updated_at
+                FROM cookies
+                WHERE jar_id = ?1
+                ORDER BY domain ASC, path ASC, name ASC
+            "#,
+        )?;
+        let rows = stmt.query_map([jar_id], row_to_cookie)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn delete_cookie(&self, id: &str) -> Result<bool> {
+        let deleted = self.conn.execute("DELETE FROM cookies WHERE id = ?1", [id])?;
+        Ok(deleted > 0)
+    }
+
+    pub fn clear_cookies_for_jar(&self, jar_id: &str) -> Result<u64> {
+        let deleted = self.conn.execute("DELETE FROM cookies WHERE jar_id = ?1", [jar_id])?;
+        Ok(deleted as u64)
+    }
+
     pub fn upsert_run_body(&self, body: &RunBody) -> Result<()> {
         self.conn.execute(
             r#"
@@ -1188,6 +1323,40 @@ impl EnvironmentRepository for Store {
 
     fn delete_environment(&self, id: &str) -> yaku_domain::Result<bool> {
         Store::delete_environment(self, id).map_err(domain_error)
+    }
+}
+
+impl CookieRepository for Store {
+    fn upsert_cookie_jar(&self, jar: &CookieJar) -> yaku_domain::Result<()> {
+        Store::upsert_cookie_jar(self, jar).map_err(domain_error)
+    }
+
+    fn get_cookie_jar(&self, id: &str) -> yaku_domain::Result<Option<CookieJar>> {
+        Store::get_cookie_jar(self, id).map_err(domain_error)
+    }
+
+    fn list_cookie_jars(&self, workspace_id: &str) -> yaku_domain::Result<Vec<CookieJar>> {
+        Store::list_cookie_jars(self, workspace_id).map_err(domain_error)
+    }
+
+    fn delete_cookie_jar(&self, id: &str) -> yaku_domain::Result<bool> {
+        Store::delete_cookie_jar(self, id).map_err(domain_error)
+    }
+
+    fn upsert_cookie(&self, cookie: &CookieRecord) -> yaku_domain::Result<()> {
+        Store::upsert_cookie(self, cookie).map_err(domain_error)
+    }
+
+    fn list_cookies(&self, jar_id: &str) -> yaku_domain::Result<Vec<CookieRecord>> {
+        Store::list_cookies(self, jar_id).map_err(domain_error)
+    }
+
+    fn delete_cookie(&self, id: &str) -> yaku_domain::Result<bool> {
+        Store::delete_cookie(self, id).map_err(domain_error)
+    }
+
+    fn clear_cookies_for_jar(&self, jar_id: &str) -> yaku_domain::Result<u64> {
+        Store::clear_cookies_for_jar(self, jar_id).map_err(domain_error)
     }
 }
 
@@ -1385,6 +1554,57 @@ fn validate_workspace_backup(backup: &WorkspaceBackup) -> Result<String> {
         }
     }
 
+    let mut cookie_jar_ids = BTreeSet::new();
+    for jar in &backup.cookie_jars {
+        if jar.workspace_id != workspace_id {
+            return Err(Error::InvalidBackup(format!(
+                "cookie jar '{}' belongs to workspace '{}', expected '{}'",
+                jar.id, jar.workspace_id, workspace_id
+            )));
+        }
+        if !cookie_jar_ids.insert(jar.id.clone()) {
+            return Err(Error::InvalidBackup(format!(
+                "duplicate cookie jar id '{}' in workspace backup",
+                jar.id
+            )));
+        }
+    }
+
+    let mut cookie_ids = BTreeSet::new();
+    let mut cookie_keys = BTreeSet::new();
+    for cookie in &backup.cookies {
+        if cookie.workspace_id != workspace_id {
+            return Err(Error::InvalidBackup(format!(
+                "cookie '{}' belongs to workspace '{}', expected '{}'",
+                cookie.id, cookie.workspace_id, workspace_id
+            )));
+        }
+        if !cookie_jar_ids.contains(&cookie.jar_id) {
+            return Err(Error::InvalidBackup(format!(
+                "cookie '{}' references missing cookie jar '{}'",
+                cookie.id, cookie.jar_id
+            )));
+        }
+        if !cookie_ids.insert(cookie.id.clone()) {
+            return Err(Error::InvalidBackup(format!(
+                "duplicate cookie id '{}' in workspace backup",
+                cookie.id
+            )));
+        }
+        let key = (
+            cookie.jar_id.clone(),
+            cookie.domain.clone(),
+            cookie.path.clone(),
+            cookie.name.clone(),
+        );
+        if !cookie_keys.insert(key) {
+            return Err(Error::InvalidBackup(format!(
+                "duplicate cookie key for jar '{}' domain '{}' path '{}' name '{}'",
+                cookie.jar_id, cookie.domain, cookie.path, cookie.name
+            )));
+        }
+    }
+
     let computed_hash = compute_workspace_backup_content_hash(backup)?;
     if backup.content_hash != computed_hash {
         return Err(Error::InvalidBackup(format!(
@@ -1404,6 +1624,8 @@ pub fn compute_workspace_backup_content_hash(backup: &WorkspaceBackup) -> Result
         request_tree: &backup.request_tree,
         requests: &backup.requests,
         secrets: &backup.secrets,
+        cookie_jars: &backup.cookie_jars,
+        cookies: &backup.cookies,
         run_retention: backup.run_retention,
     };
     let json = serde_json::to_vec(&content)?;
@@ -1489,6 +1711,7 @@ fn clear_workspace_for_import_tx(tx: &rusqlite::Transaction<'_>, workspace_id: &
     tx.execute("DELETE FROM request_nodes WHERE workspace_id = ?1", [workspace_id])?;
     tx.execute("DELETE FROM requests WHERE workspace_id = ?1", [workspace_id])?;
     tx.execute("DELETE FROM secrets WHERE workspace_id = ?1", [workspace_id])?;
+    tx.execute("DELETE FROM cookie_jars WHERE workspace_id = ?1", [workspace_id])?;
     tx.execute("DELETE FROM settings WHERE key = ?1", [workspace_run_retention_key(workspace_id)])?;
     Ok(())
 }
@@ -1648,6 +1871,63 @@ fn upsert_secret_metadata_tx(
             serde_json::to_string(&secret.metadata)?,
             secret.created_at.to_rfc3339(),
             secret.updated_at.to_rfc3339(),
+        ],
+    )?;
+    Ok(())
+}
+
+fn upsert_cookie_jar_tx(tx: &rusqlite::Transaction<'_>, jar: &CookieJar) -> Result<()> {
+    tx.execute(
+        r#"
+            INSERT INTO cookie_jars (id, workspace_id, name, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5)
+            ON CONFLICT(id) DO UPDATE SET
+                workspace_id = excluded.workspace_id,
+                name = excluded.name,
+                updated_at = excluded.updated_at
+        "#,
+        params![
+            jar.id,
+            jar.workspace_id,
+            jar.name,
+            jar.created_at.to_rfc3339(),
+            jar.updated_at.to_rfc3339(),
+        ],
+    )?;
+    Ok(())
+}
+
+fn upsert_cookie_tx(tx: &rusqlite::Transaction<'_>, cookie: &CookieRecord) -> Result<()> {
+    tx.execute(
+        r#"
+            INSERT INTO cookies
+                (id, workspace_id, jar_id, name, value, domain, path, expires_at, secure,
+                 http_only, same_site, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+            ON CONFLICT(jar_id, domain, path, name) DO UPDATE SET
+                id = excluded.id,
+                workspace_id = excluded.workspace_id,
+                value = excluded.value,
+                expires_at = excluded.expires_at,
+                secure = excluded.secure,
+                http_only = excluded.http_only,
+                same_site = excluded.same_site,
+                updated_at = excluded.updated_at
+        "#,
+        params![
+            cookie.id,
+            cookie.workspace_id,
+            cookie.jar_id,
+            cookie.name,
+            cookie.value,
+            cookie.domain,
+            cookie.path,
+            cookie.expires_at.map(|value| value.to_rfc3339()),
+            cookie.secure,
+            cookie.http_only,
+            cookie.same_site,
+            cookie.created_at.to_rfc3339(),
+            cookie.updated_at.to_rfc3339(),
         ],
     )?;
     Ok(())
@@ -1831,6 +2111,34 @@ fn row_to_secret_metadata(row: &rusqlite::Row<'_>) -> rusqlite::Result<SecretMet
         metadata: serde_json::from_str(&metadata_json).map_err(json_to_sql)?,
         created_at: parse_ts(row.get(5)?)?,
         updated_at: parse_ts(row.get(6)?)?,
+    })
+}
+
+fn row_to_cookie_jar(row: &rusqlite::Row<'_>) -> rusqlite::Result<CookieJar> {
+    Ok(CookieJar {
+        id: row.get(0)?,
+        workspace_id: row.get(1)?,
+        name: row.get(2)?,
+        created_at: parse_ts(row.get(3)?)?,
+        updated_at: parse_ts(row.get(4)?)?,
+    })
+}
+
+fn row_to_cookie(row: &rusqlite::Row<'_>) -> rusqlite::Result<CookieRecord> {
+    Ok(CookieRecord {
+        id: row.get(0)?,
+        workspace_id: row.get(1)?,
+        jar_id: row.get(2)?,
+        name: row.get(3)?,
+        value: row.get(4)?,
+        domain: row.get(5)?,
+        path: row.get(6)?,
+        expires_at: row.get::<_, Option<String>>(7)?.map(parse_ts).transpose()?,
+        secure: row.get(8)?,
+        http_only: row.get(9)?,
+        same_site: row.get(10)?,
+        created_at: parse_ts(row.get(11)?)?,
+        updated_at: parse_ts(row.get(12)?)?,
     })
 }
 
@@ -2241,6 +2549,41 @@ mod tests {
         assert!(store.delete_secret_metadata(&secret.id).expect("secret delete"));
         assert!(store.get_secret_metadata(&secret.id).expect("secret get after delete").is_none());
 
+        let jar = CookieJar {
+            id: "jar_v2".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Default".to_string(),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_cookie_jar(&jar).expect("cookie jar upsert");
+        assert_eq!(store.list_cookie_jars(&workspace.id).expect("cookie jar list").len(), 1);
+
+        let cookie = CookieRecord {
+            id: "cookie_v2".to_string(),
+            workspace_id: workspace.id.clone(),
+            jar_id: jar.id.clone(),
+            name: "session".to_string(),
+            value: "abc123".to_string(),
+            domain: "example.test".to_string(),
+            path: "/".to_string(),
+            expires_at: Some(now),
+            secure: true,
+            http_only: true,
+            same_site: Some("Lax".to_string()),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_cookie(&cookie).expect("cookie upsert");
+        let cookies = store.list_cookies(&jar.id).expect("cookie list");
+        assert_eq!(cookies.len(), 1);
+        assert_eq!(cookies[0].value, "abc123");
+        assert_eq!(cookies[0].same_site.as_deref(), Some("Lax"));
+        assert!(store.delete_cookie(&cookie.id).expect("cookie delete"));
+        assert!(store.list_cookies(&jar.id).expect("cookie list after delete").is_empty());
+        assert!(store.delete_cookie_jar(&jar.id).expect("cookie jar delete"));
+        assert!(store.get_cookie_jar(&jar.id).expect("cookie jar get").is_none());
+
         let request = Request {
             id: "rq_v2".to_string(),
             workspace_id: workspace.id.clone(),
@@ -2486,11 +2829,39 @@ mod tests {
                 updated_at: now,
             })
             .expect("secret upsert");
+        store
+            .upsert_cookie_jar(&CookieJar {
+                id: "jar_secret_backup".to_string(),
+                workspace_id: workspace.id.clone(),
+                name: "Default".to_string(),
+                created_at: now,
+                updated_at: now,
+            })
+            .expect("cookie jar upsert");
+        store
+            .upsert_cookie(&CookieRecord {
+                id: "cookie_secret_backup".to_string(),
+                workspace_id: workspace.id.clone(),
+                jar_id: "jar_secret_backup".to_string(),
+                name: "session".to_string(),
+                value: "cookie-value".to_string(),
+                domain: "example.test".to_string(),
+                path: "/".to_string(),
+                expires_at: None,
+                secure: true,
+                http_only: true,
+                same_site: Some("Lax".to_string()),
+                created_at: now,
+                updated_at: now,
+            })
+            .expect("cookie upsert");
 
         let backup = store.export_workspace_backup(&workspace.id).expect("backup export");
         assert_eq!(backup.format_version, WORKSPACE_BACKUP_FORMAT_VERSION);
         assert_eq!(backup.secrets.len(), 1);
         assert_eq!(backup.secrets[0].ciphertext, "secret-token");
+        assert_eq!(backup.cookie_jars.len(), 1);
+        assert_eq!(backup.cookies.len(), 1);
         store.verify_workspace_backup(&backup).expect("backup verifies");
 
         let imported = Store::open_in_memory().expect("import store opens");
@@ -2503,6 +2874,10 @@ mod tests {
         let imported_request =
             imported.get_request(&request.id).expect("request get").expect("request exists");
         assert_eq!(imported_request.config["auth"]["tokenSecretId"], json!("sec_secret_backup"));
+        let imported_cookies =
+            imported.list_cookies("jar_secret_backup").expect("imported cookie list");
+        assert_eq!(imported_cookies.len(), 1);
+        assert_eq!(imported_cookies[0].value, "cookie-value");
     }
 
     #[test]

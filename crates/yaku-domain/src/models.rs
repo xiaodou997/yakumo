@@ -182,6 +182,36 @@ pub struct SecretMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "gen_domain.ts")]
+pub struct CookieJar {
+    pub id: DomainId,
+    pub workspace_id: DomainId,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "gen_domain.ts")]
+pub struct CookieRecord {
+    pub id: DomainId,
+    pub workspace_id: DomainId,
+    pub jar_id: DomainId,
+    pub name: String,
+    pub value: String,
+    pub domain: String,
+    pub path: String,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub secure: bool,
+    pub http_only: bool,
+    pub same_site: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "gen_domain.ts")]
 pub struct RunBody {
     pub id: DomainId,
     pub run_id: DomainId,

@@ -168,8 +168,12 @@ Required schema adjustments before main UI cutover:
   and `multipart`. File body configs store only `bodyFilePath`; multipart file
   parts store only `filePath`. The desktop bridge validates file paths at send
   time and the engine records only file metadata in request body events.
-- Workspace backups are format v2 and include `secrets`, so request auth secret
-  references survive export/import.
+- Cookie jars are Yaku-native store records (`cookie_jars` / `cookies`). HTTP
+  requests may reference `cookieJarId`; the engine sends matching cookies,
+  stores `Set-Cookie` response headers back into the jar, and redacts cookie
+  header values from run events.
+- Workspace backups are format v3 and include `secrets`, cookie jars, and
+  cookies, so auth secret references and cookie state survive export/import.
 - Add workspace UI state records for active environment, recent requests, and
   layout state.
 
