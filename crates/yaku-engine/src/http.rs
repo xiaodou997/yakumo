@@ -55,6 +55,10 @@ pub struct HttpRequestConfig {
     #[serde(default)]
     pub body: Option<String>,
     #[serde(default)]
+    pub body_mode: Option<String>,
+    #[serde(default)]
+    pub body_file_path: Option<String>,
+    #[serde(default)]
     pub auth: Option<HttpAuthConfig>,
     #[serde(default = "default_true")]
     pub follow_redirects: bool,
@@ -150,8 +154,8 @@ async fn send_http(
 
     builder = apply_auth(builder, request.auth.as_ref())?;
 
-    if let Some(body) = &request.body {
-        builder = builder.body(body.clone());
+    if let Some(body) = request_body_bytes(request)? {
+        builder = builder.body(body);
     }
 
     let response = tokio::select! {
@@ -247,12 +251,12 @@ where
             now,
         })?;
 
-        if let Some(body) = &config.body {
+        if let Some(data) = request_body_event_data(&config)? {
             service.append_run_event(AppendRunEvent {
                 run_id: run.id.clone(),
                 sequence: 1,
                 kind: RunEventKind::RequestBody,
-                data: BTreeMap::from([("text".to_string(), json!(body))]),
+                data,
                 now,
             })?;
         }
@@ -464,7 +468,74 @@ fn parse_config(config: BTreeMap<String, serde_json::Value>) -> Result<HttpReque
     if config.url.trim().is_empty() {
         return Err(Error::InvalidConfig("url cannot be empty".to_string()));
     }
+    validate_body_config(&config)?;
     Ok(config)
+}
+
+fn validate_body_config(config: &HttpRequestConfig) -> Result<()> {
+    match normalized_body_mode(config).as_str() {
+        "" | "none" | "text" | "json" => Ok(()),
+        "file" => {
+            let path = config.body_file_path.as_deref().unwrap_or_default().trim();
+            if path.is_empty() {
+                return Err(Error::InvalidConfig(
+                    "file body mode requires bodyFilePath".to_string(),
+                ));
+            }
+            Ok(())
+        }
+        other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
+    }
+}
+
+fn normalized_body_mode(config: &HttpRequestConfig) -> String {
+    config
+        .body_mode
+        .as_deref()
+        .unwrap_or_else(|| if config.body_file_path.is_some() { "file" } else { "text" })
+        .trim()
+        .to_ascii_lowercase()
+}
+
+fn request_body_bytes(config: &HttpRequestConfig) -> Result<Option<Vec<u8>>> {
+    match normalized_body_mode(config).as_str() {
+        "" | "none" => Ok(None),
+        "text" | "json" => Ok(config.body.as_ref().map(|body| body.as_bytes().to_vec())),
+        "file" => {
+            let path = config.body_file_path.as_deref().unwrap_or_default().trim();
+            let body = std::fs::read(path)
+                .map_err(|err| Error::Send(format!("failed to read request body file: {err}")))?;
+            Ok(Some(body))
+        }
+        other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
+    }
+}
+
+fn request_body_event_data(
+    config: &HttpRequestConfig,
+) -> Result<Option<BTreeMap<String, serde_json::Value>>> {
+    match normalized_body_mode(config).as_str() {
+        "" | "none" => Ok(None),
+        "text" | "json" => Ok(config.body.as_ref().map(|body| {
+            BTreeMap::from([
+                ("mode".to_string(), json!(normalized_body_mode(config))),
+                ("text".to_string(), json!(body)),
+                ("byteLength".to_string(), json!(body.len() as i64)),
+            ])
+        })),
+        "file" => {
+            let path = config.body_file_path.as_deref().unwrap_or_default().trim();
+            let metadata = std::fs::metadata(path).map_err(|err| {
+                Error::Send(format!("failed to read request body file metadata: {err}"))
+            })?;
+            Ok(Some(BTreeMap::from([
+                ("mode".to_string(), json!("file")),
+                ("filePath".to_string(), json!(path)),
+                ("byteLength".to_string(), json!(metadata.len() as i64)),
+            ])))
+        }
+        other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
+    }
 }
 
 fn url_with_query(config: &HttpRequestConfig) -> Result<String> {
@@ -518,6 +589,7 @@ fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_j
             "auth".to_string(),
             json!(config.auth.as_ref().map(|auth| auth.kind.as_str()).unwrap_or("none")),
         ),
+        ("bodyMode".to_string(), json!(normalized_body_mode(config))),
         ("followRedirects".to_string(), json!(config.follow_redirects)),
         ("timeoutMs".to_string(), json!(config.timeout_ms)),
     ])
@@ -835,8 +907,11 @@ mod tests {
         assert_eq!(events[0].data["followRedirects"], json!(false));
         assert_eq!(events[0].data["timeoutMs"], json!(5_000));
         assert_eq!(events[0].data["auth"], json!("basic"));
+        assert_eq!(events[0].data["bodyMode"], json!("text"));
         assert_eq!(events[0].data["query"][0]["name"], json!("enabled"));
         assert_eq!(events[1].kind, RunEventKind::RequestBody);
+        assert_eq!(events[1].data["mode"], json!("text"));
+        assert_eq!(events[1].data["byteLength"], json!(5));
         assert_eq!(events[2].kind, RunEventKind::ResponseHeaders);
         assert_eq!(events[2].data["statusCode"], json!(201));
         assert_eq!(events[3].kind, RunEventKind::ResponseBody);
@@ -854,6 +929,67 @@ mod tests {
     }
 
     #[test]
+    fn reqwest_http_sender_reads_file_body() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let addr = rt.block_on(spawn_body_server("file-body-payload"));
+        let body_path =
+            std::env::temp_dir().join(format!("yaku-engine-file-body-{}", std::process::id()));
+        std::fs::write(&body_path, b"file-body-payload").expect("write request body file");
+
+        let store = Store::open_in_memory().expect("store opens");
+        let service = DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_file_body".to_string(),
+                name: "Yaku".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let request = service
+            .create_request(CreateRequest {
+                id: "rq_file_body".to_string(),
+                node_id: "node_file_body".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                protocol: Protocol::Http,
+                name: "File Body".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("POST")),
+                    ("url".to_string(), json!(format!("http://{addr}/echo"))),
+                    ("bodyMode".to_string(), json!("file")),
+                    ("bodyFilePath".to_string(), json!(body_path.display().to_string())),
+                ]),
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let engine = HttpEngine::new(ReqwestHttpSender::new().expect("sender"));
+        let run = engine
+            .send(
+                &service,
+                SendHttp {
+                    run_id: "run_file_body".to_string(),
+                    request_id: request.id,
+                    config_override: None,
+                },
+            )
+            .expect("send succeeds");
+        assert_eq!(run.state, RunState::Completed);
+
+        let store = service.into_inner();
+        let events = store.list_run_events(&run.id, Page::first(10)).expect("events");
+        assert_eq!(events[0].data["bodyMode"], json!("file"));
+        assert_eq!(events[1].kind, RunEventKind::RequestBody);
+        assert_eq!(events[1].data["mode"], json!("file"));
+        assert_eq!(events[1].data["byteLength"], json!(17));
+        assert_eq!(events[1].data["filePath"], json!(body_path.display().to_string()));
+    }
+
+    #[test]
     fn reqwest_http_sender_cancels_inflight_request() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let (addr, accepted_rx) = rt.block_on(spawn_hanging_server());
@@ -868,6 +1004,8 @@ mod tests {
                     headers: Vec::new(),
                     query: Vec::new(),
                     body: None,
+                    body_mode: None,
+                    body_file_path: None,
                     auth: None,
                     follow_redirects: true,
                     timeout_ms: Some(60_000),
@@ -902,6 +1040,7 @@ mod tests {
                 request.contains("authorization: Basic dXNlcjpwYXNz")
                     || request.contains("Authorization: Basic dXNlcjpwYXNz")
             );
+            assert!(request.contains("hello"));
             let response = concat!(
                 "HTTP/1.1 201 Created\r\n",
                 "content-type: application/json\r\n",
@@ -909,6 +1048,22 @@ mod tests {
                 "\r\n",
                 "{\"ok\":true}"
             );
+            socket.write_all(response.as_bytes()).await.expect("write response");
+        });
+        addr
+    }
+
+    async fn spawn_body_server(expected_body: &'static str) -> SocketAddr {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind body server");
+        let addr = listener.local_addr().expect("local addr");
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept");
+            let mut buf = vec![0; 4096];
+            let n = socket.read(&mut buf).await.expect("read request");
+            let request = String::from_utf8_lossy(&buf[..n]);
+            assert!(request.starts_with("POST /echo HTTP/1.1"));
+            assert!(request.contains(expected_body));
+            let response = concat!("HTTP/1.1 204 No Content\r\n", "content-length: 0\r\n", "\r\n");
             socket.write_all(response.as_bytes()).await.expect("write response");
         });
         addr

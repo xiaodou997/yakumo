@@ -30,6 +30,10 @@ export function RequestStructuredEditor({
             setHttpMethod={draft.setHttpMethod}
             httpBody={draft.httpBody}
             setHttpBody={draft.setHttpBody}
+            httpBodyMode={draft.httpBodyMode}
+            setHttpBodyMode={draft.setHttpBodyMode}
+            httpBodyFilePath={draft.httpBodyFilePath}
+            setHttpBodyFilePath={draft.setHttpBodyFilePath}
             httpAuthType={draft.httpAuthType}
             setHttpAuthType={draft.setHttpAuthType}
             httpAuthUsername={draft.httpAuthUsername}

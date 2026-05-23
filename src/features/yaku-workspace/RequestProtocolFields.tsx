@@ -7,6 +7,10 @@ export function HttpGraphqlFields({
   setHttpMethod,
   httpBody,
   setHttpBody,
+  httpBodyMode,
+  setHttpBodyMode,
+  httpBodyFilePath,
+  setHttpBodyFilePath,
   httpAuthType,
   setHttpAuthType,
   httpAuthUsername,
@@ -31,6 +35,10 @@ export function HttpGraphqlFields({
   setHttpMethod: (value: string) => void;
   httpBody: string;
   setHttpBody: (value: string) => void;
+  httpBodyMode: string;
+  setHttpBodyMode: (value: string) => void;
+  httpBodyFilePath: string;
+  setHttpBodyFilePath: (value: string) => void;
   httpAuthType: string;
   setHttpAuthType: (value: string) => void;
   httpAuthUsername: string;
@@ -60,12 +68,14 @@ export function HttpGraphqlFields({
           className={fieldClassName}
         />
       ) : null}
-      <textarea
-        value={httpBody}
-        onChange={(event) => setHttpBody(event.target.value)}
-        rows={5}
-        placeholder={protocol === "graphql" ? '{"query":"{ __typename }"}' : "Request body"}
-        className={textareaClassName}
+      <HttpBodyFields
+        protocol={protocol}
+        bodyMode={httpBodyMode}
+        setBodyMode={setHttpBodyMode}
+        body={httpBody}
+        setBody={setHttpBody}
+        bodyFilePath={httpBodyFilePath}
+        setBodyFilePath={setHttpBodyFilePath}
       />
       <HttpAuthFields
         authType={httpAuthType}
@@ -104,6 +114,63 @@ export function HttpGraphqlFields({
         className={fieldClassName}
       />
     </>
+  );
+}
+
+function HttpBodyFields({
+  protocol,
+  bodyMode,
+  setBodyMode,
+  body,
+  setBody,
+  bodyFilePath,
+  setBodyFilePath,
+}: {
+  protocol: "http" | "graphql";
+  bodyMode: string;
+  setBodyMode: (value: string) => void;
+  body: string;
+  setBody: (value: string) => void;
+  bodyFilePath: string;
+  setBodyFilePath: (value: string) => void;
+}) {
+  const mode = bodyMode === "file" || bodyMode === "json" ? bodyMode : "text";
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs uppercase tracking-[0.2em] text-text-subtlest">Body</div>
+        <select
+          value={mode}
+          onChange={(event) => setBodyMode(event.target.value)}
+          className={`${fieldClassName} w-auto min-w-32`}
+        >
+          <option value="text">Text</option>
+          <option value="json">JSON</option>
+          <option value="file">File</option>
+        </select>
+      </div>
+      {mode === "file" ? (
+        <input
+          value={bodyFilePath}
+          onChange={(event) => setBodyFilePath(event.target.value)}
+          placeholder="/absolute/path/to/body.bin"
+          className={`${fieldClassName} mt-3`}
+        />
+      ) : (
+        <textarea
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          rows={5}
+          placeholder={protocol === "graphql" ? '{"query":"{ __typename }"}' : "Request body"}
+          className={`${textareaClassName} mt-3`}
+        />
+      )}
+      {mode === "file" ? (
+        <div className="mt-2 text-[11px] text-text-subtle">
+          File body is read at send time. The path is stored in request config; file contents are not.
+        </div>
+      ) : null}
+    </div>
   );
 }
 

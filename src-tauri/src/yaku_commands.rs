@@ -406,6 +406,18 @@ fn resolve_request_config_secrets(
     Ok(config)
 }
 
+fn validate_http_file_body(config: &BTreeMap<String, Value>) -> Result<()> {
+    let body_mode = config.get("bodyMode").and_then(Value::as_str).unwrap_or("text");
+    if !body_mode.trim().eq_ignore_ascii_case("file") {
+        return Ok(());
+    }
+    let file_path = config
+        .get("bodyFilePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| Error::GenericError("File body mode requires bodyFilePath".to_string()))?;
+    path_guard::existing_file(&PathBuf::from(file_path), "Yaku request body file")
+}
+
 fn collect_auth_secret_ids(config: &BTreeMap<String, Value>) -> Vec<String> {
     let Some(Value::Object(auth)) = config.get("auth") else {
         return Vec::new();
@@ -616,8 +628,13 @@ fn send_request_inner(
         .map_err(|e| Error::GenericError(e.to_string()))?,
         None => request.config.clone(),
     };
-    let config_override =
-        Some(resolve_request_config_secrets(service.repository(), rendered_config)?);
+    let config_override = {
+        let config = resolve_request_config_secrets(service.repository(), rendered_config)?;
+        if matches!(request.protocol, Protocol::Http | Protocol::Graphql) {
+            validate_http_file_body(&config)?;
+        }
+        Some(config)
+    };
 
     let bodies_dir = bodies_dir(&data_dir);
     let cancellation = cancellation.unwrap_or_else(CancellationToken::new);

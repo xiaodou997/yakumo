@@ -5,6 +5,8 @@ export type RequestConfigDraft = {
   url: string;
   httpMethod: string;
   httpBody: string;
+  httpBodyMode: string;
+  httpBodyFilePath: string;
   httpAuthType: string;
   httpAuthUsername: string;
   httpAuthPassword: string;
@@ -29,6 +31,8 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setUrl: (value: string) => void;
   setHttpMethod: (value: string) => void;
   setHttpBody: (value: string) => void;
+  setHttpBodyMode: (value: string) => void;
+  setHttpBodyFilePath: (value: string) => void;
   setHttpAuthType: (value: string) => void;
   setHttpAuthUsername: (value: string) => void;
   setHttpAuthPassword: (value: string) => void;
@@ -93,7 +97,13 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
     url: trimmedUrl,
     headers: pairsToHeaders(input.headers),
     query: pairsToQueryParams(input.query),
-    body: input.httpBody.trim() === "" ? null : input.httpBody,
+    bodyMode: normalizedHttpBodyMode(input),
+    body: normalizedHttpBodyMode(input) === "file"
+      ? null
+      : input.httpBody.trim() === "" ? null : input.httpBody,
+    bodyFilePath: normalizedHttpBodyMode(input) === "file"
+      ? input.httpBodyFilePath.trim() || null
+      : null,
     auth: buildHttpAuth(input),
     followRedirects: input.followRedirects,
     timeoutMs: timeout,
@@ -133,7 +143,7 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
     { label: "Auth", value: authTypeString(config.auth) },
     { label: "Follow Redirects", value: booleanString(config.followRedirects) },
     { label: "Timeout", value: numberString(config.timeoutMs) },
-    { label: "Body", value: config.body == null ? "empty" : "set" },
+    { label: "Body", value: bodySummary(config) },
   ];
 }
 
@@ -145,6 +155,8 @@ export function draftFromRequestConfig(
     url: stringOrEmpty(config.url),
     httpMethod: stringOrEmpty(config.method) || (protocol === "graphql" ? "POST" : "GET"),
     httpBody: typeof config.body === "string" ? config.body : "",
+    httpBodyMode: stringOrEmpty(config.bodyMode) || (config.bodyFilePath == null ? "text" : "file"),
+    httpBodyFilePath: stringOrEmpty(config.bodyFilePath),
     ...draftAuthFields(config.auth),
     headers: pairsFromHeaders(config.headers),
     query: pairsFromQuery(config.query),
@@ -163,6 +175,20 @@ export function draftFromRequestConfig(
       : "",
     webSocketMaxMessages: typeof config.maxMessages === "number" ? String(config.maxMessages) : "1",
   };
+}
+
+function normalizedHttpBodyMode(input: RequestConfigDraft) {
+  const mode = input.httpBodyMode.trim().toLowerCase();
+  if (mode === "" || mode === "none") return "text";
+  return mode;
+}
+
+function bodySummary(config: Record<string, unknown>) {
+  const mode = stringOrEmpty(config.bodyMode) || (config.bodyFilePath == null ? "text" : "file");
+  if (mode === "file") {
+    return stringOrEmpty(config.bodyFilePath) === "" ? "file missing" : "file";
+  }
+  return config.body == null ? "empty" : `${mode} set`;
 }
 
 function buildHttpAuth(input: RequestConfigDraft) {

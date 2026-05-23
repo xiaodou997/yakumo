@@ -161,9 +161,13 @@ Required schema adjustments before main UI cutover:
   settings now use the `settings` table under the `app.settings` key.
 - HTTP auth secrets are extracted from request config into the `secrets` table.
   Request config stores `passwordSecretId` / `tokenSecretId` references, and
-  Tauri resolves those references only when sending a request. The current
-  storage is local plaintext in the `ciphertext` column; replacing this with
-  OS keychain-backed encryption remains follow-up work.
+  Tauri resolves those references only when sending a request. Desktop runtime
+  stores secret values in the OS keychain and stores only keychain references in
+  `secrets.ciphertext`; tests use local plaintext fakes.
+- HTTP/GraphQL request config supports `bodyMode` for `text`, `json`, and
+  `file`. File body configs store only `bodyFilePath`; the desktop bridge
+  validates the file path at send time and the engine records only file metadata
+  in request body events.
 - Workspace backups are format v2 and include `secrets`, so request auth secret
   references survive export/import.
 - Add workspace UI state records for active environment, recent requests, and
@@ -354,8 +358,8 @@ Phase 6: Rebuild optional capabilities.
   are removed from the desktop surface. `import-data` deep-link handling is also
   removed; Yaku backup import/export is the only supported desktop backup path.
 - Yaku settings/secrets UI. Baseline app settings, proxy, and certificate UX are
-  implemented through `app.settings`. Auth values now use the Yaku secrets table,
-  but a dedicated secrets management UI and OS keychain-backed encryption remain
+  implemented through `app.settings`. Auth values now use the Yaku secrets table
+  and OS keychain storage, but a dedicated secrets management UI remains
   follow-up work.
 - Yaku CLI parity for protocols beyond HTTP. Baseline parity is now provided by
   the Yaku-native command path. Top-level `workspace`, `request`, `folder`,
