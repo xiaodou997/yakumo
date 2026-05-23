@@ -1,8 +1,10 @@
 use crate::body_store::{BodyStore, InlineBodyStore};
 use crate::error::{Error, Result};
+use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
+use std::path::Path;
 use tokio_util::sync::CancellationToken;
 use yaku_domain::{
     AppendRunEvent, BodyRole, CreateRun, DomainService, FinishRun, Protocol, RecordRunBody,
@@ -45,6 +47,24 @@ pub struct HttpAuthConfig {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HttpMultipartPart {
+    pub name: String,
+    #[serde(default = "default_text")]
+    pub kind: String,
+    #[serde(default)]
+    pub value: Option<String>,
+    #[serde(default)]
+    pub file_path: Option<String>,
+    #[serde(default)]
+    pub file_name: Option<String>,
+    #[serde(default)]
+    pub content_type: Option<String>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HttpRequestConfig {
     pub method: String,
     pub url: String,
@@ -58,6 +78,8 @@ pub struct HttpRequestConfig {
     pub body_mode: Option<String>,
     #[serde(default)]
     pub body_file_path: Option<String>,
+    #[serde(default)]
+    pub multipart_parts: Vec<HttpMultipartPart>,
     #[serde(default)]
     pub auth: Option<HttpAuthConfig>,
     #[serde(default = "default_true")]
@@ -154,9 +176,7 @@ async fn send_http(
 
     builder = apply_auth(builder, request.auth.as_ref())?;
 
-    if let Some(body) = request_body_bytes(request)? {
-        builder = builder.body(body);
-    }
+    builder = apply_body(builder, request)?;
 
     let response = tokio::select! {
         biased;
@@ -484,7 +504,33 @@ fn validate_body_config(config: &HttpRequestConfig) -> Result<()> {
             }
             Ok(())
         }
+        "multipart" => {
+            for part in config.multipart_parts.iter().filter(|part| part.enabled) {
+                validate_multipart_part(part)?;
+            }
+            Ok(())
+        }
         other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
+    }
+}
+
+fn validate_multipart_part(part: &HttpMultipartPart) -> Result<()> {
+    if part.name.trim().is_empty() {
+        return Err(Error::InvalidConfig("multipart part name cannot be empty".to_string()));
+    }
+    match normalized_part_kind(part).as_str() {
+        "text" => Ok(()),
+        "file" => {
+            let path = part.file_path.as_deref().unwrap_or_default().trim();
+            if path.is_empty() {
+                return Err(Error::InvalidConfig(format!(
+                    "multipart file part '{}' requires filePath",
+                    part.name
+                )));
+            }
+            Ok(())
+        }
+        other => Err(Error::InvalidConfig(format!("unsupported multipart part kind: {other}"))),
     }
 }
 
@@ -495,6 +541,25 @@ fn normalized_body_mode(config: &HttpRequestConfig) -> String {
         .unwrap_or_else(|| if config.body_file_path.is_some() { "file" } else { "text" })
         .trim()
         .to_ascii_lowercase()
+}
+
+fn normalized_part_kind(part: &HttpMultipartPart) -> String {
+    part.kind.trim().to_ascii_lowercase()
+}
+
+fn apply_body(
+    builder: reqwest::RequestBuilder,
+    config: &HttpRequestConfig,
+) -> Result<reqwest::RequestBuilder> {
+    match normalized_body_mode(config).as_str() {
+        "" | "none" => Ok(builder),
+        "text" | "json" | "file" => match request_body_bytes(config)? {
+            Some(body) => Ok(builder.body(body)),
+            None => Ok(builder),
+        },
+        "multipart" => Ok(builder.multipart(multipart_form(config)?)),
+        other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
+    }
 }
 
 fn request_body_bytes(config: &HttpRequestConfig) -> Result<Option<Vec<u8>>> {
@@ -509,6 +574,43 @@ fn request_body_bytes(config: &HttpRequestConfig) -> Result<Option<Vec<u8>>> {
         }
         other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
     }
+}
+
+fn multipart_form(config: &HttpRequestConfig) -> Result<Form> {
+    let mut form = Form::new();
+    for part in config.multipart_parts.iter().filter(|part| part.enabled) {
+        let name = part.name.trim().to_string();
+        let form_part = match normalized_part_kind(part).as_str() {
+            "text" => Part::text(part.value.clone().unwrap_or_default()),
+            "file" => {
+                let path = part.file_path.as_deref().unwrap_or_default().trim();
+                let body = std::fs::read(path).map_err(|err| {
+                    Error::Send(format!("failed to read multipart file part '{name}': {err}"))
+                })?;
+                let mut form_part = Part::bytes(body);
+                if let Some(file_name) = multipart_file_name(part, path) {
+                    form_part = form_part.file_name(file_name);
+                }
+                if let Some(content_type) =
+                    part.content_type.as_deref().map(str::trim).filter(|v| !v.is_empty())
+                {
+                    form_part = form_part.mime_str(content_type).map_err(|err| {
+                        Error::InvalidConfig(format!(
+                            "invalid content type for multipart part '{name}': {err}"
+                        ))
+                    })?;
+                }
+                form_part
+            }
+            other => {
+                return Err(Error::InvalidConfig(format!(
+                    "unsupported multipart part kind: {other}"
+                )));
+            }
+        };
+        form = form.part(name, form_part);
+    }
+    Ok(form)
 }
 
 fn request_body_event_data(
@@ -534,8 +636,61 @@ fn request_body_event_data(
                 ("byteLength".to_string(), json!(metadata.len() as i64)),
             ])))
         }
+        "multipart" => Ok(Some(BTreeMap::from([
+            ("mode".to_string(), json!("multipart")),
+            (
+                "parts".to_string(),
+                json!(
+                    config
+                        .multipart_parts
+                        .iter()
+                        .filter(|part| part.enabled)
+                        .map(multipart_part_event_data)
+                        .collect::<Result<Vec<_>>>()?
+                ),
+            ),
+        ]))),
         other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
     }
+}
+
+fn multipart_part_event_data(
+    part: &HttpMultipartPart,
+) -> Result<BTreeMap<String, serde_json::Value>> {
+    let kind = normalized_part_kind(part);
+    let mut data = BTreeMap::from([
+        ("name".to_string(), json!(part.name)),
+        ("kind".to_string(), json!(kind)),
+    ]);
+    if let Some(content_type) =
+        part.content_type.as_deref().filter(|value| !value.trim().is_empty())
+    {
+        data.insert("contentType".to_string(), json!(content_type));
+    }
+    if kind == "file" {
+        let path = part.file_path.as_deref().unwrap_or_default().trim();
+        let metadata = std::fs::metadata(path).map_err(|err| {
+            Error::Send(format!("failed to read multipart file part metadata: {err}"))
+        })?;
+        data.insert("filePath".to_string(), json!(path));
+        if let Some(file_name) = multipart_file_name(part, path) {
+            data.insert("fileName".to_string(), json!(file_name));
+        }
+        data.insert("byteLength".to_string(), json!(metadata.len() as i64));
+    } else {
+        let byte_length = part.value.as_deref().unwrap_or_default().len() as i64;
+        data.insert("byteLength".to_string(), json!(byte_length));
+    }
+    Ok(data)
+}
+
+fn multipart_file_name(part: &HttpMultipartPart, path: &str) -> Option<String> {
+    if let Some(file_name) =
+        part.file_name.as_deref().map(str::trim).filter(|value| !value.is_empty())
+    {
+        return Some(file_name.to_string());
+    }
+    Path::new(path).file_name().and_then(|file_name| file_name.to_str()).map(ToOwned::to_owned)
 }
 
 fn url_with_query(config: &HttpRequestConfig) -> Result<String> {
@@ -607,6 +762,10 @@ fn response_headers_data(
 
 fn default_true() -> bool {
     true
+}
+
+fn default_text() -> String {
+    "text".to_string()
 }
 
 #[cfg(test)]
@@ -990,6 +1149,83 @@ mod tests {
     }
 
     #[test]
+    fn reqwest_http_sender_sends_multipart_body() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let addr = rt.block_on(spawn_body_server("file-part-payload"));
+        let file_path =
+            std::env::temp_dir().join(format!("yaku-engine-multipart-{}", std::process::id()));
+        std::fs::write(&file_path, b"file-part-payload").expect("write multipart file");
+
+        let store = Store::open_in_memory().expect("store opens");
+        let service = DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_multipart".to_string(),
+                name: "Yaku".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let request = service
+            .create_request(CreateRequest {
+                id: "rq_multipart".to_string(),
+                node_id: "node_multipart".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                protocol: Protocol::Http,
+                name: "Multipart".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("POST")),
+                    ("url".to_string(), json!(format!("http://{addr}/echo"))),
+                    ("bodyMode".to_string(), json!("multipart")),
+                    (
+                        "multipartParts".to_string(),
+                        json!([
+                            { "name": "title", "kind": "text", "value": "hello multipart", "enabled": true },
+                            {
+                                "name": "upload",
+                                "kind": "file",
+                                "filePath": file_path.display().to_string(),
+                                "fileName": "payload.txt",
+                                "contentType": "text/plain",
+                                "enabled": true
+                            }
+                        ]),
+                    ),
+                ]),
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let engine = HttpEngine::new(ReqwestHttpSender::new().expect("sender"));
+        let run = engine
+            .send(
+                &service,
+                SendHttp {
+                    run_id: "run_multipart".to_string(),
+                    request_id: request.id,
+                    config_override: None,
+                },
+            )
+            .expect("send succeeds");
+        assert_eq!(run.state, RunState::Completed);
+
+        let store = service.into_inner();
+        let events = store.list_run_events(&run.id, Page::first(10)).expect("events");
+        assert_eq!(events[0].data["bodyMode"], json!("multipart"));
+        assert_eq!(events[1].kind, RunEventKind::RequestBody);
+        assert_eq!(events[1].data["mode"], json!("multipart"));
+        assert_eq!(events[1].data["parts"][0]["name"], json!("title"));
+        assert_eq!(events[1].data["parts"][0]["byteLength"], json!(15));
+        assert_eq!(events[1].data["parts"][1]["name"], json!("upload"));
+        assert_eq!(events[1].data["parts"][1]["fileName"], json!("payload.txt"));
+        assert_eq!(events[1].data["parts"][1]["byteLength"], json!(17));
+    }
+
+    #[test]
     fn reqwest_http_sender_cancels_inflight_request() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let (addr, accepted_rx) = rt.block_on(spawn_hanging_server());
@@ -1006,6 +1242,7 @@ mod tests {
                     body: None,
                     body_mode: None,
                     body_file_path: None,
+                    multipart_parts: Vec::new(),
                     auth: None,
                     follow_redirects: true,
                     timeout_ms: Some(60_000),

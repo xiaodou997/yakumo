@@ -1,12 +1,24 @@
 import type { YakuProtocol } from "../../lib/yaku-client";
 import type { ConfigPair } from "./types";
 
+export type MultipartPart = {
+  id: string;
+  name: string;
+  kind: "text" | "file";
+  value: string;
+  filePath: string;
+  fileName: string;
+  contentType: string;
+  enabled: boolean;
+};
+
 export type RequestConfigDraft = {
   url: string;
   httpMethod: string;
   httpBody: string;
   httpBodyMode: string;
   httpBodyFilePath: string;
+  httpMultipartParts: MultipartPart[];
   httpAuthType: string;
   httpAuthUsername: string;
   httpAuthPassword: string;
@@ -33,6 +45,7 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setHttpBody: (value: string) => void;
   setHttpBodyMode: (value: string) => void;
   setHttpBodyFilePath: (value: string) => void;
+  setHttpMultipartParts: (parts: MultipartPart[]) => void;
   setHttpAuthType: (value: string) => void;
   setHttpAuthUsername: (value: string) => void;
   setHttpAuthPassword: (value: string) => void;
@@ -92,18 +105,21 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
     };
   }
 
+  const bodyMode = normalizedHttpBodyMode(input);
   return {
     method: input.protocol === "graphql" ? "POST" : input.httpMethod.trim() || "GET",
     url: trimmedUrl,
     headers: pairsToHeaders(input.headers),
     query: pairsToQueryParams(input.query),
-    bodyMode: normalizedHttpBodyMode(input),
-    body: normalizedHttpBodyMode(input) === "file"
-      ? null
-      : input.httpBody.trim() === "" ? null : input.httpBody,
-    bodyFilePath: normalizedHttpBodyMode(input) === "file"
+    bodyMode,
+    body:
+      bodyMode === "file" || bodyMode === "multipart"
+        ? null
+        : input.httpBody.trim() === "" ? null : input.httpBody,
+    bodyFilePath: bodyMode === "file"
       ? input.httpBodyFilePath.trim() || null
       : null,
+    multipartParts: bodyMode === "multipart" ? multipartPartsToConfig(input.httpMultipartParts) : [],
     auth: buildHttpAuth(input),
     followRedirects: input.followRedirects,
     timeoutMs: timeout,
@@ -155,8 +171,9 @@ export function draftFromRequestConfig(
     url: stringOrEmpty(config.url),
     httpMethod: stringOrEmpty(config.method) || (protocol === "graphql" ? "POST" : "GET"),
     httpBody: typeof config.body === "string" ? config.body : "",
-    httpBodyMode: stringOrEmpty(config.bodyMode) || (config.bodyFilePath == null ? "text" : "file"),
+    httpBodyMode: stringOrEmpty(config.bodyMode) || inferredHttpBodyMode(config),
     httpBodyFilePath: stringOrEmpty(config.bodyFilePath),
+    httpMultipartParts: multipartPartsFromConfig(config.multipartParts),
     ...draftAuthFields(config.auth),
     headers: pairsFromHeaders(config.headers),
     query: pairsFromQuery(config.query),
@@ -184,11 +201,30 @@ function normalizedHttpBodyMode(input: RequestConfigDraft) {
 }
 
 function bodySummary(config: Record<string, unknown>) {
-  const mode = stringOrEmpty(config.bodyMode) || (config.bodyFilePath == null ? "text" : "file");
+  const mode = stringOrEmpty(config.bodyMode) || inferredHttpBodyMode(config);
   if (mode === "file") {
     return stringOrEmpty(config.bodyFilePath) === "" ? "file missing" : "file";
   }
+  if (mode === "multipart") {
+    return multipartSummary(config.multipartParts);
+  }
   return config.body == null ? "empty" : `${mode} set`;
+}
+
+function inferredHttpBodyMode(config: Record<string, unknown>) {
+  if (Array.isArray(config.multipartParts) && config.multipartParts.length > 0) {
+    return "multipart";
+  }
+  return config.bodyFilePath == null ? "text" : "file";
+}
+
+function multipartSummary(value: unknown) {
+  if (!Array.isArray(value)) return "multipart";
+  const enabledParts = value.filter((item) => {
+    if (item == null || typeof item !== "object") return false;
+    return (item as Record<string, unknown>).enabled !== false;
+  });
+  return enabledParts.length === 0 ? "multipart empty" : `${enabledParts.length} parts`;
 }
 
 function buildHttpAuth(input: RequestConfigDraft) {
@@ -238,6 +274,37 @@ function draftAuthFields(value: unknown) {
   };
 }
 
+function multipartPartsToConfig(parts: MultipartPart[]) {
+  return parts
+    .filter((part) => part.name.trim() !== "")
+    .map((part) => ({
+      name: part.name.trim(),
+      kind: part.kind,
+      value: part.kind === "text" ? part.value : null,
+      filePath: part.kind === "file" ? part.filePath.trim() || null : null,
+      fileName: part.fileName.trim() || null,
+      contentType: part.contentType.trim() || null,
+      enabled: part.enabled !== false,
+    }));
+}
+
+function multipartPartsFromConfig(value: unknown): MultipartPart[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => item != null && typeof item === "object")
+    .map((item) =>
+      createMultipartPart({
+        name: stringOrEmpty(item.name),
+        kind: stringOrEmpty(item.kind) === "file" ? "file" : "text",
+        value: stringOrEmpty(item.value),
+        filePath: stringOrEmpty(item.filePath),
+        fileName: stringOrEmpty(item.fileName),
+        contentType: stringOrEmpty(item.contentType),
+        enabled: item.enabled !== false,
+      }),
+    );
+}
+
 export function createConfigPair(pair: Partial<ConfigPair> = {}) {
   return {
     id: pair.id ?? `pair_${Math.random().toString(16).slice(2)}`,
@@ -258,6 +325,28 @@ export function updateConfigPair(
       pair.id === id ? { ...pair, ...patch, enabled: patch.enabled ?? pair.enabled } : pair,
     ),
   );
+}
+
+export function createMultipartPart(part: Partial<MultipartPart> = {}): MultipartPart {
+  return {
+    id: part.id ?? `mp_${Math.random().toString(16).slice(2)}`,
+    name: part.name ?? "",
+    kind: part.kind ?? "text",
+    value: part.value ?? "",
+    filePath: part.filePath ?? "",
+    fileName: part.fileName ?? "",
+    contentType: part.contentType ?? "",
+    enabled: part.enabled ?? true,
+  };
+}
+
+export function updateMultipartPart(
+  parts: MultipartPart[],
+  setParts: (parts: MultipartPart[]) => void,
+  id: string,
+  patch: Partial<MultipartPart>,
+) {
+  setParts(parts.map((part) => (part.id === id ? { ...part, ...patch } : part)));
 }
 
 function pairsToHeaders(pairs: ConfigPair[]) {

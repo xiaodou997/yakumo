@@ -406,16 +406,35 @@ fn resolve_request_config_secrets(
     Ok(config)
 }
 
-fn validate_http_file_body(config: &BTreeMap<String, Value>) -> Result<()> {
+fn validate_http_body_files(config: &BTreeMap<String, Value>) -> Result<()> {
     let body_mode = config.get("bodyMode").and_then(Value::as_str).unwrap_or("text");
-    if !body_mode.trim().eq_ignore_ascii_case("file") {
-        return Ok(());
+    if body_mode.trim().eq_ignore_ascii_case("file") {
+        let file_path = config.get("bodyFilePath").and_then(Value::as_str).ok_or_else(|| {
+            Error::GenericError("File body mode requires bodyFilePath".to_string())
+        })?;
+        return path_guard::existing_file(&PathBuf::from(file_path), "Yaku request body file");
     }
-    let file_path = config
-        .get("bodyFilePath")
-        .and_then(Value::as_str)
-        .ok_or_else(|| Error::GenericError("File body mode requires bodyFilePath".to_string()))?;
-    path_guard::existing_file(&PathBuf::from(file_path), "Yaku request body file")
+    if body_mode.trim().eq_ignore_ascii_case("multipart") {
+        let Some(parts) = config.get("multipartParts").and_then(Value::as_array) else {
+            return Ok(());
+        };
+        for part in parts {
+            let enabled = part.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+            let kind = part.get("kind").and_then(Value::as_str).unwrap_or("text");
+            if !enabled || !kind.trim().eq_ignore_ascii_case("file") {
+                continue;
+            }
+            let name = part.get("name").and_then(Value::as_str).unwrap_or("unnamed");
+            let file_path = part.get("filePath").and_then(Value::as_str).ok_or_else(|| {
+                Error::GenericError(format!("Multipart file part '{name}' requires filePath"))
+            })?;
+            path_guard::existing_file(
+                &PathBuf::from(file_path),
+                &format!("Yaku multipart file part '{name}'"),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn collect_auth_secret_ids(config: &BTreeMap<String, Value>) -> Vec<String> {
@@ -631,7 +650,7 @@ fn send_request_inner(
     let config_override = {
         let config = resolve_request_config_secrets(service.repository(), rendered_config)?;
         if matches!(request.protocol, Protocol::Http | Protocol::Graphql) {
-            validate_http_file_body(&config)?;
+            validate_http_body_files(&config)?;
         }
         Some(config)
     };

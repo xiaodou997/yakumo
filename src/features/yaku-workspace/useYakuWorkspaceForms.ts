@@ -7,6 +7,7 @@ import type {
 } from "../../lib/yaku-client";
 import {
   draftFromRequestConfig,
+  type MultipartPart,
   type RequestConfigDraftController,
 } from "./requestConfig";
 import type { ConfigPair } from "./types";
@@ -57,6 +58,7 @@ export function useYakuWorkspaceForms({
   const [requestHttpBody, setRequestHttpBody] = useState("");
   const [requestHttpBodyMode, setRequestHttpBodyMode] = useState("text");
   const [requestHttpBodyFilePath, setRequestHttpBodyFilePath] = useState("");
+  const [requestHttpMultipartParts, setRequestHttpMultipartParts] = useState<MultipartPart[]>([]);
   const [requestHttpAuthType, setRequestHttpAuthType] = useState("none");
   const [requestHttpAuthUsername, setRequestHttpAuthUsername] = useState("");
   const [requestHttpAuthPassword, setRequestHttpAuthPassword] = useState("");
@@ -85,6 +87,9 @@ export function useYakuWorkspaceForms({
   const [requestEditHttpBody, setRequestEditHttpBody] = useState("");
   const [requestEditHttpBodyMode, setRequestEditHttpBodyMode] = useState("text");
   const [requestEditHttpBodyFilePath, setRequestEditHttpBodyFilePath] = useState("");
+  const [requestEditHttpMultipartParts, setRequestEditHttpMultipartParts] = useState<
+    MultipartPart[]
+  >([]);
   const [requestEditHttpAuthType, setRequestEditHttpAuthType] = useState("none");
   const [requestEditHttpAuthUsername, setRequestEditHttpAuthUsername] = useState("");
   const [requestEditHttpAuthPassword, setRequestEditHttpAuthPassword] = useState("");
@@ -128,6 +133,7 @@ export function useYakuWorkspaceForms({
     setRequestHttpBody(requestProtocol === "graphql" ? '{"query":"{ __typename }"}' : "");
     setRequestHttpBodyMode(requestProtocol === "graphql" ? "json" : "text");
     setRequestHttpBodyFilePath("");
+    setRequestHttpMultipartParts([]);
     setRequestHttpAuthType("none");
     setRequestHttpAuthUsername("");
     setRequestHttpAuthPassword("");
@@ -164,6 +170,7 @@ export function useYakuWorkspaceForms({
     setRequestEditHttpBody(draft.httpBody);
     setRequestEditHttpBodyMode(draft.httpBodyMode);
     setRequestEditHttpBodyFilePath(draft.httpBodyFilePath);
+    setRequestEditHttpMultipartParts(draft.httpMultipartParts);
     setRequestEditHttpAuthType(draft.httpAuthType);
     setRequestEditHttpAuthUsername(draft.httpAuthUsername);
     setRequestEditHttpAuthPassword(draft.httpAuthPassword);
@@ -195,6 +202,8 @@ export function useYakuWorkspaceForms({
     setHttpBodyMode: setRequestHttpBodyMode,
     httpBodyFilePath: requestHttpBodyFilePath,
     setHttpBodyFilePath: setRequestHttpBodyFilePath,
+    httpMultipartParts: requestHttpMultipartParts,
+    setHttpMultipartParts: setRequestHttpMultipartParts,
     httpAuthType: requestHttpAuthType,
     setHttpAuthType: setRequestHttpAuthType,
     httpAuthUsername: requestHttpAuthUsername,
@@ -243,6 +252,8 @@ export function useYakuWorkspaceForms({
     setHttpBodyMode: setRequestEditHttpBodyMode,
     httpBodyFilePath: requestEditHttpBodyFilePath,
     setHttpBodyFilePath: setRequestEditHttpBodyFilePath,
+    httpMultipartParts: requestEditHttpMultipartParts,
+    setHttpMultipartParts: setRequestEditHttpMultipartParts,
     httpAuthType: requestEditHttpAuthType,
     setHttpAuthType: setRequestEditHttpAuthType,
     httpAuthUsername: requestEditHttpAuthUsername,

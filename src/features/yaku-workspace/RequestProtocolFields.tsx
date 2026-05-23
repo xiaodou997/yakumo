@@ -1,5 +1,10 @@
 import type { ConfigPair } from "./types";
 import { CheckboxField, PairListEditor, fieldClassName, textareaClassName } from "./RequestFieldPrimitives";
+import {
+  createMultipartPart,
+  type MultipartPart,
+  updateMultipartPart,
+} from "./requestConfig";
 
 export function HttpGraphqlFields({
   protocol,
@@ -11,6 +16,8 @@ export function HttpGraphqlFields({
   setHttpBodyMode,
   httpBodyFilePath,
   setHttpBodyFilePath,
+  httpMultipartParts,
+  setHttpMultipartParts,
   httpAuthType,
   setHttpAuthType,
   httpAuthUsername,
@@ -39,6 +46,8 @@ export function HttpGraphqlFields({
   setHttpBodyMode: (value: string) => void;
   httpBodyFilePath: string;
   setHttpBodyFilePath: (value: string) => void;
+  httpMultipartParts: MultipartPart[];
+  setHttpMultipartParts: (parts: MultipartPart[]) => void;
   httpAuthType: string;
   setHttpAuthType: (value: string) => void;
   httpAuthUsername: string;
@@ -76,6 +85,8 @@ export function HttpGraphqlFields({
         setBody={setHttpBody}
         bodyFilePath={httpBodyFilePath}
         setBodyFilePath={setHttpBodyFilePath}
+        multipartParts={httpMultipartParts}
+        setMultipartParts={setHttpMultipartParts}
       />
       <HttpAuthFields
         authType={httpAuthType}
@@ -125,6 +136,8 @@ function HttpBodyFields({
   setBody,
   bodyFilePath,
   setBodyFilePath,
+  multipartParts,
+  setMultipartParts,
 }: {
   protocol: "http" | "graphql";
   bodyMode: string;
@@ -133,8 +146,11 @@ function HttpBodyFields({
   setBody: (value: string) => void;
   bodyFilePath: string;
   setBodyFilePath: (value: string) => void;
+  multipartParts: MultipartPart[];
+  setMultipartParts: (parts: MultipartPart[]) => void;
 }) {
-  const mode = bodyMode === "file" || bodyMode === "json" ? bodyMode : "text";
+  const mode =
+    bodyMode === "file" || bodyMode === "json" || bodyMode === "multipart" ? bodyMode : "text";
   return (
     <div className="rounded-xl border border-border-subtle bg-surface p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -147,6 +163,7 @@ function HttpBodyFields({
           <option value="text">Text</option>
           <option value="json">JSON</option>
           <option value="file">File</option>
+          <option value="multipart">Multipart</option>
         </select>
       </div>
       {mode === "file" ? (
@@ -156,6 +173,8 @@ function HttpBodyFields({
           placeholder="/absolute/path/to/body.bin"
           className={`${fieldClassName} mt-3`}
         />
+      ) : mode === "multipart" ? (
+        <MultipartPartsEditor parts={multipartParts} setParts={setMultipartParts} />
       ) : (
         <textarea
           value={body}
@@ -170,6 +189,128 @@ function HttpBodyFields({
           File body is read at send time. The path is stored in request config; file contents are not.
         </div>
       ) : null}
+      {mode === "multipart" ? (
+        <div className="mt-2 text-[11px] text-text-subtle">
+          File parts are read at send time. File contents are not stored in request config.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MultipartPartsEditor({
+  parts,
+  setParts,
+}: {
+  parts: MultipartPart[];
+  setParts: (parts: MultipartPart[]) => void;
+}) {
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-text-subtlest">Parts</div>
+        <button
+          type="button"
+          onClick={() => setParts([...parts, createMultipartPart()])}
+          className="rounded-md border border-border-subtle px-2 py-1 text-[11px] text-text-subtle hover:bg-surface-highlight"
+        >
+          Add Part
+        </button>
+      </div>
+      {parts.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border-subtle p-3 text-xs text-text-subtle">
+          No multipart parts yet.
+        </div>
+      ) : (
+        parts.map((part, index) => (
+          <div
+            key={part.id}
+            className="grid gap-2 rounded-lg border border-border-subtle bg-surface-highlight/35 p-2"
+          >
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem_auto_auto]">
+              <input
+                value={part.name}
+                onChange={(event) =>
+                  updateMultipartPart(parts, setParts, part.id, { name: event.target.value })
+                }
+                placeholder="Field name"
+                className={fieldClassName}
+              />
+              <select
+                value={part.kind}
+                onChange={(event) =>
+                  updateMultipartPart(parts, setParts, part.id, {
+                    kind: event.target.value === "file" ? "file" : "text",
+                  })
+                }
+                className={fieldClassName}
+              >
+                <option value="text">Text</option>
+                <option value="file">File</option>
+              </select>
+              <label className="flex items-center gap-2 whitespace-nowrap text-xs text-text-subtle">
+                <input
+                  type="checkbox"
+                  checked={part.enabled !== false}
+                  onChange={(event) =>
+                    updateMultipartPart(parts, setParts, part.id, {
+                      enabled: event.target.checked,
+                    })
+                  }
+                />
+                Enabled
+              </label>
+              <button
+                type="button"
+                onClick={() => setParts(parts.filter((_, currentIndex) => currentIndex !== index))}
+                className="rounded-md border border-danger/40 px-2 py-1 text-[11px] text-danger hover:bg-danger/10"
+              >
+                Remove
+              </button>
+            </div>
+            {part.kind === "file" ? (
+              <div className="grid gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                <input
+                  value={part.filePath}
+                  onChange={(event) =>
+                    updateMultipartPart(parts, setParts, part.id, { filePath: event.target.value })
+                  }
+                  placeholder="/absolute/path/to/file"
+                  className={fieldClassName}
+                />
+                <input
+                  value={part.fileName}
+                  onChange={(event) =>
+                    updateMultipartPart(parts, setParts, part.id, { fileName: event.target.value })
+                  }
+                  placeholder="Filename override"
+                  className={fieldClassName}
+                />
+                <input
+                  value={part.contentType}
+                  onChange={(event) =>
+                    updateMultipartPart(parts, setParts, part.id, {
+                      contentType: event.target.value,
+                    })
+                  }
+                  placeholder="Content-Type"
+                  className={fieldClassName}
+                />
+              </div>
+            ) : (
+              <textarea
+                value={part.value}
+                onChange={(event) =>
+                  updateMultipartPart(parts, setParts, part.id, { value: event.target.value })
+                }
+                rows={2}
+                placeholder="Text value"
+                className={textareaClassName}
+              />
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }

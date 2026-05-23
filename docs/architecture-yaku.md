@@ -164,10 +164,10 @@ Required schema adjustments before main UI cutover:
   Tauri resolves those references only when sending a request. Desktop runtime
   stores secret values in the OS keychain and stores only keychain references in
   `secrets.ciphertext`; tests use local plaintext fakes.
-- HTTP/GraphQL request config supports `bodyMode` for `text`, `json`, and
-  `file`. File body configs store only `bodyFilePath`; the desktop bridge
-  validates the file path at send time and the engine records only file metadata
-  in request body events.
+- HTTP/GraphQL request config supports `bodyMode` for `text`, `json`, `file`,
+  and `multipart`. File body configs store only `bodyFilePath`; multipart file
+  parts store only `filePath`. The desktop bridge validates file paths at send
+  time and the engine records only file metadata in request body events.
 - Workspace backups are format v2 and include `secrets`, so request auth secret
   references survive export/import.
 - Add workspace UI state records for active environment, recent requests, and
