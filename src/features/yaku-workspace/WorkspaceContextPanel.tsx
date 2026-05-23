@@ -1,10 +1,14 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "../../components/core/Button";
 import { Select } from "../../components/core/Select";
 import { HStack, VStack } from "../../components/core/Stacks";
+import { listYakuCookies } from "../../lib/yaku-client";
 import type {
   YakuBackupImportResponse,
   YakuBackupManifest,
   YakuCookieJar,
+  YakuCookieRecord,
   YakuEnvironment,
   YakuGcReport,
   YakuWorkspace,
@@ -35,6 +39,8 @@ export function WorkspaceContextPanel({
   isUpdatingEnvironment,
   isDeletingEnvironment,
   isCreatingCookieJar,
+  isClearingCookieJar,
+  isDeletingCookieJar,
   isSettingRetention,
   isClearingRetention,
   isGcBodies,
@@ -47,6 +53,8 @@ export function WorkspaceContextPanel({
   onUpdateEnvironment,
   onDeleteEnvironment,
   onCreateCookieJar,
+  onClearCookieJar,
+  onDeleteCookieJar,
   onSetRetention,
   onClearRetention,
   onGcBodies,
@@ -75,6 +83,8 @@ export function WorkspaceContextPanel({
   isUpdatingEnvironment: boolean;
   isDeletingEnvironment: boolean;
   isCreatingCookieJar: boolean;
+  isClearingCookieJar: boolean;
+  isDeletingCookieJar: boolean;
   isSettingRetention: boolean;
   isClearingRetention: boolean;
   isGcBodies: boolean;
@@ -87,6 +97,8 @@ export function WorkspaceContextPanel({
   onUpdateEnvironment: () => void;
   onDeleteEnvironment: () => void;
   onCreateCookieJar: () => void;
+  onClearCookieJar: (jarId: string) => void;
+  onDeleteCookieJar: (jarId: string) => void;
   onSetRetention: (limit: number) => void;
   onClearRetention: () => void;
   onGcBodies: () => void;
@@ -94,6 +106,14 @@ export function WorkspaceContextPanel({
   onImportBackup: () => void;
 }) {
   const selectedEnvironment = environments.find((environment) => environment.id === selectedEnvironmentId);
+  const [expandedCookieJarId, setExpandedCookieJarId] = useState("");
+  const expandedCookieJar = cookieJars.find((jar) => jar.id === expandedCookieJarId) ?? null;
+  const cookiesQuery = useQuery({
+    enabled: expandedCookieJar != null,
+    queryKey: ["yaku", "cookies", expandedCookieJarId],
+    queryFn: () => listYakuCookies(expandedCookieJarId),
+    placeholderData: (prev) => prev,
+  });
 
   return (
     <WorkspacePanel title="Workspace Context" subtitle="Choose the Yaku workspace and environment.">
@@ -220,11 +240,68 @@ export function WorkspaceContextPanel({
             >
               Create Cookie Jar
             </Button>
-            <div className="text-xs leading-5 text-text-subtle">
-              {cookieJars.length === 0
-                ? "No cookie jars in this workspace."
-                : cookieJars.map((jar) => jar.name).join(", ")}
-            </div>
+            <VStack space={2}>
+              {cookieJars.length === 0 ? (
+                <div className="text-xs leading-5 text-text-subtle">
+                  No cookie jars in this workspace.
+                </div>
+              ) : (
+                cookieJars.map((jar) => (
+                  <div
+                    key={jar.id}
+                    className="rounded-lg border border-border-subtle bg-surface-highlight/40 px-2 py-2"
+                  >
+                    <HStack justifyContent="between" alignItems="center" className="gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm text-text">{jar.name}</div>
+                        <div className="truncate text-[11px] text-text-subtlest">{jar.id}</div>
+                      </div>
+                      <HStack space={1} className="shrink-0">
+                        <Button
+                          size="xs"
+                          type="button"
+                          variant="border"
+                          onClick={() =>
+                            setExpandedCookieJarId((current) => current === jar.id ? "" : jar.id)
+                          }
+                        >
+                          {expandedCookieJarId === jar.id ? "Hide" : "Inspect"}
+                        </Button>
+                        <Button
+                          size="xs"
+                          type="button"
+                          variant="border"
+                          isLoading={isClearingCookieJar}
+                          onClick={() => onClearCookieJar(jar.id)}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          size="xs"
+                          type="button"
+                          variant="border"
+                          color="danger"
+                          isLoading={isDeletingCookieJar}
+                          onClick={() => {
+                            setExpandedCookieJarId((current) => current === jar.id ? "" : current);
+                            onDeleteCookieJar(jar.id);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </HStack>
+                    </HStack>
+                    {expandedCookieJarId === jar.id ? (
+                      <CookieListPreview
+                        cookies={cookiesQuery.data ?? []}
+                        isLoading={cookiesQuery.isFetching}
+                        error={cookiesQuery.error}
+                      />
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </VStack>
           </VStack>
         </form>
         <div className="rounded-xl border border-border-subtle bg-surface p-3">
@@ -313,6 +390,41 @@ export function WorkspaceContextPanel({
         </div>
       </VStack>
     </WorkspacePanel>
+  );
+}
+
+function CookieListPreview({
+  cookies,
+  isLoading,
+  error,
+}: {
+  cookies: YakuCookieRecord[];
+  isLoading: boolean;
+  error: unknown;
+}) {
+  if (error != null) {
+    return <div className="mt-2 text-xs text-danger">{String(error)}</div>;
+  }
+  if (isLoading && cookies.length === 0) {
+    return <div className="mt-2 text-xs text-text-subtle">Loading cookies...</div>;
+  }
+  if (cookies.length === 0) {
+    return <div className="mt-2 text-xs text-text-subtle">No stored cookies.</div>;
+  }
+  return (
+    <div className="mt-2 max-h-40 overflow-auto rounded-lg border border-border-subtle bg-surface px-2 py-2">
+      <VStack space={1}>
+        {cookies.map((cookie) => (
+          <div key={cookie.id} className="text-[11px] leading-4 text-text-subtle">
+            <span className="font-medium text-text">{cookie.name}</span>
+            <span> · {cookie.domain}{cookie.path}</span>
+            {cookie.httpOnly ? <span> · HttpOnly</span> : null}
+            {cookie.secure ? <span> · Secure</span> : null}
+            {cookie.expiresAt != null ? <span> · expires {cookie.expiresAt}</span> : null}
+          </div>
+        ))}
+      </VStack>
+    </div>
   );
 }
 

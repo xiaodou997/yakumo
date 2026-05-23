@@ -4,12 +4,14 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import {
   cancelYakuRun,
   clearYakuRunRetention,
+  clearYakuCookieJar,
   createYakuCookieJar,
   createYakuEnvironment,
   createYakuFolder,
   createYakuRequest,
   createYakuWorkspace,
   deleteYakuEnvironment,
+  deleteYakuCookieJar,
   deleteYakuRequestNode,
   exportYakuWorkspaceBackup,
   gcYakuBodies,
@@ -188,6 +190,32 @@ export function useYakuWorkspaceMutations({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["yaku", "cookie-jars", selectedWorkspaceId] });
+    },
+  });
+
+  const clearCookieJarMutation = useMutation({
+    mutationFn: (jarId: string) => clearYakuCookieJar(jarId),
+    onSuccess: async (_response, jarId) => {
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "cookie-jars", selectedWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["yaku", "cookies", jarId] });
+    },
+  });
+
+  const deleteCookieJarMutation = useMutation({
+    mutationFn: (jarId: string) => deleteYakuCookieJar(jarId),
+    onSuccess: async (_response, jarId) => {
+      if (requestBuilderDraft.config.httpCookieJarId === jarId) {
+        requestBuilderDraft.config.setHttpCookieJarId("");
+      }
+      if (requestEditDraft.config.httpCookieJarId === jarId) {
+        requestEditDraft.config.setHttpCookieJarId("");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["yaku", "cookie-jars", selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "cookies", jarId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "requests", selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ["yaku", "request", selectedRequestId] }),
+      ]);
     },
   });
 
@@ -460,6 +488,8 @@ export function useYakuWorkspaceMutations({
     updateEnvironmentMutation,
     deleteEnvironmentMutation,
     createCookieJarMutation,
+    clearCookieJarMutation,
+    deleteCookieJarMutation,
     createFolderMutation,
     updateFolderMutation,
     renameTreeNodeMutation,

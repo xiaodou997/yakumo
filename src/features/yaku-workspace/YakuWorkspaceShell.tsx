@@ -190,6 +190,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
     updateEnvironmentMutation,
     deleteEnvironmentMutation,
     createCookieJarMutation,
+    clearCookieJarMutation,
+    deleteCookieJarMutation,
     createFolderMutation,
     updateFolderMutation,
     renameTreeNodeMutation,
@@ -380,6 +382,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 isUpdatingEnvironment={updateEnvironmentMutation.isPending}
                 isDeletingEnvironment={deleteEnvironmentMutation.isPending}
                 isCreatingCookieJar={createCookieJarMutation.isPending}
+                isClearingCookieJar={clearCookieJarMutation.isPending}
+                isDeletingCookieJar={deleteCookieJarMutation.isPending}
                 isSettingRetention={setRetentionMutation.isPending}
                 isClearingRetention={clearRetentionMutation.isPending}
                 isGcBodies={gcBodiesMutation.isPending}
@@ -400,6 +404,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
                 onUpdateEnvironment={() => updateEnvironmentMutation.mutate()}
                 onDeleteEnvironment={() => deleteEnvironmentMutation.mutate()}
                 onCreateCookieJar={() => createCookieJarMutation.mutate()}
+                onClearCookieJar={(jarId) => clearCookieJarMutation.mutate(jarId)}
+                onDeleteCookieJar={(jarId) => deleteCookieJarMutation.mutate(jarId)}
                 onSetRetention={(limit) => setRetentionMutation.mutate(limit)}
                 onClearRetention={() => clearRetentionMutation.mutate()}
                 onGcBodies={() => gcBodiesMutation.mutate()}
@@ -539,6 +545,8 @@ export function YakuWorkspaceShell({ search, setSearch }: YakuWorkspaceShellProp
             updateEnvironmentMutation.error,
             deleteEnvironmentMutation.error,
             createCookieJarMutation.error,
+            clearCookieJarMutation.error,
+            deleteCookieJarMutation.error,
             createFolderMutation.error,
             updateFolderMutation.error,
             createRequestMutation.error,
