@@ -71,6 +71,9 @@ export function useYakuWorkspaceForms({
   const [requestQueryParams, setRequestQueryParams] = useState<ConfigPair[]>([]);
   const [requestFollowRedirects, setRequestFollowRedirects] = useState(true);
   const [requestTimeoutMs, setRequestTimeoutMs] = useState("");
+  const [requestGraphqlQuery, setRequestGraphqlQuery] = useState("query { __typename }");
+  const [requestGraphqlVariables, setRequestGraphqlVariables] = useState("");
+  const [requestGraphqlOperationName, setRequestGraphqlOperationName] = useState("");
   const [requestGrpcService, setRequestGrpcService] = useState("");
   const [requestGrpcMethod, setRequestGrpcMethod] = useState("");
   const [requestGrpcMessage, setRequestGrpcMessage] = useState("");
@@ -104,6 +107,9 @@ export function useYakuWorkspaceForms({
   const [requestEditQueryParams, setRequestEditQueryParams] = useState<ConfigPair[]>([]);
   const [requestEditFollowRedirects, setRequestEditFollowRedirects] = useState(true);
   const [requestEditTimeoutMs, setRequestEditTimeoutMs] = useState("");
+  const [requestEditGraphqlQuery, setRequestEditGraphqlQuery] = useState("");
+  const [requestEditGraphqlVariables, setRequestEditGraphqlVariables] = useState("");
+  const [requestEditGraphqlOperationName, setRequestEditGraphqlOperationName] = useState("");
   const [requestEditGrpcService, setRequestEditGrpcService] = useState("");
   const [requestEditGrpcMethod, setRequestEditGrpcMethod] = useState("");
   const [requestEditGrpcMessage, setRequestEditGrpcMessage] = useState("");
@@ -148,6 +154,9 @@ export function useYakuWorkspaceForms({
     setRequestQueryParams([]);
     setRequestFollowRedirects(true);
     setRequestTimeoutMs(requestProtocol === "web_socket" || requestProtocol === "grpc" ? "30000" : "");
+    setRequestGraphqlQuery("query { __typename }");
+    setRequestGraphqlVariables("");
+    setRequestGraphqlOperationName("");
     setRequestGrpcService("");
     setRequestGrpcMethod("");
     setRequestGrpcMessage("");
@@ -186,6 +195,9 @@ export function useYakuWorkspaceForms({
     setRequestEditQueryParams(draft.query);
     setRequestEditFollowRedirects(draft.followRedirects);
     setRequestEditTimeoutMs(draft.timeoutMs);
+    setRequestEditGraphqlQuery(draft.graphqlQuery);
+    setRequestEditGraphqlVariables(draft.graphqlVariables);
+    setRequestEditGraphqlOperationName(draft.graphqlOperationName);
     setRequestEditGrpcService(draft.grpcService);
     setRequestEditGrpcMethod(draft.grpcMethod);
     setRequestEditGrpcMessage(draft.grpcMessage);
@@ -231,6 +243,12 @@ export function useYakuWorkspaceForms({
     setFollowRedirects: setRequestFollowRedirects,
     timeoutMs: requestTimeoutMs,
     setTimeoutMs: setRequestTimeoutMs,
+    graphqlQuery: requestGraphqlQuery,
+    setGraphqlQuery: setRequestGraphqlQuery,
+    graphqlVariables: requestGraphqlVariables,
+    setGraphqlVariables: setRequestGraphqlVariables,
+    graphqlOperationName: requestGraphqlOperationName,
+    setGraphqlOperationName: setRequestGraphqlOperationName,
     grpcService: requestGrpcService,
     setGrpcService: setRequestGrpcService,
     grpcMethod: requestGrpcMethod,
@@ -283,6 +301,12 @@ export function useYakuWorkspaceForms({
     setFollowRedirects: setRequestEditFollowRedirects,
     timeoutMs: requestEditTimeoutMs,
     setTimeoutMs: setRequestEditTimeoutMs,
+    graphqlQuery: requestEditGraphqlQuery,
+    setGraphqlQuery: setRequestEditGraphqlQuery,
+    graphqlVariables: requestEditGraphqlVariables,
+    setGraphqlVariables: setRequestEditGraphqlVariables,
+    graphqlOperationName: requestEditGraphqlOperationName,
+    setGraphqlOperationName: setRequestEditGraphqlOperationName,
     grpcService: requestEditGrpcService,
     setGrpcService: setRequestEditGrpcService,
     grpcMethod: requestEditGrpcMethod,

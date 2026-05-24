@@ -32,6 +32,12 @@ export function HttpGraphqlFields({
   setHttpAuthToken,
   httpAuthPasswordSecretId,
   httpAuthTokenSecretId,
+  graphqlQuery,
+  setGraphqlQuery,
+  graphqlVariables,
+  setGraphqlVariables,
+  graphqlOperationName,
+  setGraphqlOperationName,
   headers,
   setHeaders,
   query,
@@ -65,6 +71,12 @@ export function HttpGraphqlFields({
   setHttpAuthToken: (value: string) => void;
   httpAuthPasswordSecretId: string;
   httpAuthTokenSecretId: string;
+  graphqlQuery: string;
+  setGraphqlQuery: (value: string) => void;
+  graphqlVariables: string;
+  setGraphqlVariables: (value: string) => void;
+  graphqlOperationName: string;
+  setGraphqlOperationName: (value: string) => void;
   headers: ConfigPair[];
   setHeaders: (pairs: ConfigPair[]) => void;
   query: ConfigPair[];
@@ -84,17 +96,28 @@ export function HttpGraphqlFields({
           className={fieldClassName}
         />
       ) : null}
-      <HttpBodyFields
-        protocol={protocol}
-        bodyMode={httpBodyMode}
-        setBodyMode={setHttpBodyMode}
-        body={httpBody}
-        setBody={setHttpBody}
-        bodyFilePath={httpBodyFilePath}
-        setBodyFilePath={setHttpBodyFilePath}
-        multipartParts={httpMultipartParts}
-        setMultipartParts={setHttpMultipartParts}
-      />
+      {protocol === "graphql" ? (
+        <GraphqlPayloadFields
+          query={graphqlQuery}
+          setQuery={setGraphqlQuery}
+          variables={graphqlVariables}
+          setVariables={setGraphqlVariables}
+          operationName={graphqlOperationName}
+          setOperationName={setGraphqlOperationName}
+        />
+      ) : (
+        <HttpBodyFields
+          protocol={protocol}
+          bodyMode={httpBodyMode}
+          setBodyMode={setHttpBodyMode}
+          body={httpBody}
+          setBody={setHttpBody}
+          bodyFilePath={httpBodyFilePath}
+          setBodyFilePath={setHttpBodyFilePath}
+          multipartParts={httpMultipartParts}
+          setMultipartParts={setHttpMultipartParts}
+        />
+      )}
       <HttpAuthFields
         authType={httpAuthType}
         setAuthType={setHttpAuthType}
@@ -206,6 +229,54 @@ function HttpBodyFields({
           File parts are read at send time. File contents are not stored in request config.
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function GraphqlPayloadFields({
+  query,
+  setQuery,
+  variables,
+  setVariables,
+  operationName,
+  setOperationName,
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  variables: string;
+  setVariables: (value: string) => void;
+  operationName: string;
+  setOperationName: (value: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface p-3">
+      <div className="mb-2 text-xs uppercase tracking-[0.2em] text-text-subtlest">
+        GraphQL Payload
+      </div>
+      <input
+        value={operationName}
+        onChange={(event) => setOperationName(event.target.value)}
+        placeholder="Operation name"
+        className={fieldClassName}
+      />
+      <textarea
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        rows={8}
+        placeholder="query { __typename }"
+        className={`${textareaClassName} mt-3`}
+      />
+      <textarea
+        value={variables}
+        onChange={(event) => setVariables(event.target.value)}
+        rows={5}
+        placeholder='{"id":"123"}'
+        className={`${textareaClassName} mt-3`}
+      />
+      <div className="mt-2 text-[11px] text-text-subtle">
+        GraphQL requests are sent as JSON with `query`, optional `variables`, and optional
+        `operationName`.
+      </div>
     </div>
   );
 }

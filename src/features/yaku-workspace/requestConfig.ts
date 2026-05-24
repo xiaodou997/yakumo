@@ -30,6 +30,9 @@ export type RequestConfigDraft = {
   query: ConfigPair[];
   followRedirects: boolean;
   timeoutMs: string;
+  graphqlQuery: string;
+  graphqlVariables: string;
+  graphqlOperationName: string;
   grpcService: string;
   grpcMethod: string;
   grpcMessage: string;
@@ -58,6 +61,9 @@ export type RequestConfigDraftController = RequestConfigDraft & {
   setQuery: (pairs: ConfigPair[]) => void;
   setFollowRedirects: (value: boolean) => void;
   setTimeoutMs: (value: string) => void;
+  setGraphqlQuery: (value: string) => void;
+  setGraphqlVariables: (value: string) => void;
+  setGraphqlOperationName: (value: string) => void;
   setGrpcService: (value: string) => void;
   setGrpcMethod: (value: string) => void;
   setGrpcMessage: (value: string) => void;
@@ -107,9 +113,31 @@ export function buildRequestConfigDraft(input: RequestConfigDraft & {
     };
   }
 
+  if (input.protocol === "graphql") {
+    const graphqlQuery = input.graphqlQuery.trim();
+    if (graphqlQuery === "") {
+      throw new Error("GraphQL query cannot be empty");
+    }
+    return {
+      method: "POST",
+      url: trimmedUrl,
+      headers: pairsToHeaders(input.headers),
+      query: pairsToQueryParams(input.query),
+      bodyMode: "json",
+      body: graphqlBodyText(input),
+      graphqlQuery,
+      graphqlVariables: graphqlVariablesObject(input),
+      graphqlOperationName: stringOrNull(input.graphqlOperationName),
+      cookieJarId: input.httpCookieJarId.trim() || null,
+      auth: buildHttpAuth(input),
+      followRedirects: input.followRedirects,
+      timeoutMs: timeout,
+    };
+  }
+
   const bodyMode = normalizedHttpBodyMode(input);
   return {
-    method: input.protocol === "graphql" ? "POST" : input.httpMethod.trim() || "GET",
+    method: input.httpMethod.trim() || "GET",
     url: trimmedUrl,
     headers: pairsToHeaders(input.headers),
     query: pairsToQueryParams(input.query),
@@ -156,6 +184,17 @@ export function summarizeRequestConfig(protocol: YakuProtocol, config: Record<st
       { label: "Timeout", value: numberString(config.timeoutMs) },
     ];
   }
+  if (protocol === "graphql") {
+    return [
+      { label: "URL", value: url || "unset" },
+      { label: "Query", value: graphqlQuerySummary(config) },
+      { label: "Variables", value: graphqlVariablesSummary(config) },
+      { label: "Operation", value: stringOrEmpty(config.graphqlOperationName) || "unset" },
+      { label: "Auth", value: authTypeString(config.auth) },
+      { label: "Cookie Jar", value: stringOrEmpty(config.cookieJarId) || "none" },
+      { label: "Timeout", value: numberString(config.timeoutMs) },
+    ];
+  }
   return [
     { label: "Method", value: stringOrEmpty(config.method) || "unset" },
     { label: "URL", value: url || "unset" },
@@ -184,6 +223,9 @@ export function draftFromRequestConfig(
     query: pairsFromQuery(config.query),
     followRedirects: config.followRedirects !== false,
     timeoutMs: typeof config.timeoutMs === "number" ? String(config.timeoutMs) : "",
+    graphqlQuery: stringOrEmpty(config.graphqlQuery) || graphqlBodyQueryFromConfig(config),
+    graphqlVariables: graphqlVariablesTextFromConfig(config),
+    graphqlOperationName: stringOrEmpty(config.graphqlOperationName) || graphqlBodyOperationNameFromConfig(config),
     grpcService: stringOrEmpty(config.service),
     grpcMethod: stringOrEmpty(config.method),
     grpcMessage: typeof config.message === "string" ? config.message : "",
@@ -206,6 +248,9 @@ function normalizedHttpBodyMode(input: RequestConfigDraft) {
 }
 
 function bodySummary(config: Record<string, unknown>) {
+  if (stringOrEmpty(config.graphqlQuery) !== "" || config.graphqlVariables != null) {
+    return "graphql payload";
+  }
   const mode = stringOrEmpty(config.bodyMode) || inferredHttpBodyMode(config);
   if (mode === "file") {
     return stringOrEmpty(config.bodyFilePath) === "" ? "file missing" : "file";
@@ -255,6 +300,69 @@ function buildHttpAuth(input: RequestConfigDraft) {
     };
   }
   return { type: authType };
+}
+
+function graphqlBodyText(input: RequestConfigDraft) {
+  const body: Record<string, unknown> = {
+    query: input.graphqlQuery,
+  };
+  const variables = graphqlVariablesObject(input);
+  if (variables != null) {
+    body.variables = variables;
+  }
+  const operationName = input.graphqlOperationName.trim();
+  if (operationName !== "") {
+    body.operationName = operationName;
+  }
+  return JSON.stringify(body, null, 2);
+}
+
+function graphqlVariablesObject(input: RequestConfigDraft) {
+  const text = input.graphqlVariables.trim();
+  if (text === "") return null;
+  const parsed = JSON.parse(text) as unknown;
+  if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("GraphQL variables must be a JSON object");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function graphqlVariablesTextFromConfig(config: Record<string, unknown>) {
+  if (config.graphqlVariables != null) {
+    return JSON.stringify(config.graphqlVariables, null, 2);
+  }
+  const body = bodyObjectFromConfig(config);
+  if (body?.variables != null) {
+    return JSON.stringify(body.variables, null, 2);
+  }
+  return "";
+}
+
+function graphqlBodyQueryFromConfig(config: Record<string, unknown>) {
+  const body = bodyObjectFromConfig(config);
+  return typeof body?.query === "string" ? body.query : "";
+}
+
+function graphqlBodyOperationNameFromConfig(config: Record<string, unknown>) {
+  const body = bodyObjectFromConfig(config);
+  return typeof body?.operationName === "string" ? body.operationName : "";
+}
+
+function bodyObjectFromConfig(config: Record<string, unknown>) {
+  if (config.body == null) return null;
+  if (typeof config.body === "object" && !Array.isArray(config.body)) {
+    return config.body as Record<string, unknown>;
+  }
+  if (typeof config.body !== "string") return null;
+  try {
+    const parsed = JSON.parse(config.body) as unknown;
+    if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 function draftAuthFields(value: unknown) {
@@ -414,6 +522,23 @@ function splitLines(value: string) {
 
 function stringOrEmpty(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function stringOrNull(value: string) {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function graphqlQuerySummary(config: Record<string, unknown>) {
+  const query = stringOrEmpty(config.graphqlQuery) || graphqlBodyQueryFromConfig(config);
+  if (query === "") return "unset";
+  return query.length > 80 ? `${query.slice(0, 77)}...` : query;
+}
+
+function graphqlVariablesSummary(config: Record<string, unknown>) {
+  if (config.graphqlVariables != null) return "set";
+  const body = bodyObjectFromConfig(config);
+  return body?.variables != null ? "set" : "unset";
 }
 
 function booleanString(value: unknown) {

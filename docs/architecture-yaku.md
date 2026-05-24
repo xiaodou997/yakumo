@@ -164,10 +164,14 @@ Required schema adjustments before main UI cutover:
   Tauri resolves those references only when sending a request. Desktop runtime
   stores secret values in the OS keychain and stores only keychain references in
   `secrets.ciphertext`; tests use local plaintext fakes.
-- HTTP/GraphQL request config supports `bodyMode` for `text`, `json`, `file`,
-  and `multipart`. File body configs store only `bodyFilePath`; multipart file
+- HTTP request config supports `bodyMode` for `text`, `json`, `file`, and
+  `multipart`. File body configs store only `bodyFilePath`; multipart file
   parts store only `filePath`. The desktop bridge validates file paths at send
   time and the engine records only file metadata in request body events.
+- GraphQL request config now has first-class `graphqlQuery`,
+  `graphqlVariables`, and `graphqlOperationName` fields. The engine normalizes
+  GraphQL sends to `POST` JSON and builds the runtime payload from those fields
+  while still tolerating legacy JSON `body` payloads.
 - Cookie jars are Yaku-native store records (`cookie_jars` / `cookies`). HTTP
   requests may reference `cookieJarId`; the engine sends matching cookies,
   stores `Set-Cookie` response headers back into the jar, and redacts cookie

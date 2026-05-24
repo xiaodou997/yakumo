@@ -51,6 +51,12 @@ export function RequestStructuredEditor({
             setHttpAuthToken={draft.setHttpAuthToken}
             httpAuthPasswordSecretId={draft.httpAuthPasswordSecretId}
             httpAuthTokenSecretId={draft.httpAuthTokenSecretId}
+            graphqlQuery={draft.graphqlQuery}
+            setGraphqlQuery={draft.setGraphqlQuery}
+            graphqlVariables={draft.graphqlVariables}
+            setGraphqlVariables={draft.setGraphqlVariables}
+            graphqlOperationName={draft.graphqlOperationName}
+            setGraphqlOperationName={draft.setGraphqlOperationName}
             headers={draft.headers}
             setHeaders={draft.setHeaders}
             query={draft.query}

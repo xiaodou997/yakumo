@@ -81,6 +81,12 @@ pub struct HttpRequestConfig {
     #[serde(default)]
     pub multipart_parts: Vec<HttpMultipartPart>,
     #[serde(default)]
+    pub graphql_query: Option<String>,
+    #[serde(default)]
+    pub graphql_variables: Option<serde_json::Value>,
+    #[serde(default)]
+    pub graphql_operation_name: Option<String>,
+    #[serde(default)]
     pub auth: Option<HttpAuthConfig>,
     #[serde(default)]
     pub cookie_jar_id: Option<String>,
@@ -263,7 +269,7 @@ where
         }
 
         let effective_config = input.config_override.unwrap_or_else(|| request.config.clone());
-        let mut config = parse_config(effective_config.clone())?;
+        let mut config = parse_config(effective_config.clone(), request.protocol.clone())?;
         let cookie_context = load_cookie_context(service.repository(), &config)?;
         apply_cookie_header(&mut config, &cookie_context);
         let run = match service.repository().get_run(&input.run_id)? {
@@ -283,7 +289,7 @@ where
             now,
         })?;
 
-        if let Some(data) = request_body_event_data(&config)? {
+        if let Some(data) = request_body_event_data(&config, request.protocol.clone())? {
             service.append_run_event(AppendRunEvent {
                 run_id: run.id.clone(),
                 sequence: 1,
@@ -497,9 +503,15 @@ impl HttpSender for MockHttpSender {
     }
 }
 
-fn parse_config(config: BTreeMap<String, serde_json::Value>) -> Result<HttpRequestConfig> {
+fn parse_config(
+    config: BTreeMap<String, serde_json::Value>,
+    protocol: Protocol,
+) -> Result<HttpRequestConfig> {
     let value = serde_json::Value::Object(config.into_iter().collect());
-    let config: HttpRequestConfig = serde_json::from_value(value)?;
+    let mut config: HttpRequestConfig = serde_json::from_value(value)?;
+    if protocol == Protocol::Graphql {
+        normalize_graphql_config(&mut config)?;
+    }
     if config.method.trim().is_empty() {
         return Err(Error::InvalidConfig("method cannot be empty".to_string()));
     }
@@ -508,6 +520,23 @@ fn parse_config(config: BTreeMap<String, serde_json::Value>) -> Result<HttpReque
     }
     validate_body_config(&config)?;
     Ok(config)
+}
+
+fn normalize_graphql_config(config: &mut HttpRequestConfig) -> Result<()> {
+    config.method = "POST".to_string();
+    config.body_mode = Some("json".to_string());
+    if config.graphql_query.as_deref().unwrap_or_default().trim().is_empty()
+        && config.body.as_deref().unwrap_or_default().trim().is_empty()
+    {
+        return Err(Error::InvalidConfig("GraphQL query cannot be empty".to_string()));
+    }
+    if !config.headers.iter().any(|header| header.name.eq_ignore_ascii_case("content-type")) {
+        config.headers.push(Header {
+            name: "content-type".to_string(),
+            value: "application/json".to_string(),
+        });
+    }
+    Ok(())
 }
 
 fn validate_body_config(config: &HttpRequestConfig) -> Result<()> {
@@ -583,7 +612,9 @@ fn apply_body(
 fn request_body_bytes(config: &HttpRequestConfig) -> Result<Option<Vec<u8>>> {
     match normalized_body_mode(config).as_str() {
         "" | "none" => Ok(None),
-        "text" | "json" => Ok(config.body.as_ref().map(|body| body.as_bytes().to_vec())),
+        "text" | "json" => {
+            Ok(Some(request_text_body(config)?.into_bytes()).filter(|body| !body.is_empty()))
+        }
         "file" => {
             let path = config.body_file_path.as_deref().unwrap_or_default().trim();
             let body = std::fs::read(path)
@@ -592,6 +623,29 @@ fn request_body_bytes(config: &HttpRequestConfig) -> Result<Option<Vec<u8>>> {
         }
         other => Err(Error::InvalidConfig(format!("unsupported body mode: {other}"))),
     }
+}
+
+fn request_text_body(config: &HttpRequestConfig) -> Result<String> {
+    if config.graphql_query.as_deref().unwrap_or_default().trim().is_empty() {
+        return Ok(config.body.clone().unwrap_or_default());
+    }
+    let mut body = serde_json::Map::new();
+    body.insert(
+        "query".to_string(),
+        serde_json::Value::String(config.graphql_query.clone().unwrap_or_default()),
+    );
+    if let Some(variables) = &config.graphql_variables {
+        body.insert("variables".to_string(), variables.clone());
+    }
+    if let Some(operation_name) =
+        config.graphql_operation_name.as_deref().map(str::trim).filter(|value| !value.is_empty())
+    {
+        body.insert(
+            "operationName".to_string(),
+            serde_json::Value::String(operation_name.to_string()),
+        );
+    }
+    serde_json::to_string(&body).map_err(Error::from)
 }
 
 fn multipart_form(config: &HttpRequestConfig) -> Result<Form> {
@@ -633,16 +687,24 @@ fn multipart_form(config: &HttpRequestConfig) -> Result<Form> {
 
 fn request_body_event_data(
     config: &HttpRequestConfig,
+    protocol: Protocol,
 ) -> Result<Option<BTreeMap<String, serde_json::Value>>> {
     match normalized_body_mode(config).as_str() {
         "" | "none" => Ok(None),
-        "text" | "json" => Ok(config.body.as_ref().map(|body| {
-            BTreeMap::from([
-                ("mode".to_string(), json!(normalized_body_mode(config))),
-                ("text".to_string(), json!(body)),
-                ("byteLength".to_string(), json!(body.len() as i64)),
-            ])
-        })),
+        "text" | "json" => {
+            Ok(Some(request_text_body(config)?).filter(|body| !body.is_empty()).map(|body| {
+                let mode = if protocol == Protocol::Graphql {
+                    "graphql".to_string()
+                } else {
+                    normalized_body_mode(config)
+                };
+                BTreeMap::from([
+                    ("mode".to_string(), json!(mode)),
+                    ("text".to_string(), json!(body)),
+                    ("byteLength".to_string(), json!(body.len() as i64)),
+                ])
+            }))
+        }
         "file" => {
             let path = config.body_file_path.as_deref().unwrap_or_default().trim();
             let metadata = std::fs::metadata(path).map_err(|err| {
@@ -1081,6 +1143,7 @@ mod tests {
         let mut config = BTreeMap::new();
         config.insert("method".to_string(), json!("GET"));
         config.insert("url".to_string(), json!("https://example.test"));
+        config.insert("graphqlQuery".to_string(), json!("query { __typename }"));
         let request = service
             .create_request(CreateRequest {
                 id: "rq_v2".to_string(),
@@ -1450,6 +1513,68 @@ mod tests {
     }
 
     #[test]
+    fn reqwest_http_sender_sends_graphql_payload() {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let addr = rt.block_on(spawn_graphql_server());
+
+        let store = Store::open_in_memory().expect("store opens");
+        let service = DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_graphql".to_string(),
+                name: "Yaku".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let request = service
+            .create_request(CreateRequest {
+                id: "rq_graphql".to_string(),
+                node_id: "node_graphql".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                protocol: Protocol::Graphql,
+                name: "GraphQL".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("GET")),
+                    ("url".to_string(), json!(format!("http://{addr}/graphql"))),
+                    (
+                        "graphqlQuery".to_string(),
+                        json!("query GetThing($id: ID!) { thing(id: $id) { id } }"),
+                    ),
+                    ("graphqlVariables".to_string(), json!({ "id": "abc" })),
+                    ("graphqlOperationName".to_string(), json!("GetThing")),
+                ]),
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let engine = HttpEngine::new(ReqwestHttpSender::new().expect("sender"));
+        let run = engine
+            .send(
+                &service,
+                SendHttp {
+                    run_id: "run_graphql".to_string(),
+                    request_id: request.id,
+                    config_override: None,
+                },
+            )
+            .expect("send succeeds");
+        assert_eq!(run.state, RunState::Completed);
+
+        let store = service.into_inner();
+        let events = store.list_run_events(&run.id, Page::first(10)).expect("events");
+        assert_eq!(events[0].data["method"], json!("POST"));
+        assert_eq!(events[0].data["bodyMode"], json!("json"));
+        assert_eq!(events[1].kind, RunEventKind::RequestBody);
+        assert_eq!(events[1].data["mode"], json!("graphql"));
+        assert!(events[1].data["text"].as_str().unwrap_or_default().contains("GetThing"));
+    }
+
+    #[test]
     fn reqwest_http_sender_persists_and_sends_cookie_jar() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         let addr = rt.block_on(spawn_cookie_server());
@@ -1553,6 +1678,9 @@ mod tests {
                     body_mode: None,
                     body_file_path: None,
                     multipart_parts: Vec::new(),
+                    graphql_query: None,
+                    graphql_variables: None,
+                    graphql_operation_name: None,
                     auth: None,
                     cookie_jar_id: None,
                     follow_redirects: true,
@@ -1612,6 +1740,31 @@ mod tests {
             assert!(request.starts_with("POST /echo HTTP/1.1"));
             assert!(request.contains(expected_body));
             let response = concat!("HTTP/1.1 204 No Content\r\n", "content-length: 0\r\n", "\r\n");
+            socket.write_all(response.as_bytes()).await.expect("write response");
+        });
+        addr
+    }
+
+    async fn spawn_graphql_server() -> SocketAddr {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind graphql server");
+        let addr = listener.local_addr().expect("local addr");
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept");
+            let mut buf = vec![0; 4096];
+            let n = socket.read(&mut buf).await.expect("read request");
+            let request = String::from_utf8_lossy(&buf[..n]);
+            assert!(request.starts_with("POST /graphql HTTP/1.1"));
+            assert!(request.contains("content-type: application/json"));
+            assert!(request.contains("\"query\":\"query GetThing($id: ID!)"));
+            assert!(request.contains("\"variables\":{\"id\":\"abc\"}"));
+            assert!(request.contains("\"operationName\":\"GetThing\""));
+            let response = concat!(
+                "HTTP/1.1 200 OK\r\n",
+                "content-type: application/json\r\n",
+                "content-length: 20\r\n",
+                "\r\n",
+                "{\"data\":{\"thing\":1}}"
+            );
             socket.write_all(response.as_bytes()).await.expect("write response");
         });
         addr
