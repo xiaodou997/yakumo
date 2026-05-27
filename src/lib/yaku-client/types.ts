@@ -14,6 +14,7 @@ import type {
   RunEvent as DomainRunEvent,
   RunEventKind as DomainRunEventKind,
   RunState as DomainRunState,
+  SecretMetadata as DomainSecretMetadata,
   Setting as DomainSetting,
   Workspace as DomainWorkspace,
 } from "../../../crates/yaku-domain/bindings/gen_domain";
@@ -46,6 +47,7 @@ export type YakuWorkspace = DomainWorkspace;
 export type YakuCookieJar = DomainCookieJar;
 export type YakuCookieRecord = DomainCookieRecord;
 export type YakuEnvironment = DomainEnvironment;
+export type YakuSecretMetadata = DomainSecretMetadata;
 export type YakuRequestNode = DomainRequestNode;
 export type YakuRequest = DomainRequest;
 export type YakuRun = DomainRun;
@@ -75,6 +77,46 @@ export interface YakuBackupImportResponse {
   workspace: YakuWorkspace;
   manifest: YakuBackupManifest;
   replacedExisting: boolean;
+}
+
+export interface YakuSecretAuditReference {
+  requestId: string;
+  requestName: string;
+  nodeId: string;
+  nodePath: string;
+  authType: string;
+  authField: string;
+}
+
+export interface YakuSecretAuditItem {
+  secret: YakuSecretMetadata;
+  kind: string | null;
+  storage: string | null;
+  orphan: boolean;
+  references: YakuSecretAuditReference[];
+}
+
+export interface YakuSecretAudit {
+  items: YakuSecretAuditItem[];
+  orphanCount: number;
+  referencedCount: number;
+}
+
+export interface YakuSecretCleanupResponse {
+  deletedIds: string[];
+  deletedCount: number;
+}
+
+export interface YakuGrpcMethodDefinition {
+  name: string;
+  schema: string;
+  clientStreaming: boolean;
+  serverStreaming: boolean;
+}
+
+export interface YakuGrpcServiceDefinition {
+  name: string;
+  methods: YakuGrpcMethodDefinition[];
 }
 
 export type YakuEditorKeymap = "default" | "vim" | "vscode" | "emacs";
@@ -125,7 +167,11 @@ export interface YakuAppSettings {
   useNativeTitlebar: boolean;
 }
 
-export type YakuRunLifecycleKind = "started" | "finished" | "failed" | "cancelled";
+export type YakuRunLifecycleKind =
+  | "started"
+  | "finished"
+  | "failed"
+  | "cancelled";
 
 export interface YakuRunLifecycleEvent {
   kind: YakuRunLifecycleKind;

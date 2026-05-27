@@ -76,4 +76,5 @@ yakumo-fonts = { workspace = true }
 yakumo-mac-window = { workspace = true }
 yakumo-templates = { workspace = true }
 yaku-engine = { workspace = true }
+yakumo-grpc = { workspace = true }
 yaku-store = { workspace = true }

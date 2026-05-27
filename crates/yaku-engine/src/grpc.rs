@@ -21,6 +21,8 @@ pub struct GrpcRequestConfig {
     #[serde(default)]
     pub message: Option<String>,
     #[serde(default)]
+    pub proto_import_roots: Vec<String>,
+    #[serde(default)]
     pub proto_files: Vec<String>,
     #[serde(default = "default_true")]
     pub use_reflection: bool,
@@ -117,7 +119,7 @@ impl GrpcSender for ReflectionGrpcSender {
             });
         }
 
-        let proto_files = request.proto_files.iter().map(PathBuf::from).collect::<Vec<_>>();
+        let proto_files = grpc_proto_paths(request);
         let message = request.message.as_deref().unwrap_or("{}");
         let response = runtime.block_on(async {
             let response = tokio::select! {
@@ -144,10 +146,28 @@ async fn send_grpc_unary(
     let mut handle = yakumo_grpc::manager::GrpcHandle::new();
     let connection =
         handle.connect("yakumo-v2", &request.url, proto_files, metadata, true, None).await?;
+    let method = connection.method(&request.service, &request.method).await?;
+    if method.is_client_streaming() || method.is_server_streaming() {
+        return Err(yakumo_grpc::error::Error::GenericError(format!(
+            "Yaku gRPC workspace currently supports unary methods only; '{}.{}' is {}",
+            request.service,
+            request.method,
+            grpc_method_shape(method.is_client_streaming(), method.is_server_streaming()),
+        )));
+    }
     let response =
         connection.unary(&request.service, &request.method, message, metadata, None).await?;
     yakumo_grpc::serialize_message(response.get_ref())
         .map_err(yakumo_grpc::error::Error::GenericError)
+}
+
+fn grpc_method_shape(client_streaming: bool, server_streaming: bool) -> &'static str {
+    match (client_streaming, server_streaming) {
+        (true, true) => "a bidirectional streaming method",
+        (true, false) => "a client-streaming method",
+        (false, true) => "a server-streaming method",
+        (false, false) => "a unary method",
+    }
 }
 
 pub struct GrpcEngine<S> {
@@ -386,10 +406,19 @@ fn request_metadata_data(config: &GrpcRequestConfig) -> BTreeMap<String, serde_j
         ("service".to_string(), json!(config.service)),
         ("method".to_string(), json!(config.method)),
         ("metadata".to_string(), json!(config.metadata)),
+        ("protoImportRoots".to_string(), json!(config.proto_import_roots)),
         ("protoFiles".to_string(), json!(config.proto_files)),
         ("useReflection".to_string(), json!(config.use_reflection)),
         ("timeoutMs".to_string(), json!(config.timeout_ms)),
     ])
+}
+
+fn grpc_proto_paths(request: &GrpcRequestConfig) -> Vec<PathBuf> {
+    if request.use_reflection {
+        return Vec::new();
+    }
+
+    request.proto_import_roots.iter().chain(request.proto_files.iter()).map(PathBuf::from).collect()
 }
 
 fn request_snapshot_data(
@@ -614,15 +643,34 @@ mod tests {
     }
 
     #[test]
-    fn reflection_sender_invokes_unary_with_local_proto_file() {
+    fn reflection_sender_invokes_unary_with_local_proto_file_and_import_root() {
         let unary_server = TestUnaryGrpcServer::spawn();
         let proto_dir = tempfile::tempdir().expect("temp proto dir");
-        let proto_path = proto_dir.path().join("ping.proto");
+        let proto_root = proto_dir.path().join("proto");
+        let common_dir = proto_root.join("common");
+        let service_dir = proto_dir.path().join("services");
+        std::fs::create_dir_all(&common_dir).expect("create common dir");
+        std::fs::create_dir_all(&service_dir).expect("create services dir");
+        let shared_proto_path = common_dir.join("shared.proto");
+        let proto_path = service_dir.join("ping.proto");
+        std::fs::write(
+            &shared_proto_path,
+            r#"
+                syntax = "proto3";
+                package example.common;
+
+                message PingName {
+                  string value = 1;
+                }
+            "#,
+        )
+        .expect("write shared proto");
         std::fs::write(
             &proto_path,
             r#"
                 syntax = "proto3";
                 package example;
+                import "common/shared.proto";
                 service PingService {
                   rpc Ping (PingRequest) returns (PingResponse);
                 }
@@ -652,6 +700,10 @@ mod tests {
         config.insert("service".to_string(), json!("example.PingService"));
         config.insert("method".to_string(), json!("Ping"));
         config.insert("message".to_string(), json!("{\"name\":\"yakumo\"}"));
+        config.insert(
+            "protoImportRoots".to_string(),
+            json!([proto_root.to_string_lossy().to_string()]),
+        );
         config.insert("protoFiles".to_string(), json!([proto_path.to_string_lossy()]));
         config.insert("useReflection".to_string(), json!(false));
         let request = service
@@ -687,11 +739,98 @@ mod tests {
         let events = store.list_run_events(&run.id, Page::first(10)).expect("events");
         assert_eq!(events.len(), 5);
         assert_eq!(events[0].kind, RunEventKind::RequestHeaders);
+        assert_eq!(
+            events[0].data["protoImportRoots"],
+            json!([proto_root.to_string_lossy().to_string()])
+        );
         assert_eq!(events[1].kind, RunEventKind::RequestBody);
         assert_eq!(events[2].kind, RunEventKind::Message);
         assert_eq!(events[2].data["json"]["message"], json!("pong yakumo"));
         assert_eq!(events[3].kind, RunEventKind::Complete);
         assert_eq!(events[4].kind, RunEventKind::RequestSnapshot);
+    }
+
+    #[test]
+    fn reflection_sender_rejects_non_unary_method() {
+        let proto_dir = tempfile::tempdir().expect("temp proto dir");
+        let proto_path = proto_dir.path().join("stream.proto");
+        std::fs::write(
+            &proto_path,
+            r#"
+                syntax = "proto3";
+                package example;
+                service StreamService {
+                  rpc Watch (WatchRequest) returns (stream WatchResponse);
+                }
+                message WatchRequest {
+                  string name = 1;
+                }
+                message WatchResponse {
+                  string message = 1;
+                }
+            "#,
+        )
+        .expect("write proto");
+
+        let store = Store::open_in_memory().expect("store opens");
+        let service = DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_grpc_stream".to_string(),
+                name: "Yakumo".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let mut config = BTreeMap::new();
+        config.insert("url".to_string(), json!("http://127.0.0.1:50051"));
+        config.insert("service".to_string(), json!("example.StreamService"));
+        config.insert("method".to_string(), json!("Watch"));
+        config.insert("message".to_string(), json!("{\"name\":\"yakumo\"}"));
+        config.insert("protoFiles".to_string(), json!([proto_path.to_string_lossy()]));
+        config.insert("useReflection".to_string(), json!(false));
+        let request = service
+            .create_request(CreateRequest {
+                id: "rq_grpc_stream".to_string(),
+                node_id: "node_grpc_stream".to_string(),
+                workspace_id: workspace.id,
+                parent_id: None,
+                protocol: Protocol::Grpc,
+                name: "Watch".to_string(),
+                description: String::new(),
+                config,
+                sort_key: "a".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let engine = GrpcEngine::new(ReflectionGrpcSender::new().expect("sender"));
+        let run = engine
+            .send(
+                &service,
+                SendGrpc {
+                    run_id: "run_grpc_stream".to_string(),
+                    request_id: request.id,
+                    config_override: None,
+                },
+            )
+            .expect("send returns failed run");
+        assert_eq!(run.state, RunState::Failed);
+        assert!(run.error.as_deref().expect("error").contains("supports unary methods only"),);
+        assert!(run.error.as_deref().expect("error").contains("server-streaming method"),);
+
+        let store = service.into_inner();
+        let events = store.list_run_events(&run.id, Page::first(10)).expect("events");
+        assert_eq!(events[0].kind, RunEventKind::RequestHeaders);
+        assert_eq!(events[1].kind, RunEventKind::RequestBody);
+        assert_eq!(events[2].kind, RunEventKind::Error);
+        assert!(
+            events[2].data["message"]
+                .as_str()
+                .expect("error message")
+                .contains("supports unary methods only"),
+        );
     }
 
     struct TestReflectionServer {

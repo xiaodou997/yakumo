@@ -8465,6 +8465,7 @@ dependencies = [
  "yakumo-api",
  "yakumo-common",
  "yakumo-fonts",
+ "yakumo-grpc",
  "yakumo-mac-window",
  "yakumo-tauri-utils",
  "yakumo-templates",

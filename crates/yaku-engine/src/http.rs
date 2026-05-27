@@ -281,11 +281,12 @@ where
             })?,
         };
 
+        let attached_cookies = attached_request_cookies(&config, &cookie_context);
         service.append_run_event(AppendRunEvent {
             run_id: run.id.clone(),
             sequence: 0,
             kind: RunEventKind::RequestHeaders,
-            data: request_metadata_data(&config),
+            data: request_metadata_data(&config, &cookie_context, &attached_cookies),
             now,
         })?;
 
@@ -312,7 +313,7 @@ where
 
         match self.sender.send_with_cancellation(&config, &cancellation) {
             Ok(response) => {
-                persist_response_cookies(
+                let persisted_cookies = persist_response_cookies(
                     service.repository(),
                     &config,
                     &cookie_context,
@@ -322,7 +323,11 @@ where
                     run_id: run.id.clone(),
                     sequence: 2,
                     kind: RunEventKind::ResponseHeaders,
-                    data: response_headers_data(response.status_code, &response.headers),
+                    data: response_headers_data(
+                        response.status_code,
+                        &response.headers,
+                        &persisted_cookies,
+                    ),
                     now: chrono::Utc::now(),
                 })?;
                 let body_event = service.append_run_event(AppendRunEvent {
@@ -779,9 +784,30 @@ fn apply_cookie_header(config: &mut HttpRequestConfig, context: &Option<CookieCo
     config.headers.push(Header { name: "Cookie".to_string(), value: cookie_header });
 }
 
+fn attached_request_cookies(
+    config: &HttpRequestConfig,
+    context: &Option<CookieContext>,
+) -> Vec<CookieRecord> {
+    let Some(context) = context else {
+        return Vec::new();
+    };
+    let Ok(url) = reqwest::Url::parse(&config.url) else {
+        return Vec::new();
+    };
+    matching_cookies(&context.cookies, &url)
+}
+
 fn matching_cookie_header(cookies: &[CookieRecord], url: &reqwest::Url) -> String {
+    matching_cookies(cookies, url)
+        .iter()
+        .map(|cookie| format!("{}={}", cookie.name, cookie.value))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn matching_cookies(cookies: &[CookieRecord], url: &reqwest::Url) -> Vec<CookieRecord> {
     let Some(host) = url.host_str().map(|host| host.to_ascii_lowercase()) else {
-        return String::new();
+        return Vec::new();
     };
     let path = url.path();
     let is_secure = url.scheme().eq_ignore_ascii_case("https");
@@ -792,9 +818,8 @@ fn matching_cookie_header(cookies: &[CookieRecord], url: &reqwest::Url) -> Strin
         .filter(|cookie| !cookie.secure || is_secure)
         .filter(|cookie| cookie_domain_matches(&host, &cookie.domain))
         .filter(|cookie| cookie_path_matches(path, &cookie.path))
-        .map(|cookie| format!("{}={}", cookie.name, cookie.value))
-        .collect::<Vec<_>>()
-        .join("; ")
+        .cloned()
+        .collect()
 }
 
 fn persist_response_cookies<R>(
@@ -802,18 +827,19 @@ fn persist_response_cookies<R>(
     config: &HttpRequestConfig,
     context: &Option<CookieContext>,
     headers: &[Header],
-) -> Result<()>
+) -> Result<Vec<CookieRecord>>
 where
     R: CookieRepository,
 {
     let Some(context) = context else {
-        return Ok(());
+        return Ok(Vec::new());
     };
     let url = reqwest::Url::parse(&config.url)
         .map_err(|err| Error::InvalidConfig(format!("invalid url: {err}")))?;
     let Some(host) = url.host_str().map(|host| host.to_ascii_lowercase()) else {
-        return Ok(());
+        return Ok(Vec::new());
     };
+    let mut persisted = Vec::new();
     for header in headers.iter().filter(|header| header.name.eq_ignore_ascii_case("set-cookie")) {
         let Some(cookie) = parse_set_cookie(
             &header.value,
@@ -827,8 +853,9 @@ where
         repository
             .upsert_cookie(&cookie)
             .map_err(|err| Error::Send(format!("failed to store response cookie: {err}")))?;
+        persisted.push(cookie);
     }
-    Ok(())
+    Ok(persisted)
 }
 
 fn parse_set_cookie(
@@ -1005,8 +1032,12 @@ fn apply_auth(
     }
 }
 
-fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_json::Value> {
-    BTreeMap::from([
+fn request_metadata_data(
+    config: &HttpRequestConfig,
+    cookie_context: &Option<CookieContext>,
+    attached_cookies: &[CookieRecord],
+) -> BTreeMap<String, serde_json::Value> {
+    let mut data = BTreeMap::from([
         ("method".to_string(), json!(config.method)),
         ("url".to_string(), json!(config.url)),
         ("headers".to_string(), json!(redacted_headers(&config.headers))),
@@ -1018,7 +1049,16 @@ fn request_metadata_data(config: &HttpRequestConfig) -> BTreeMap<String, serde_j
         ("bodyMode".to_string(), json!(normalized_body_mode(config))),
         ("followRedirects".to_string(), json!(config.follow_redirects)),
         ("timeoutMs".to_string(), json!(config.timeout_ms)),
-    ])
+    ]);
+    if let Some(context) = cookie_context {
+        data.insert("cookieJarId".to_string(), json!(context.jar_id));
+        data.insert("attachedCookieCount".to_string(), json!(attached_cookies.len()));
+        data.insert(
+            "attachedCookies".to_string(),
+            json!(attached_cookies.iter().map(cookie_event_data).collect::<Vec<_>>()),
+        );
+    }
+    data
 }
 
 fn redacted_headers(headers: &[Header]) -> Vec<Header> {
@@ -1039,10 +1079,35 @@ fn redacted_headers(headers: &[Header]) -> Vec<Header> {
 fn response_headers_data(
     status_code: i32,
     headers: &[Header],
+    persisted_cookies: &[CookieRecord],
 ) -> BTreeMap<String, serde_json::Value> {
-    BTreeMap::from([
+    let set_cookie_count =
+        headers.iter().filter(|header| header.name.eq_ignore_ascii_case("set-cookie")).count();
+    let mut data = BTreeMap::from([
         ("statusCode".to_string(), json!(status_code)),
         ("headers".to_string(), json!(redacted_headers(headers))),
+        ("setCookieCount".to_string(), json!(set_cookie_count)),
+        ("persistedCookieCount".to_string(), json!(persisted_cookies.len())),
+    ]);
+    if !persisted_cookies.is_empty() {
+        data.insert(
+            "persistedCookies".to_string(),
+            json!(persisted_cookies.iter().map(cookie_event_data).collect::<Vec<_>>()),
+        );
+    }
+    data
+}
+
+fn cookie_event_data(cookie: &CookieRecord) -> BTreeMap<String, serde_json::Value> {
+    BTreeMap::from([
+        ("id".to_string(), json!(cookie.id)),
+        ("name".to_string(), json!(cookie.name)),
+        ("domain".to_string(), json!(cookie.domain)),
+        ("path".to_string(), json!(cookie.path)),
+        ("expiresAt".to_string(), json!(cookie.expires_at.map(|value| value.to_rfc3339()))),
+        ("secure".to_string(), json!(cookie.secure)),
+        ("httpOnly".to_string(), json!(cookie.http_only)),
+        ("sameSite".to_string(), json!(cookie.same_site)),
     ])
 }
 

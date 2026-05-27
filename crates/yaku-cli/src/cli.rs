@@ -805,6 +805,10 @@ pub enum YakuRequestCommands {
         #[arg(long = "proto-file")]
         proto_files: Vec<String>,
 
+        /// Local proto import root directory. Can be repeated.
+        #[arg(long = "proto-root")]
+        proto_import_roots: Vec<String>,
+
         /// Disable server reflection
         #[arg(long)]
         no_reflection: bool,
@@ -859,9 +863,17 @@ pub enum YakuRequestCommands {
         #[arg(long = "proto-file")]
         proto_files: Vec<String>,
 
+        /// Replace local proto import root directories. Can be repeated.
+        #[arg(long = "proto-root")]
+        proto_import_roots: Vec<String>,
+
         /// Clear local proto file paths
         #[arg(long, conflicts_with = "proto_files")]
         clear_proto_files: bool,
+
+        /// Clear local proto import root directories
+        #[arg(long, conflicts_with = "proto_import_roots")]
+        clear_proto_import_roots: bool,
 
         /// Enable server reflection
         #[arg(long, conflicts_with = "no_reflection")]

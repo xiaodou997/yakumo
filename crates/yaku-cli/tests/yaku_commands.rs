@@ -1802,13 +1802,16 @@ fn yaku_grpc_request_records_failed_run_when_reflection_is_disabled() {
             r#"{"name":"yakumo"}"#,
             "--proto-file",
             "ping.proto",
+            "--proto-root",
+            "proto",
             "--no-reflection",
             "--timeout-ms",
             "5000",
         ])
         .assert()
         .success()
-        .stdout(contains("\"protocol\":\"grpc\""));
+        .stdout(contains("\"protocol\":\"grpc\""))
+        .stdout(contains("\"protoImportRoots\":[\"proto\"]"));
     let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
 
     cli_cmd(data_dir)
@@ -1828,6 +1831,8 @@ fn yaku_grpc_request_records_failed_run_when_reflection_is_disabled() {
             r#"{"name":"patched"}"#,
             "--proto-file",
             "patched.proto",
+            "--proto-root",
+            "patched",
             "--reflection",
             "--timeout-ms",
             "6000",
@@ -1839,6 +1844,7 @@ fn yaku_grpc_request_records_failed_run_when_reflection_is_disabled() {
         .stdout(contains("\"method\":\"Patched\""))
         .stdout(contains("Bearer patched"))
         .stdout(contains("\"message\":\"{\\\"name\\\":\\\"patched\\\"}\""))
+        .stdout(contains("\"protoImportRoots\":[\"patched\"]"))
         .stdout(contains("\"patched.proto\""))
         .stdout(contains("\"useReflection\":true"))
         .stdout(contains("\"timeoutMs\":6000"));
@@ -1918,12 +1924,31 @@ fn yaku_grpc_request_invokes_unary_with_local_proto_file() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let data_dir = temp_dir.path();
     let unary_server = TestUnaryGrpcServer::spawn();
-    let proto_path = data_dir.join("ping.proto");
+    let proto_root = data_dir.join("proto");
+    let common_dir = proto_root.join("common");
+    let service_dir = data_dir.join("service");
+    std::fs::create_dir_all(&common_dir).expect("create common dir");
+    std::fs::create_dir_all(&service_dir).expect("create service dir");
+    let shared_proto_path = common_dir.join("shared.proto");
+    let proto_path = service_dir.join("ping.proto");
+    std::fs::write(
+        &shared_proto_path,
+        r#"
+            syntax = "proto3";
+            package example.common;
+
+            message PingName {
+              string value = 1;
+            }
+        "#,
+    )
+    .expect("write shared proto");
     std::fs::write(
         &proto_path,
         r#"
             syntax = "proto3";
             package example;
+            import "common/shared.proto";
             service PingService {
               rpc Ping (PingRequest) returns (PingResponse);
             }
@@ -1959,11 +1984,14 @@ fn yaku_grpc_request_invokes_unary_with_local_proto_file() {
             r#"{"name":"yakumo"}"#,
             "--proto-file",
             proto_path.to_str().expect("proto path utf8"),
+            "--proto-root",
+            proto_root.to_str().expect("proto root utf8"),
             "--no-reflection",
         ])
         .assert()
         .success()
-        .stdout(contains("\"protocol\":\"grpc\""));
+        .stdout(contains("\"protocol\":\"grpc\""))
+        .stdout(contains("\"protoImportRoots\""));
     let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
 
     let send = cli_cmd(data_dir)
@@ -1983,4 +2011,74 @@ fn yaku_grpc_request_invokes_unary_with_local_proto_file() {
         .stdout(contains("\"kind\":\"message\""))
         .stdout(contains("\"message\":\"pong yakumo\""))
         .stdout(contains("\"kind\":\"complete\""));
+}
+
+#[test]
+fn yaku_grpc_request_rejects_non_unary_method() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let data_dir = temp_dir.path();
+
+    let proto_path = data_dir.join("stream.proto");
+    std::fs::write(
+        &proto_path,
+        r#"
+            syntax = "proto3";
+            package example;
+            service StreamService {
+              rpc Watch (WatchRequest) returns (stream WatchResponse);
+            }
+            message WatchRequest {
+              string name = 1;
+            }
+            message WatchResponse {
+              string message = 1;
+            }
+        "#,
+    )
+    .expect("write proto");
+
+    let create_workspace =
+        cli_cmd(data_dir).args(["workspace", "create", "--name", "gRPC Stream"]).assert().success();
+    let workspace_id =
+        parse_created_id(&create_workspace.get_output().stdout, "yaku workspace create");
+
+    let create_request = cli_cmd(data_dir)
+        .args([
+            "request",
+            "create-grpc",
+            &workspace_id,
+            "--name",
+            "Watch Stream",
+            "--url",
+            "http://127.0.0.1:50051",
+            "--service",
+            "example.StreamService",
+            "--method",
+            "Watch",
+            "--message",
+            r#"{"name":"yakumo"}"#,
+            "--proto-file",
+            proto_path.to_str().expect("proto path utf8"),
+            "--no-reflection",
+        ])
+        .assert()
+        .success()
+        .stdout(contains("\"protocol\":\"grpc\""));
+    let request_id = parse_created_id(&create_request.get_output().stdout, "yaku grpc create");
+
+    let send = cli_cmd(data_dir)
+        .args(["send", &request_id])
+        .assert()
+        .success()
+        .stdout(contains("\"protocol\":\"grpc\""))
+        .stdout(contains("\"state\":\"failed\""))
+        .stdout(contains("supports unary methods only"));
+    let run_id = parse_created_id(&send.get_output().stdout, "yaku grpc stream send");
+
+    cli_cmd(data_dir)
+        .args(["run", "events", &run_id])
+        .assert()
+        .success()
+        .stdout(contains("\"kind\":\"error\""))
+        .stdout(contains("supports unary methods only"));
 }

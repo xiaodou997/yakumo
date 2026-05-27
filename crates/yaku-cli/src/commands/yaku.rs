@@ -715,6 +715,7 @@ fn run_inner(
                 metadata,
                 message,
                 proto_files,
+                proto_import_roots,
                 no_reflection,
                 timeout_ms,
                 parent_id,
@@ -727,6 +728,7 @@ fn run_inner(
                 config.insert("method".to_string(), json!(method));
                 config.insert("metadata".to_string(), json!(metadata));
                 config.insert("message".to_string(), json!(message));
+                config.insert("protoImportRoots".to_string(), json!(proto_import_roots));
                 config.insert("protoFiles".to_string(), json!(proto_files));
                 config.insert("useReflection".to_string(), json!(!no_reflection));
                 config.insert("timeoutMs".to_string(), json!(timeout_ms));
@@ -757,6 +759,8 @@ fn run_inner(
                 clear_message,
                 proto_files,
                 clear_proto_files,
+                proto_import_roots,
+                clear_proto_import_roots,
                 reflection,
                 no_reflection,
                 timeout_ms,
@@ -788,6 +792,12 @@ fn run_inner(
                 }
                 if clear_message {
                     config.insert("message".to_string(), Value::Null);
+                }
+                if !proto_import_roots.is_empty() {
+                    config.insert("protoImportRoots".to_string(), json!(proto_import_roots));
+                }
+                if clear_proto_import_roots {
+                    config.insert("protoImportRoots".to_string(), json!(Vec::<String>::new()));
                 }
                 if !proto_files.is_empty() {
                     config.insert("protoFiles".to_string(), json!(proto_files));

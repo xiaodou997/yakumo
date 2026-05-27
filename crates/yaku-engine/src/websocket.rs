@@ -23,10 +23,31 @@ pub struct WebSocketRequestConfig {
     pub query: Vec<QueryParam>,
     #[serde(default)]
     pub messages: Vec<String>,
+    #[serde(default)]
+    pub message_queue: Vec<OutboundWebSocketMessageConfig>,
     #[serde(default = "default_max_messages")]
     pub max_messages: u32,
     #[serde(default = "default_timeout_ms")]
     pub timeout_ms: u64,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutboundWebSocketMessageKind {
+    Text,
+    Ping,
+    Binary,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutboundWebSocketMessageConfig {
+    #[serde(default = "default_outbound_websocket_message_kind")]
+    pub kind: OutboundWebSocketMessageKind,
+    #[serde(default)]
+    pub value: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -41,6 +62,7 @@ pub struct WebSocketMessage {
     pub direction: WebSocketMessageDirection,
     pub kind: WebSocketMessageKind,
     pub text: Option<String>,
+    pub hex: Option<String>,
     pub byte_length: i64,
 }
 
@@ -193,12 +215,25 @@ where
                     data: response_headers_data(response.status_code, &response.headers),
                     now: chrono::Utc::now(),
                 })?;
+                let mut sent_message_index = 0usize;
+                let mut received_message_index = 0usize;
                 for (index, message) in response.messages.iter().enumerate() {
+                    let message_index = index + 1;
+                    let direction_index = match message.direction {
+                        WebSocketMessageDirection::Sent => {
+                            sent_message_index += 1;
+                            sent_message_index
+                        }
+                        WebSocketMessageDirection::Received => {
+                            received_message_index += 1;
+                            received_message_index
+                        }
+                    };
                     service.append_run_event(AppendRunEvent {
                         run_id: run.id.clone(),
                         sequence: 2 + index as i64,
                         kind: RunEventKind::Message,
-                        data: websocket_message_data(message),
+                        data: websocket_message_data(message, message_index, direction_index),
                         now: chrono::Utc::now(),
                     })?;
                 }
@@ -353,20 +388,16 @@ async fn send_websocket(
         .collect();
     let mut messages = Vec::new();
 
-    for text in &config.messages {
+    for message in normalized_outbound_messages(config)? {
+        let outbound = outbound_tungstenite_message(&message)?;
         tokio::select! {
             biased;
             _ = cancellation.cancelled() => return Err(Error::Cancelled),
-            result = stream.send(Message::Text(text.clone().into())) => {
+            result = stream.send(outbound) => {
                 result.map_err(|err| Error::Send(err.to_string()))?;
             }
         }
-        messages.push(WebSocketMessage {
-            direction: WebSocketMessageDirection::Sent,
-            kind: WebSocketMessageKind::Text,
-            text: Some(text.clone()),
-            byte_length: text.len() as i64,
-        });
+        messages.push(websocket_sent_message(&message)?);
     }
 
     for _ in 0..config.max_messages {
@@ -420,37 +451,37 @@ fn websocket_message(message: Message) -> WebSocketMessage {
                 direction: WebSocketMessageDirection::Received,
                 byte_length: text.len() as i64,
                 text: Some(text),
+                hex: None,
                 kind: WebSocketMessageKind::Text,
             }
         }
-        Message::Binary(bytes) => WebSocketMessage {
-            direction: WebSocketMessageDirection::Received,
-            byte_length: bytes.len() as i64,
-            text: None,
-            kind: WebSocketMessageKind::Binary,
-        },
-        Message::Ping(bytes) => WebSocketMessage {
-            direction: WebSocketMessageDirection::Received,
-            byte_length: bytes.len() as i64,
-            text: None,
-            kind: WebSocketMessageKind::Ping,
-        },
-        Message::Pong(bytes) => WebSocketMessage {
-            direction: WebSocketMessageDirection::Received,
-            byte_length: bytes.len() as i64,
-            text: None,
-            kind: WebSocketMessageKind::Pong,
-        },
+        Message::Binary(bytes) => websocket_binary_message(
+            WebSocketMessageDirection::Received,
+            WebSocketMessageKind::Binary,
+            bytes.to_vec(),
+        ),
+        Message::Ping(bytes) => websocket_binary_message(
+            WebSocketMessageDirection::Received,
+            WebSocketMessageKind::Ping,
+            bytes.to_vec(),
+        ),
+        Message::Pong(bytes) => websocket_binary_message(
+            WebSocketMessageDirection::Received,
+            WebSocketMessageKind::Pong,
+            bytes.to_vec(),
+        ),
         Message::Close(_) => WebSocketMessage {
             direction: WebSocketMessageDirection::Received,
             byte_length: 0,
             text: None,
+            hex: None,
             kind: WebSocketMessageKind::Close,
         },
         Message::Frame(_) => WebSocketMessage {
             direction: WebSocketMessageDirection::Received,
             byte_length: 0,
             text: None,
+            hex: None,
             kind: WebSocketMessageKind::Binary,
         },
     }
@@ -458,9 +489,20 @@ fn websocket_message(message: Message) -> WebSocketMessage {
 
 fn parse_config(config: BTreeMap<String, serde_json::Value>) -> Result<WebSocketRequestConfig> {
     let value = serde_json::Value::Object(config.into_iter().collect());
-    let config: WebSocketRequestConfig = serde_json::from_value(value)?;
+    let mut config: WebSocketRequestConfig = serde_json::from_value(value)?;
     if config.url.trim().is_empty() {
         return Err(Error::InvalidConfig("url cannot be empty".to_string()));
+    }
+    if config.message_queue.is_empty() && !config.messages.is_empty() {
+        config.message_queue = config
+            .messages
+            .iter()
+            .map(|value| OutboundWebSocketMessageConfig {
+                kind: OutboundWebSocketMessageKind::Text,
+                value: value.clone(),
+                enabled: true,
+            })
+            .collect();
     }
     Ok(config)
 }
@@ -483,6 +525,7 @@ fn request_metadata_data(config: &WebSocketRequestConfig) -> BTreeMap<String, se
         ("headers".to_string(), json!(config.headers)),
         ("query".to_string(), json!(config.query)),
         ("messages".to_string(), json!(config.messages)),
+        ("messageQueue".to_string(), json!(config.message_queue)),
         ("maxMessages".to_string(), json!(config.max_messages)),
         ("timeoutMs".to_string(), json!(config.timeout_ms)),
     ])
@@ -512,11 +555,18 @@ fn request_snapshot_data(
     ])
 }
 
-fn websocket_message_data(message: &WebSocketMessage) -> BTreeMap<String, serde_json::Value> {
+fn websocket_message_data(
+    message: &WebSocketMessage,
+    message_index: usize,
+    direction_index: usize,
+) -> BTreeMap<String, serde_json::Value> {
     BTreeMap::from([
         ("direction".to_string(), json!(message.direction)),
         ("kind".to_string(), json!(message.kind)),
+        ("messageIndex".to_string(), json!(message_index)),
+        ("directionIndex".to_string(), json!(direction_index)),
         ("text".to_string(), json!(message.text)),
+        ("hex".to_string(), json!(message.hex)),
         ("byteLength".to_string(), json!(message.byte_length)),
     ])
 }
@@ -527,6 +577,134 @@ fn default_max_messages() -> u32 {
 
 fn default_timeout_ms() -> u64 {
     30_000
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_outbound_websocket_message_kind() -> OutboundWebSocketMessageKind {
+    OutboundWebSocketMessageKind::Text
+}
+
+fn normalized_outbound_messages(
+    config: &WebSocketRequestConfig,
+) -> Result<Vec<OutboundWebSocketMessageConfig>> {
+    let messages = if config.message_queue.is_empty() {
+        config
+            .messages
+            .iter()
+            .map(|value| OutboundWebSocketMessageConfig {
+                kind: OutboundWebSocketMessageKind::Text,
+                value: value.clone(),
+                enabled: true,
+            })
+            .collect()
+    } else {
+        config.message_queue.clone()
+    };
+
+    Ok(messages
+        .into_iter()
+        .filter(|message| message.enabled && !message.value.trim().is_empty())
+        .collect())
+}
+
+fn outbound_tungstenite_message(message: &OutboundWebSocketMessageConfig) -> Result<Message> {
+    match message.kind {
+        OutboundWebSocketMessageKind::Text => Ok(Message::Text(message.value.clone().into())),
+        OutboundWebSocketMessageKind::Ping => {
+            Ok(Message::Ping(message.value.as_bytes().to_vec().into()))
+        }
+        OutboundWebSocketMessageKind::Binary => {
+            Ok(Message::Binary(parse_hex_bytes(&message.value)?.into()))
+        }
+    }
+}
+
+fn websocket_sent_message(message: &OutboundWebSocketMessageConfig) -> Result<WebSocketMessage> {
+    let (kind, text, byte_length) = match message.kind {
+        OutboundWebSocketMessageKind::Text => (
+            WebSocketMessageKind::Text,
+            Some(message.value.clone()),
+            message.value.len() as i64,
+        ),
+        OutboundWebSocketMessageKind::Ping => (
+            WebSocketMessageKind::Ping,
+            Some(message.value.clone()),
+            message.value.as_bytes().len() as i64,
+        ),
+        OutboundWebSocketMessageKind::Binary => {
+            let bytes = parse_hex_bytes(&message.value)?;
+            (
+                WebSocketMessageKind::Binary,
+                Some(normalized_hex_string(&message.value)),
+                bytes.len() as i64,
+            )
+        }
+    };
+
+    Ok(WebSocketMessage {
+        direction: WebSocketMessageDirection::Sent,
+        kind,
+        text,
+        hex: match message.kind {
+            OutboundWebSocketMessageKind::Text => None,
+            OutboundWebSocketMessageKind::Ping => Some(bytes_to_hex(message.value.as_bytes())),
+            OutboundWebSocketMessageKind::Binary => Some(normalized_hex_string(&message.value)),
+        },
+        byte_length,
+    })
+}
+
+fn parse_hex_bytes(input: &str) -> Result<Vec<u8>> {
+    let normalized = normalized_hex_string(input);
+    if normalized.is_empty() {
+        return Ok(Vec::new());
+    }
+    if normalized.len() % 2 != 0 {
+        return Err(Error::InvalidConfig(
+            "binary WebSocket payload must have an even number of hex digits".to_string(),
+        ));
+    }
+
+    let mut bytes = Vec::with_capacity(normalized.len() / 2);
+    let chars: Vec<char> = normalized.chars().collect();
+    for chunk in chars.chunks(2) {
+        let pair: String = chunk.iter().collect();
+        let byte = u8::from_str_radix(&pair, 16).map_err(|err| {
+            Error::InvalidConfig(format!("invalid binary WebSocket hex payload: {err}"))
+        })?;
+        bytes.push(byte);
+    }
+    Ok(bytes)
+}
+
+fn normalized_hex_string(input: &str) -> String {
+    input.chars().filter(|ch| !ch.is_whitespace()).collect()
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        use std::fmt::Write as _;
+        let _ = write!(&mut output, "{byte:02x}");
+    }
+    output
+}
+
+fn websocket_binary_message(
+    direction: WebSocketMessageDirection,
+    kind: WebSocketMessageKind,
+    bytes: Vec<u8>,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        direction,
+        byte_length: bytes.len() as i64,
+        text: String::from_utf8(bytes.clone()).ok(),
+        hex: Some(bytes_to_hex(&bytes)),
+        kind,
+    }
 }
 
 #[cfg(test)]
@@ -575,12 +753,14 @@ mod tests {
                 direction: WebSocketMessageDirection::Sent,
                 kind: WebSocketMessageKind::Text,
                 text: Some("ping".to_string()),
+                hex: None,
                 byte_length: 4,
             },
             WebSocketMessage {
                 direction: WebSocketMessageDirection::Received,
                 kind: WebSocketMessageKind::Text,
                 text: Some("pong".to_string()),
+                hex: None,
                 byte_length: 4,
             },
         ]));
@@ -629,6 +809,7 @@ mod tests {
                     enabled: true,
                 }],
                 messages: vec!["ping".to_string()],
+                message_queue: Vec::new(),
                 max_messages: 1,
                 timeout_ms: 5_000,
             })

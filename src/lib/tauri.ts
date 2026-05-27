@@ -17,7 +17,12 @@ type TauriCmd =
   | "cmd_yaku_cookie_jar_create"
   | "cmd_yaku_cookie_jar_delete"
   | "cmd_yaku_cookie_jar_list"
+  | "cmd_yaku_cookie_delete"
   | "cmd_yaku_cookie_list"
+  | "cmd_yaku_grpc_services"
+  | "cmd_yaku_secret_audit"
+  | "cmd_yaku_secret_delete"
+  | "cmd_yaku_secret_orphans_delete"
   | "cmd_yaku_environment_create"
   | "cmd_yaku_environment_delete"
   | "cmd_yaku_environment_update"
@@ -53,7 +58,10 @@ type TauriCmd =
   | "cmd_yaku_workspace_get"
   | "cmd_yaku_workspace_list";
 
-export async function invokeCmd<T>(cmd: TauriCmd, args?: InvokeArgs): Promise<T> {
+export async function invokeCmd<T>(
+  cmd: TauriCmd,
+  args?: InvokeArgs,
+): Promise<T> {
   // console.log('RUN COMMAND', cmd, args);
   try {
     return await invoke(cmd, args);

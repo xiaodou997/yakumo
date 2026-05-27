@@ -99,6 +99,42 @@ pub struct PageResponse<T> {
     next_cursor: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretAuditReference {
+    request_id: String,
+    request_name: String,
+    node_id: String,
+    node_path: String,
+    auth_type: String,
+    auth_field: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretAuditItem {
+    secret: SecretMetadata,
+    kind: Option<String>,
+    storage: Option<String>,
+    orphan: bool,
+    references: Vec<SecretAuditReference>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretAuditResponse {
+    items: Vec<SecretAuditItem>,
+    orphan_count: usize,
+    referenced_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretCleanupResponse {
+    deleted_ids: Vec<String>,
+    deleted_count: usize,
+}
+
 trait CursorValue {
     fn cursor(&self) -> i64;
 }
@@ -439,17 +475,37 @@ fn validate_http_body_files(config: &BTreeMap<String, Value>) -> Result<()> {
 }
 
 fn collect_auth_secret_ids(config: &BTreeMap<String, Value>) -> Vec<String> {
+    collect_auth_secret_refs(config).into_iter().map(|reference| reference.secret_id).collect()
+}
+
+#[derive(Debug, Clone)]
+struct AuthSecretRef {
+    secret_id: String,
+    auth_type: String,
+    auth_field: String,
+}
+
+fn collect_auth_secret_refs(config: &BTreeMap<String, Value>) -> Vec<AuthSecretRef> {
     let Some(Value::Object(auth)) = config.get("auth") else {
         return Vec::new();
     };
-    let mut ids = Vec::new();
+    let auth_type = auth.get("type").and_then(Value::as_str).unwrap_or("unknown").to_string();
+    let mut refs = Vec::new();
     if let Some(secret_id) = auth.get("passwordSecretId").and_then(Value::as_str) {
-        ids.push(secret_id.to_string());
+        refs.push(AuthSecretRef {
+            secret_id: secret_id.to_string(),
+            auth_type: auth_type.clone(),
+            auth_field: "password".to_string(),
+        });
     }
     if let Some(secret_id) = auth.get("tokenSecretId").and_then(Value::as_str) {
-        ids.push(secret_id.to_string());
+        refs.push(AuthSecretRef {
+            secret_id: secret_id.to_string(),
+            auth_type,
+            auth_field: "token".to_string(),
+        });
     }
-    ids
+    refs
 }
 
 fn cleanup_secret_ids(store: &Store, secret_ids: impl IntoIterator<Item = String>) -> Result<()> {
@@ -513,6 +569,109 @@ fn collect_request_node_subtree_secret_ids(store: &Store, node_id: &str) -> Resu
         }
     }
     Ok(secret_ids.into_iter().collect())
+}
+
+fn list_workspace_secret_audit(store: &Store, workspace_id: &str) -> Result<SecretAuditResponse> {
+    let mut secrets =
+        store.list_secret_metadata(workspace_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    secrets.sort_by(|left, right| left.name.cmp(&right.name).then(left.id.cmp(&right.id)));
+
+    let tree =
+        store.list_request_tree(workspace_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    let node_by_id =
+        tree.iter().cloned().map(|node| (node.id.clone(), node)).collect::<BTreeMap<_, _>>();
+    let request_node_by_request_id = tree
+        .iter()
+        .filter_map(|node| {
+            node.request_id.as_ref().map(|request_id| (request_id.clone(), node.clone()))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let mut refs_by_secret_id = BTreeMap::<String, Vec<SecretAuditReference>>::new();
+    for (request_id, node) in request_node_by_request_id {
+        let Some(request) =
+            store.get_request(&request_id).map_err(|e| Error::GenericError(e.to_string()))?
+        else {
+            continue;
+        };
+        for secret_ref in collect_auth_secret_refs(&request.config) {
+            refs_by_secret_id.entry(secret_ref.secret_id).or_default().push(SecretAuditReference {
+                request_id: request.id.clone(),
+                request_name: request.name.clone(),
+                node_id: node.id.clone(),
+                node_path: request_node_path(&node.id, &node_by_id),
+                auth_type: secret_ref.auth_type,
+                auth_field: secret_ref.auth_field,
+            });
+        }
+    }
+
+    let items = secrets
+        .into_iter()
+        .map(|secret| {
+            let mut references = refs_by_secret_id.remove(&secret.id).unwrap_or_default();
+            references.sort_by(|left, right| left.node_path.cmp(&right.node_path));
+            let kind = secret.metadata.get("kind").and_then(Value::as_str).map(str::to_string);
+            let storage =
+                secret.metadata.get("storage").and_then(Value::as_str).map(str::to_string);
+            SecretAuditItem { secret, kind, storage, orphan: references.is_empty(), references }
+        })
+        .collect::<Vec<_>>();
+
+    let orphan_count = items.iter().filter(|item| item.orphan).count();
+    let referenced_count = items.len().saturating_sub(orphan_count);
+
+    Ok(SecretAuditResponse { items, orphan_count, referenced_count })
+}
+
+fn delete_orphan_secret(store: &Store, secret_id: &str) -> Result<bool> {
+    let Some(secret) =
+        store.get_secret_metadata(secret_id).map_err(|e| Error::GenericError(e.to_string()))?
+    else {
+        return Ok(false);
+    };
+    let audit = list_workspace_secret_audit(store, &secret.workspace_id)?;
+    let item =
+        audit.items.into_iter().find(|item| item.secret.id == secret_id).ok_or_else(|| {
+            Error::GenericError(format!("Secret '{secret_id}' not found in audit"))
+        })?;
+    if !item.orphan {
+        return Err(Error::GenericError(format!(
+            "Secret '{secret_id}' is still referenced by {} request(s)",
+            item.references.len()
+        )));
+    }
+    delete_secret_value(&secret)?;
+    store.delete_secret_metadata(secret_id).map_err(|e| Error::GenericError(e.to_string()))
+}
+
+fn delete_workspace_orphan_secrets(
+    store: &Store,
+    workspace_id: &str,
+) -> Result<SecretCleanupResponse> {
+    let audit = list_workspace_secret_audit(store, workspace_id)?;
+    let mut deleted_ids = Vec::new();
+    for item in audit.items.into_iter().filter(|item| item.orphan) {
+        if delete_orphan_secret(store, &item.secret.id)? {
+            deleted_ids.push(item.secret.id);
+        }
+    }
+    let deleted_count = deleted_ids.len();
+    Ok(SecretCleanupResponse { deleted_ids, deleted_count })
+}
+
+fn request_node_path(
+    node_id: &str,
+    node_by_id: &BTreeMap<String, yaku_domain::RequestNode>,
+) -> String {
+    let mut names = Vec::new();
+    let mut current = node_by_id.get(node_id);
+    while let Some(node) = current {
+        names.push(node.name.clone());
+        current = node.parent_id.as_ref().and_then(|parent_id| node_by_id.get(parent_id));
+    }
+    names.reverse();
+    names.join(" / ")
 }
 
 fn workspace_run_retention(store: &Store, workspace_id: &str) -> Result<Option<u32>> {
@@ -968,6 +1127,17 @@ pub(crate) fn cmd_yaku_cookie_list<R: Runtime>(
 }
 
 #[tauri::command]
+pub(crate) fn cmd_yaku_cookie_delete<R: Runtime>(
+    app_handle: AppHandle<R>,
+    cookie_id: String,
+) -> Result<DeleteResponse> {
+    let store = open_store(&app_handle)?;
+    let deleted =
+        store.delete_cookie(&cookie_id).map_err(|e| Error::GenericError(e.to_string()))?;
+    Ok(DeleteResponse { deleted, body_gc: None })
+}
+
+#[tauri::command]
 pub(crate) fn cmd_yaku_cookie_jar_clear<R: Runtime>(
     app_handle: AppHandle<R>,
     jar_id: String,
@@ -976,6 +1146,76 @@ pub(crate) fn cmd_yaku_cookie_jar_clear<R: Runtime>(
     let deleted =
         store.clear_cookies_for_jar(&jar_id).map_err(|e| Error::GenericError(e.to_string()))?;
     Ok(DeleteResponse { deleted: deleted > 0, body_gc: None })
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_secret_audit<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: String,
+) -> Result<SecretAuditResponse> {
+    let store = open_store(&app_handle)?;
+    list_workspace_secret_audit(&store, &workspace_id)
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_secret_delete<R: Runtime>(
+    app_handle: AppHandle<R>,
+    secret_id: String,
+) -> Result<DeleteResponse> {
+    let store = open_store(&app_handle)?;
+    let deleted = delete_orphan_secret(&store, &secret_id)?;
+    Ok(DeleteResponse { deleted, body_gc: None })
+}
+
+#[tauri::command]
+pub(crate) fn cmd_yaku_secret_orphans_delete<R: Runtime>(
+    app_handle: AppHandle<R>,
+    workspace_id: String,
+) -> Result<SecretCleanupResponse> {
+    let store = open_store(&app_handle)?;
+    delete_workspace_orphan_secrets(&store, &workspace_id)
+}
+
+#[tauri::command]
+pub(crate) async fn cmd_yaku_grpc_services(
+    url: String,
+    metadata: BTreeMap<String, String>,
+    proto_files: Vec<String>,
+    proto_import_roots: Vec<String>,
+    use_reflection: bool,
+) -> Result<Vec<yakumo_grpc::ServiceDefinition>> {
+    let url = url.trim();
+    if url.is_empty() {
+        return Err(Error::GenericError("gRPC URL cannot be empty".to_string()));
+    }
+    let proto_file_count = proto_files.len();
+
+    let proto_paths = if use_reflection {
+        Vec::new()
+    } else {
+        proto_import_roots.into_iter().chain(proto_files.into_iter()).map(PathBuf::from).collect()
+    };
+
+    if !use_reflection && proto_file_count == 0 {
+        return Err(Error::GenericError(
+            "gRPC schema discovery requires at least one proto file when reflection is disabled"
+                .to_string(),
+        ));
+    }
+
+    let cache_key = format!(
+        "{:x}",
+        md5::compute(
+            serde_json::to_vec(&(url, &metadata, &proto_paths, use_reflection))
+                .map_err(|e| Error::GenericError(e.to_string()))?,
+        )
+    );
+
+    let mut handle = yakumo_grpc::manager::GrpcHandle::new();
+    handle
+        .services(&cache_key, url, &proto_paths, &metadata, true, None)
+        .await
+        .map_err(|e| Error::GenericError(e.to_string()))
 }
 
 #[tauri::command]
@@ -1723,6 +1963,375 @@ mod tests {
                 .get_secret_metadata(secret_id)
                 .expect("secret get after cleanup")
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn secret_audit_lists_references_and_orphans() {
+        let store = Store::open_in_memory().expect("store opens");
+        let service = yaku_domain::DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_secret_audit".to_string(),
+                name: "Secrets".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let folder = service
+            .create_folder(CreateFolder {
+                id: "folder_secret_audit".to_string(),
+                workspace_id: workspace.id.clone(),
+                parent_id: None,
+                name: "Auth".to_string(),
+                sort_key: "1".to_string(),
+                now,
+            })
+            .expect("folder create");
+
+        let referenced_secret = SecretMetadata {
+            id: "sec_referenced".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Request token".to_string(),
+            ciphertext: "keyring:yaku.secrets:sec_referenced".to_string(),
+            metadata: BTreeMap::from([
+                ("kind".to_string(), json!("http_bearer_token")),
+                ("storage".to_string(), json!(SECRET_STORAGE_KEYCHAIN)),
+            ]),
+            created_at: now,
+            updated_at: now,
+        };
+        service
+            .repository()
+            .upsert_secret_metadata(&referenced_secret)
+            .expect("referenced secret upsert");
+
+        let orphan_secret = SecretMetadata {
+            id: "sec_orphan".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Orphan token".to_string(),
+            ciphertext: "stale".to_string(),
+            metadata: BTreeMap::from([
+                ("kind".to_string(), json!("http_bearer_token")),
+                ("storage".to_string(), json!(SECRET_STORAGE_LOCAL_PLAINTEXT)),
+            ]),
+            created_at: now,
+            updated_at: now,
+        };
+        service.repository().upsert_secret_metadata(&orphan_secret).expect("orphan secret upsert");
+
+        service
+            .create_request(CreateRequest {
+                id: "rq_secret_audit".to_string(),
+                node_id: "node_secret_audit".to_string(),
+                workspace_id: workspace.id.clone(),
+                parent_id: Some(folder.id.clone()),
+                protocol: Protocol::Http,
+                name: "Protected".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("GET")),
+                    ("url".to_string(), json!("https://example.test")),
+                    (
+                        "auth".to_string(),
+                        json!({
+                            "type": "bearer",
+                            "tokenSecretId": "sec_referenced",
+                        }),
+                    ),
+                ]),
+                sort_key: "2".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        let audit =
+            list_workspace_secret_audit(service.repository(), &workspace.id).expect("audit");
+        assert_eq!(audit.items.len(), 2);
+        assert_eq!(audit.orphan_count, 1);
+        assert_eq!(audit.referenced_count, 1);
+
+        let referenced = audit
+            .items
+            .iter()
+            .find(|item| item.secret.id == "sec_referenced")
+            .expect("referenced item");
+        assert!(!referenced.orphan);
+        assert_eq!(referenced.references.len(), 1);
+        assert_eq!(referenced.references[0].request_name, "Protected");
+        assert_eq!(referenced.references[0].node_path, "Auth / Protected");
+        assert_eq!(referenced.references[0].auth_field, "token");
+
+        let orphan =
+            audit.items.iter().find(|item| item.secret.id == "sec_orphan").expect("orphan item");
+        assert!(orphan.orphan);
+        assert!(orphan.references.is_empty());
+    }
+
+    #[test]
+    fn orphan_secret_can_be_deleted_but_referenced_secret_is_rejected() {
+        let store = Store::open_in_memory().expect("store opens");
+        let service = yaku_domain::DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_secret_delete".to_string(),
+                name: "Secrets".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        let referenced_secret = SecretMetadata {
+            id: "sec_referenced_delete".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Referenced".to_string(),
+            ciphertext: "value".to_string(),
+            metadata: BTreeMap::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        let orphan_secret = SecretMetadata {
+            id: "sec_orphan_delete".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Orphan".to_string(),
+            ciphertext: "value".to_string(),
+            metadata: BTreeMap::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        service.repository().upsert_secret_metadata(&referenced_secret).expect("ref upsert");
+        service.repository().upsert_secret_metadata(&orphan_secret).expect("orphan upsert");
+        service
+            .create_request(CreateRequest {
+                id: "rq_secret_delete".to_string(),
+                node_id: "node_secret_delete".to_string(),
+                workspace_id: workspace.id.clone(),
+                parent_id: None,
+                protocol: Protocol::Http,
+                name: "Protected".to_string(),
+                description: String::new(),
+                config: BTreeMap::from([
+                    ("method".to_string(), json!("GET")),
+                    ("url".to_string(), json!("https://example.test")),
+                    (
+                        "auth".to_string(),
+                        json!({
+                            "type": "bearer",
+                            "tokenSecretId": referenced_secret.id,
+                        }),
+                    ),
+                ]),
+                sort_key: "1".to_string(),
+                now,
+            })
+            .expect("request create");
+
+        assert!(
+            delete_orphan_secret(service.repository(), &orphan_secret.id).expect("delete orphan")
+        );
+        assert!(
+            service
+                .repository()
+                .get_secret_metadata(&orphan_secret.id)
+                .expect("orphan get")
+                .is_none()
+        );
+
+        let err = delete_orphan_secret(service.repository(), &referenced_secret.id)
+            .expect_err("referenced");
+        assert!(err.to_string().contains("still referenced"));
+    }
+
+    #[test]
+    fn orphan_secret_cleanup_deletes_all_orphans_in_workspace() {
+        let store = Store::open_in_memory().expect("store opens");
+        let service = yaku_domain::DomainService::new(store);
+        let now = Utc::now();
+        let workspace = service
+            .create_workspace(CreateWorkspace {
+                id: "wk_secret_cleanup".to_string(),
+                name: "Secrets".to_string(),
+                description: String::new(),
+                now,
+            })
+            .expect("workspace create");
+        for id in ["sec_cleanup_a", "sec_cleanup_b"] {
+            service
+                .repository()
+                .upsert_secret_metadata(&SecretMetadata {
+                    id: id.to_string(),
+                    workspace_id: workspace.id.clone(),
+                    name: id.to_string(),
+                    ciphertext: "value".to_string(),
+                    metadata: BTreeMap::new(),
+                    created_at: now,
+                    updated_at: now,
+                })
+                .expect("secret upsert");
+        }
+
+        let cleanup =
+            delete_workspace_orphan_secrets(service.repository(), &workspace.id).expect("cleanup");
+        assert_eq!(cleanup.deleted_count, 2);
+        assert_eq!(cleanup.deleted_ids.len(), 2);
+        assert!(service.repository().list_secret_metadata(&workspace.id).expect("list").is_empty());
+    }
+
+    #[test]
+    fn cookie_delete_removes_only_target_cookie() {
+        let store = Store::open_in_memory().expect("store opens");
+        let now = Utc::now();
+        let workspace = Workspace {
+            id: "wk_cookie_delete".to_string(),
+            name: "Cookies".to_string(),
+            description: String::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_workspace(&workspace).expect("workspace upsert");
+
+        let jar = CookieJar {
+            id: "jar_cookie_delete".to_string(),
+            workspace_id: workspace.id.clone(),
+            name: "Default".to_string(),
+            created_at: now,
+            updated_at: now,
+        };
+        store.upsert_cookie_jar(&jar).expect("jar upsert");
+
+        let cookie_a = CookieRecord {
+            id: "cookie_a".to_string(),
+            workspace_id: workspace.id.clone(),
+            jar_id: jar.id.clone(),
+            name: "sid".to_string(),
+            value: "alpha".to_string(),
+            domain: "api.example.test".to_string(),
+            path: "/".to_string(),
+            expires_at: None,
+            secure: true,
+            http_only: true,
+            same_site: Some("Lax".to_string()),
+            created_at: now,
+            updated_at: now,
+        };
+        let cookie_b = CookieRecord {
+            id: "cookie_b".to_string(),
+            workspace_id: workspace.id.clone(),
+            jar_id: jar.id.clone(),
+            name: "prefs".to_string(),
+            value: "beta".to_string(),
+            domain: "api.example.test".to_string(),
+            path: "/v1".to_string(),
+            expires_at: None,
+            secure: false,
+            http_only: false,
+            same_site: None,
+            created_at: now,
+            updated_at: now,
+        };
+
+        store.upsert_cookie(&cookie_a).expect("cookie a upsert");
+        store.upsert_cookie(&cookie_b).expect("cookie b upsert");
+
+        assert!(store.delete_cookie(&cookie_a.id).expect("delete cookie"));
+        let remaining = store.list_cookies(&jar.id).expect("list cookies");
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].id, cookie_b.id);
+    }
+
+    #[test]
+    fn grpc_services_command_lists_services_from_local_proto_files() {
+        let unique = format!(
+            "yaku-grpc-services-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time")
+                .as_nanos()
+        );
+        let temp_dir = std::env::temp_dir().join(unique);
+        let proto_root = temp_dir.join("proto");
+        let common_dir = proto_root.join("common");
+        let service_dir = temp_dir.join("service");
+        std::fs::create_dir_all(&common_dir).expect("create common dir");
+        std::fs::create_dir_all(&service_dir).expect("create service dir");
+
+        let shared_proto = common_dir.join("shared.proto");
+        let service_proto = service_dir.join("ping.proto");
+        std::fs::write(
+            &shared_proto,
+            r#"
+                syntax = "proto3";
+                package example.common;
+
+                message SharedName {
+                  string value = 1;
+                }
+            "#,
+        )
+        .expect("write shared proto");
+        std::fs::write(
+            &service_proto,
+            r#"
+                syntax = "proto3";
+                package example;
+
+                import "common/shared.proto";
+
+                service PingService {
+                  rpc Ping (PingRequest) returns (PingResponse);
+                }
+
+                message PingRequest {
+                  example.common.SharedName name = 1;
+                }
+
+                message PingResponse {
+                  string message = 1;
+                }
+            "#,
+        )
+        .expect("write service proto");
+
+        let services = tauri::async_runtime::block_on(async {
+            cmd_yaku_grpc_services(
+                "http://127.0.0.1:1".to_string(),
+                BTreeMap::new(),
+                vec![service_proto.to_string_lossy().to_string()],
+                vec![proto_root.to_string_lossy().to_string()],
+                false,
+            )
+            .await
+        })
+        .expect("list gRPC services");
+
+        assert!(services.iter().any(|service| service.name == "example.PingService"));
+        let ping_service =
+            services.iter().find(|service| service.name == "example.PingService").expect("service");
+        assert_eq!(ping_service.methods.len(), 1);
+        assert_eq!(ping_service.methods[0].name, "Ping");
+        assert!(!ping_service.methods[0].schema.is_empty());
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn grpc_services_command_rejects_missing_proto_files_without_reflection() {
+        let err = tauri::async_runtime::block_on(async {
+            cmd_yaku_grpc_services(
+                "http://127.0.0.1:1".to_string(),
+                BTreeMap::new(),
+                Vec::new(),
+                vec!["/tmp/proto".to_string()],
+                false,
+            )
+            .await
+        })
+        .expect_err("expected error");
+
+        assert!(
+            err.to_string()
+                .contains("requires at least one proto file when reflection is disabled")
         );
     }
 }
